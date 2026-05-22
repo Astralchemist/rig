@@ -46,7 +46,7 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
     url: address,
     ws,
     close: async () => {
-      ws.close();
+      await ws.close();
       await app.close();
       rig.close();
     },

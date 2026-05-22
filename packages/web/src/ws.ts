@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
 
 export interface WsHandle {
-  close: () => void;
+  close: () => Promise<void>;
   broadcast: (event: WsEvent) => void;
 }
 
@@ -14,8 +14,7 @@ export interface WsEvent {
   [k: string]: unknown;
 }
 
-const DB_FILE = '.rig/rig.db';
-const WAL_FILE = '.rig/rig.db-wal';
+const RIG_DIR = '.rig';
 
 // Debounce the rapid-fire writes WAL produces during a single transaction. We
 // emit one db:changed event 200ms after the last observed change.
@@ -49,25 +48,26 @@ export const attachWs = (httpServer: HttpServer, projectRoot: string): WsHandle 
     }, DEBOUNCE_MS);
   };
 
-  for (const f of [DB_FILE, WAL_FILE]) {
-    try {
-      const w = watch(join(root, f), { persistent: false });
-      w.on('change', onDbChange);
-      w.on('error', () => {
-        // Watcher dies if the file is deleted/recreated; tolerate silently.
-      });
-      watchers.push(w);
-    } catch {
-      // File may not exist yet — Rig hasn't been initialised. WS still works.
-    }
+  // Watch the .rig directory (catches db, db-wal, db-shm churn even if WAL
+  // hadn't been created when the server booted).
+  try {
+    const w = watch(join(root, RIG_DIR), { persistent: false }, (_evt, filename) => {
+      if (filename && filename.startsWith('rig.db')) onDbChange();
+    });
+    w.on('error', () => {
+      // Watcher dies if the dir is replaced; tolerate silently.
+    });
+    watchers.push(w);
+  } catch {
+    // .rig/ may not exist yet — Rig hasn't been initialised. WS still works.
   }
 
   return {
-    close: () => {
+    close: async () => {
       if (timer) clearTimeout(timer);
       for (const w of watchers) w.close();
-      for (const ws of clients) ws.close();
-      wss.close();
+      for (const ws of clients) ws.terminate();
+      await new Promise<void>((res) => wss.close(() => res()));
     },
     broadcast,
   };
