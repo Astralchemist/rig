@@ -5,6 +5,7 @@ import { deepMerge } from './json-merge.ts';
 import { expandHome } from './paths.ts';
 import { upsertSection } from './section.ts';
 import { expandTokens, type TokenContext } from './tokens.ts';
+import { buildTomlTable, flattenSingleTable, upsertTomlTable } from './toml.ts';
 
 export interface TargetFileLike {
   role: string;
@@ -78,13 +79,14 @@ export async function applyFile(
   if (file.mode === 'merge-json') return applyMergeJson(resolvedPath, template, dryRun);
   if (file.mode === 'append-section') return applyAppendSection(resolvedPath, template, dryRun);
   if (file.mode === 'replace') return applyReplace(resolvedPath, template, dryRun);
+  if (file.mode === 'write-toml') return applyWriteToml(resolvedPath, template, dryRun);
 
   return {
     path: resolvedPath,
     mode: file.mode,
     changed: false,
     status: 'skipped-unimplemented',
-    reason: `mode '${file.mode}' lands in a follow-up (Codex TOML / opencode JSONC)`,
+    reason: `mode '${file.mode}' lands in a follow-up (opencode JSONC)`,
   };
 }
 
@@ -102,6 +104,30 @@ const applyReplace = async (
   return {
     path: resolvedPath,
     mode: 'replace',
+    changed: true,
+    status: dryRun ? 'dry-run' : 'wrote',
+  };
+};
+
+const applyWriteToml = async (
+  resolvedPath: string,
+  template: unknown,
+  dryRun: boolean,
+): Promise<ApplyResult> => {
+  if (!template || typeof template !== 'object') {
+    throw new Error('write-toml template must be an object');
+  }
+  const { header, body } = flattenSingleTable(template as Record<string, unknown>);
+  const block = buildTomlTable(header, body);
+  const existing = await readOrEmpty(resolvedPath);
+  const result = upsertTomlTable(existing, header, block);
+  if (result.action === 'unchanged') {
+    return { path: resolvedPath, mode: 'write-toml', changed: false, status: 'unchanged' };
+  }
+  if (!dryRun) await atomicWrite(resolvedPath, result.content);
+  return {
+    path: resolvedPath,
+    mode: 'write-toml',
     changed: true,
     status: dryRun ? 'dry-run' : 'wrote',
   };
