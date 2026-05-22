@@ -2,6 +2,7 @@ import cors from '@fastify/cors';
 import { Rig } from '@rig/core';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { registerRoutes } from './routes.ts';
+import { attachWs, type WsHandle } from './ws.ts';
 
 export interface ServeWebOptions {
   projectRoot: string;
@@ -13,6 +14,7 @@ export interface WebHandle {
   app: FastifyInstance;
   rig: Rig;
   url: string;
+  ws: WsHandle;
   close: () => Promise<void>;
 }
 
@@ -37,11 +39,14 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
   registerRoutes(app, rig);
 
   const address = await app.listen({ host, port });
+  const ws = attachWs(app.server, opts.projectRoot);
   return {
     app,
     rig,
     url: address,
+    ws,
     close: async () => {
+      ws.close();
       await app.close();
       rig.close();
     },
