@@ -73,9 +73,45 @@ export function App(): JSX.Element {
         {selected && (
           <span style={{ color: '#60a5fa', fontSize: 12 }}>selected: {selected}</span>
         )}
+        {snap && snap.pending_edges.length > 0 && (
+          <span style={{ color: '#fbbf24', fontSize: 12 }}>
+            {snap.pending_edges.length} pending
+          </span>
+        )}
         {err && <span style={{ color: '#f87171' }}>error: {err}</span>}
+        <button
+          onClick={async () => {
+            await fetch('/api/undo', { method: 'POST' });
+            await refresh();
+          }}
+          style={{
+            marginLeft: 'auto',
+            background: '#374151',
+            color: '#e5e7eb',
+            border: 'none',
+            borderRadius: 4,
+            padding: '4px 12px',
+            cursor: 'pointer',
+            fontSize: 12,
+          }}
+        >
+          undo
+        </button>
       </header>
-      {snap && snap.nodes.length > 0 && <Map snapshot={snap} onSelect={setSelected} />}
+      {snap && snap.nodes.length > 0 && (
+        <Map
+          snapshot={snap}
+          onSelect={setSelected}
+          onAccept={async (id) => {
+            await fetch(`/api/pending-edges/${id}/accept`, { method: 'POST' });
+            await refresh();
+          }}
+          onReject={async (id) => {
+            await fetch(`/api/pending-edges/${id}/reject`, { method: 'POST' });
+            await refresh();
+          }}
+        />
+      )}
       {selected && (
         <NodeDetail id={selected} onClose={() => setSelected(null)} onJump={setSelected} />
       )}
