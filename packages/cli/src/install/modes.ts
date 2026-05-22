@@ -71,10 +71,10 @@ const applyAppendSection = async (
 export async function applyFile(
   file: TargetFileLike,
   ctx: TokenContext,
-  opts: { dryRun?: boolean | undefined } = {},
+  opts: { dryRun?: boolean | undefined; home?: string | undefined } = {},
 ): Promise<ApplyResult> {
   const dryRun = !!opts.dryRun;
-  const resolvedPath = expandHome(file.path);
+  const resolvedPath = expandHome(file.path, opts.home);
   const template = await expandTokens(file.template, ctx);
 
   if (file.mode === 'merge-json') return applyMergeJson(resolvedPath, template, dryRun);

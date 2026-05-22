@@ -3,6 +3,7 @@ import type { TokenContext } from './tokens.ts';
 
 export interface InstallOptions extends TokenContext {
   dryRun?: boolean | undefined;
+  home?: string | undefined;
 }
 
 export interface InstallResult {
@@ -24,7 +25,7 @@ export async function installTarget(
   const detected = await contract.detect();
   const applied: ApplyResult[] = [];
   for (const file of contract.files) {
-    applied.push(await applyFile(file, opts, { dryRun: opts.dryRun }));
+    applied.push(await applyFile(file, opts, { dryRun: opts.dryRun, home: opts.home }));
   }
   return { target: contract.name, detected, applied };
 }
