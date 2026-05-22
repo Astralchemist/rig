@@ -26,6 +26,7 @@ import { computeMagneticPull, type PullResult } from './pull.ts';
 import { dbPathOf, rigDirOf, toRigNode } from './rig-shape.ts';
 import { DB_FILE_NAME, RIG_DIR_NAME } from './rig-types.ts';
 import type { IndexResult, RigOptions, StatusInfo } from './rig-types.ts';
+import { RigWrites } from './rig-writes.ts';
 import { runSync, type SyncResult } from './sync.ts';
 import type { NodeId, RigNode } from './types.ts';
 import { FileWatcher } from './watch.ts';
@@ -38,17 +39,23 @@ export type { TaggedEdge, NeighborsOptions } from './db/edge-queries.ts';
 export type { SearchOptions } from './db/search-queries.ts';
 export type { FileRow } from './db/file-queries.ts';
 export type { GraphSnapshot } from './db/graph-snapshot.ts';
+export type { PendingEdgeRow } from './db/pending-edges.ts';
+export type { MutationRow, MutationKind } from './db/mutation-log.ts';
+export { RigWrites } from './rig-writes.ts';
+export type { WriteCtx, ProposeArgs, AddNodeArgs } from './rig-writes.ts';
 
 export class Rig {
   readonly projectRoot: string;
   readonly database: Database;
   readonly embedder: Embedder | undefined;
+  readonly writes: RigWrites;
   private watcher: FileWatcher | null = null;
 
   constructor(opts: RigOptions) {
     this.projectRoot = opts.projectRoot;
     this.database = opts.database;
     this.embedder = opts.embedder;
+    this.writes = new RigWrites(this.database);
   }
 
   static async init(projectRoot: string): Promise<Rig> {
