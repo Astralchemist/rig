@@ -4,10 +4,18 @@
     "core/anchors-registry.ts": "2055509ff9ba3cda",
     "core/migrations.ts": "4766a6b68a6b83b5",
     "core/schema.sql": "5e6ba613ff2ef2d8",
-    "installer/claude.instructions.md": "f0e1f67af0525041",
-    "installer/claude.permissions.json": "1e68331a592016fd",
-    "mcp/handlers-index.ts": "22d2fee77dae414d",
-    "mcp/handlers/rig_status.handler.ts": "7d3012583e1557fe",
-    "mcp/tools-manifest.json": "84a5bcd8a6abe8a4"
+    "installer/claude.instructions.md": "9a8f7d0a712d6d1c",
+    "installer/claude.permissions.json": "78a6f16755bc0333",
+    "mcp/handlers-index.ts": "a9264fbb52c0ce2b",
+    "mcp/handlers/rig_callees.handler.ts": "41945f900c2a4718",
+    "mcp/handlers/rig_callers.handler.ts": "9d932f214b57fc15",
+    "mcp/handlers/rig_files.handler.ts": "d8db41d00f84be60",
+    "mcp/handlers/rig_impact.handler.ts": "6294509669d3b4e4",
+    "mcp/handlers/rig_neighbors.handler.ts": "e0fbefc0c732850f",
+    "mcp/handlers/rig_node.handler.ts": "061d2328c65ddad1",
+    "mcp/handlers/rig_pull.handler.ts": "cf008f36c6ab829b",
+    "mcp/handlers/rig_search.handler.ts": "ca32b0de149f8a73",
+    "mcp/handlers/rig_status.handler.ts": "ddf2754733594794",
+    "mcp/tools-manifest.json": "487e236d14978440"
   }
 }

@@ -1,8 +1,16 @@
 import { existsSync, mkdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { Database } from './db/database.ts';
 import { readCounts } from './db/counts.ts';
-import type { Node as ExtractNode } from './extract/upstream-types.ts';
+import {
+  countNeighborsByKind,
+  getNeighbors as eqGetNeighbors,
+  type NeighborsOptions,
+  type TaggedEdge,
+} from './db/edge-queries.ts';
+import { getFiles as fqGetFiles, type FileRow } from './db/file-queries.ts';
+import { searchNodes as sqSearchNodes, type SearchOptions } from './db/search-queries.ts';
+import type { Embedder } from './embed/types.ts';
 import {
   getCallees as gqGetCallees,
   getCallers as gqGetCallers,
@@ -11,47 +19,26 @@ import {
 } from './graph/traversal.ts';
 import { runIndexAll } from './index-all.ts';
 import { computeMagneticPull, type PullResult } from './pull.ts';
-import {
-  DB_FILE_NAME,
-  RIG_DIR_NAME,
-  type IndexResult,
-  type RigOptions,
-  type StatusInfo,
-} from './rig-types.ts';
-import { NotImplemented } from './types.ts';
-import type {
-  NodeId,
-  Provenance,
-  RigNode,
-  SemanticEdge,
-  StructuralEdge,
-} from './types.ts';
-import type { Embedder } from './embed/types.ts';
+import { dbPathOf, rigDirOf, toRigNode } from './rig-shape.ts';
+import { DB_FILE_NAME, RIG_DIR_NAME } from './rig-types.ts';
+import type { IndexResult, RigOptions, StatusInfo } from './rig-types.ts';
+import { runSync, type SyncResult } from './sync.ts';
+import type { NodeId, RigNode } from './types.ts';
+import { FileWatcher } from './watch.ts';
 
 export { DB_FILE_NAME, RIG_DIR_NAME };
 export type { IndexResult, RigOptions, StatusInfo };
 export type { PullResult } from './pull.ts';
+export type { SyncResult } from './sync.ts';
+export type { TaggedEdge, NeighborsOptions } from './db/edge-queries.ts';
+export type { SearchOptions } from './db/search-queries.ts';
+export type { FileRow } from './db/file-queries.ts';
 
-const rigDirOf = (root: string): string => join(resolve(root), RIG_DIR_NAME);
-const dbPathOf = (root: string): string => join(rigDirOf(root), DB_FILE_NAME);
-
-const toRigNode = (n: ExtractNode): RigNode => ({
-  id: n.id,
-  type: n.kind,
-  name: n.name,
-  data: n as unknown as Record<string, unknown>,
-  pull_score: 0,
-  created_at: n.updatedAt,
-  updated_at: n.updatedAt,
-});
-
-/**
- * The public API surface of @rig/core. Everything else is internal.
- */
 export class Rig {
   readonly projectRoot: string;
   readonly database: Database;
   readonly embedder: Embedder | undefined;
+  private watcher: FileWatcher | null = null;
 
   constructor(opts: RigOptions) {
     this.projectRoot = opts.projectRoot;
@@ -62,8 +49,7 @@ export class Rig {
   static async init(projectRoot: string): Promise<Rig> {
     const root = resolve(projectRoot);
     mkdirSync(rigDirOf(root), { recursive: true });
-    const database = Database.open(dbPathOf(root));
-    return new Rig({ projectRoot: root, database });
+    return new Rig({ projectRoot: root, database: Database.open(dbPathOf(root)) });
   }
 
   static async open(projectRoot: string): Promise<Rig> {
@@ -71,8 +57,7 @@ export class Rig {
     if (!existsSync(rigDirOf(root))) {
       throw new Error(`rig: not initialized at ${root}. Run \`rig init\` first.`);
     }
-    const database = Database.open(dbPathOf(root));
-    return new Rig({ projectRoot: root, database });
+    return new Rig({ projectRoot: root, database: Database.open(dbPathOf(root)) });
   }
 
   static isInitialized(projectRoot: string): boolean {
@@ -95,6 +80,10 @@ export class Rig {
     return runIndexAll(this.projectRoot, this.database);
   }
 
+  sync(): Promise<SyncResult> {
+    return runSync(this.projectRoot, this.database);
+  }
+
   getNode(id: NodeId): RigNode | null {
     const n = gqGetNode(this.database.adapter, id);
     return n ? toRigNode(n) : null;
@@ -112,12 +101,20 @@ export class Rig {
     return gqGetImpactRadius(this.database.adapter, id, depth).map(toRigNode);
   }
 
-  searchNodes(_query: string): RigNode[] {
-    throw new NotImplemented('Rig.searchNodes');
+  searchNodes(query: string, opts: SearchOptions = {}): RigNode[] {
+    return sqSearchNodes(this.database.adapter, query, opts).map(toRigNode);
   }
 
-  getNeighbors(_id: NodeId): (StructuralEdge | SemanticEdge)[] {
-    throw new NotImplemented('Rig.getNeighbors');
+  getNeighbors(id: NodeId, opts: NeighborsOptions = {}): TaggedEdge[] {
+    return eqGetNeighbors(this.database.adapter, id, opts);
+  }
+
+  getNeighborCounts(id: NodeId): Record<string, number> {
+    return countNeighborsByKind(this.database.adapter, id);
+  }
+
+  getFiles(filter?: string): FileRow[] {
+    return fqGetFiles(this.database.adapter, filter);
   }
 
   getMagneticPull(id: NodeId, k = 10): PullResult[] {
@@ -129,14 +126,19 @@ export class Rig {
     return computeMagneticPull(id, candidates, { db: this.database.adapter }).slice(0, k);
   }
 
-  async addNode(
-    _input: Omit<RigNode, 'created_at' | 'updated_at' | 'pull_score'>,
-    _prov: Provenance,
-  ): Promise<RigNode> {
-    throw new NotImplemented('Rig.addNode');
+  watch(): boolean {
+    if (this.watcher) return true;
+    this.watcher = new FileWatcher(this.projectRoot, () => this.sync());
+    return this.watcher.start();
+  }
+
+  unwatch(): void {
+    this.watcher?.stop();
+    this.watcher = null;
   }
 
   close(): void {
+    this.unwatch();
     this.database.close();
   }
 }

@@ -25,3 +25,26 @@ export class ToolError extends Error {
     this.name = 'ToolError';
   }
 }
+
+/**
+ * Look up a handler by name and invoke it. ToolError is re-thrown unchanged so
+ * the JSON-RPC layer can translate the `.code` into `data.rigError`; any other
+ * thrown error bubbles up as-is (the transport will wrap it as InternalError).
+ */
+export async function dispatchToolCall(
+  name: string,
+  args: unknown,
+  ctx: ToolContext,
+  handlers: Map<string, ToolHandler>,
+): Promise<unknown> {
+  const handler = handlers.get(name);
+  if (!handler) {
+    throw new ToolError('TOOL_NOT_FOUND', name);
+  }
+  try {
+    return await handler.run(args, ctx);
+  } catch (err) {
+    if (err instanceof ToolError) throw err;
+    throw err;
+  }
+}
