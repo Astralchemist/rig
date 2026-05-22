@@ -6,6 +6,12 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
-    "@rig/core": "workspace:*"
+    "@fastify/cors": "11.2.0",
+    "@rig/core": "workspace:*",
+    "fastify": "5.8.5",
+    "ws": "8.20.1"
+  },
+  "devDependencies": {
+    "@types/ws": "8.18.1"
   }
 }
