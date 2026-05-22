@@ -7,6 +7,7 @@
   "types": "src/index.ts",
   "dependencies": {
     "@fastify/cors": "11.2.0",
+    "@fastify/static": "9.1.3",
     "@rig/core": "workspace:*",
     "fastify": "5.8.5",
     "react": "19.2.6",
