@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Chat } from './Chat.tsx';
 import { Map, type Snapshot } from './Map.tsx';
 import { NodeDetail } from './NodeDetail.tsx';
 
@@ -16,6 +17,10 @@ export function App(): JSX.Element {
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const selectedName = useMemo(
+    () => snap?.nodes.find((n) => n.id === selected)?.name ?? null,
+    [snap, selected],
+  );
 
   const refresh = async (): Promise<void> => {
     try {
@@ -74,6 +79,7 @@ export function App(): JSX.Element {
       {selected && (
         <NodeDetail id={selected} onClose={() => setSelected(null)} onJump={setSelected} />
       )}
+      <Chat selected={selected} selectedName={selectedName} />
       {snap && snap.nodes.length === 0 && (
         <div style={{ padding: 80, textAlign: 'center', color: '#6b7280' }}>
           <p>The graph is empty.</p>
