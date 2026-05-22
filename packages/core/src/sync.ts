@@ -3,7 +3,10 @@ import { statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import type { Database } from './db/database.ts';
 import { upsertFile, upsertNode } from './db/node-queries.ts';
+import { embedAndStore } from './embed/index-embeddings.ts';
+import type { Embedder } from './embed/types.ts';
 import { extractFromSource } from './extract/extractor.ts';
+import type { Node as ExtractNode } from './extract/upstream-types.ts';
 import { walkProject } from './extract/walker.ts';
 
 export interface SyncResult {
@@ -21,6 +24,7 @@ export interface SyncResult {
 export async function runSync(
   projectRoot: string,
   database: Database,
+  embedder?: Embedder,
 ): Promise<SyncResult> {
   const start = Date.now();
   let filesChanged = 0;
@@ -32,6 +36,7 @@ export async function runSync(
     .all() as { path: string; hash: string }[];
   for (const r of knownRows) known.set(r.path, r.hash);
 
+  const changedNodes: ExtractNode[] = [];
   const seen = new Set<string>();
   for await (const file of walkProject(projectRoot)) {
     seen.add(file.relPath);
@@ -44,7 +49,12 @@ export async function runSync(
       upsertFile(database.adapter, file.relPath, Math.floor(mtime), hash);
       for (const node of result.nodes) upsertNode(database.adapter, node);
     })();
+    changedNodes.push(...result.nodes);
     filesChanged++;
+  }
+
+  if (embedder && changedNodes.length > 0) {
+    await embedAndStore(embedder, database.adapter, changedNodes);
   }
 
   const adapter = database.adapter;

@@ -3,6 +3,8 @@ import { statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import type { Database } from './db/database.ts';
 import { upsertFile, upsertNode } from './db/node-queries.ts';
+import { embedAndStore } from './embed/index-embeddings.ts';
+import type { Embedder } from './embed/types.ts';
 import { extractFromSource } from './extract/extractor.ts';
 import type { Node as ExtractNode, UnresolvedReference } from './extract/upstream-types.ts';
 import { walkProject } from './extract/walker.ts';
@@ -12,6 +14,7 @@ import type { IndexResult } from './rig-types.ts';
 export async function runIndexAll(
   projectRoot: string,
   database: Database,
+  embedder?: Embedder,
 ): Promise<IndexResult> {
   const start = Date.now();
   const allNodes: ExtractNode[] = [];
@@ -33,6 +36,9 @@ export async function runIndexAll(
   const stats = database.adapter.transaction(() =>
     resolveReferences(database.adapter, allNodes, allRefs),
   )();
+  if (embedder) {
+    await embedAndStore(embedder, database.adapter, allNodes);
+  }
   return {
     files: fileCount,
     nodes: allNodes.length,

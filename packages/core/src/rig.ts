@@ -14,6 +14,7 @@ import {
   type GraphSnapshot,
 } from './db/graph-snapshot.ts';
 import { searchNodes as sqSearchNodes, type SearchOptions } from './db/search-queries.ts';
+import { DeterministicEmbedder } from './embed/deterministic-embedder.ts';
 import type { Embedder } from './embed/types.ts';
 import {
   getCallees as gqGetCallees,
@@ -58,18 +59,32 @@ export class Rig {
     this.writes = new RigWrites(this.database);
   }
 
-  static async init(projectRoot: string): Promise<Rig> {
+  static async init(
+    projectRoot: string,
+    opts: { embedder?: Embedder } = {},
+  ): Promise<Rig> {
     const root = resolve(projectRoot);
     mkdirSync(rigDirOf(root), { recursive: true });
-    return new Rig({ projectRoot: root, database: Database.open(dbPathOf(root)) });
+    return new Rig({
+      projectRoot: root,
+      database: Database.open(dbPathOf(root)),
+      embedder: opts.embedder ?? new DeterministicEmbedder(),
+    });
   }
 
-  static async open(projectRoot: string): Promise<Rig> {
+  static async open(
+    projectRoot: string,
+    opts: { embedder?: Embedder } = {},
+  ): Promise<Rig> {
     const root = resolve(projectRoot);
     if (!existsSync(rigDirOf(root))) {
       throw new Error(`rig: not initialized at ${root}. Run \`rig init\` first.`);
     }
-    return new Rig({ projectRoot: root, database: Database.open(dbPathOf(root)) });
+    return new Rig({
+      projectRoot: root,
+      database: Database.open(dbPathOf(root)),
+      embedder: opts.embedder ?? new DeterministicEmbedder(),
+    });
   }
 
   static isInitialized(projectRoot: string): boolean {
@@ -89,11 +104,11 @@ export class Rig {
   }
 
   indexAll(): Promise<IndexResult> {
-    return runIndexAll(this.projectRoot, this.database);
+    return runIndexAll(this.projectRoot, this.database, this.embedder);
   }
 
   sync(): Promise<SyncResult> {
-    return runSync(this.projectRoot, this.database);
+    return runSync(this.projectRoot, this.database, this.embedder);
   }
 
   getNode(id: NodeId): RigNode | null {

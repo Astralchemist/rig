@@ -1,8 +1,10 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { WebSocket } from 'ws';
 import { Rig } from '../packages/core/src/index.ts';
 import { serveWeb } from '../packages/web/src/index.ts';
+
+// Use the global WebSocket (Bun + Node 22 both ship it).
+declare const WebSocket: typeof globalThis.WebSocket;
 
 const PROJECT = '/tmp/rig-demo-p3';
 const PORT = 7491;
@@ -60,8 +62,12 @@ async function main(): Promise<void> {
   const handle = await serveWeb({ projectRoot: PROJECT, port: PORT });
   const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);
   const events: Array<{ type: string; payload?: unknown }> = [];
-  ws.on('message', (m) => events.push(JSON.parse(m.toString()) as { type: string }));
-  await new Promise<void>((res) => ws.once('open', () => res()));
+  ws.addEventListener('message', (ev) => {
+    events.push(JSON.parse(ev.data as string) as { type: string });
+  });
+  await new Promise<void>((res) =>
+    ws.addEventListener('open', () => res(), { once: true }),
+  );
   check('ws connected', ws.readyState === ws.OPEN);
 
   section('propose → accept');
@@ -135,7 +141,7 @@ async function main(): Promise<void> {
   r3.close();
 
   section('cleanup');
-  ws.terminate();
+  ws.close();
   void handle.close();
   rmSync(PROJECT, { recursive: true, force: true });
 
