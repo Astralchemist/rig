@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { atomicWrite } from './atomic.ts';
 import { deepMerge } from './json-merge.ts';
+import { mergeJsonc } from './jsonc-merge.ts';
 import { expandHome } from './paths.ts';
 import { upsertSection } from './section.ts';
 import { expandTokens, type TokenContext } from './tokens.ts';
@@ -80,15 +81,35 @@ export async function applyFile(
   if (file.mode === 'append-section') return applyAppendSection(resolvedPath, template, dryRun);
   if (file.mode === 'replace') return applyReplace(resolvedPath, template, dryRun);
   if (file.mode === 'write-toml') return applyWriteToml(resolvedPath, template, dryRun);
+  if (file.mode === 'merge-jsonc') return applyMergeJsonc(resolvedPath, template, dryRun);
 
   return {
     path: resolvedPath,
     mode: file.mode,
     changed: false,
     status: 'skipped-unimplemented',
-    reason: `mode '${file.mode}' lands in a follow-up (opencode JSONC)`,
+    reason: `mode '${file.mode}' is not implemented`,
   };
 }
+
+const applyMergeJsonc = async (
+  resolvedPath: string,
+  template: unknown,
+  dryRun: boolean,
+): Promise<ApplyResult> => {
+  const existing = await readOrEmpty(resolvedPath);
+  const next = mergeJsonc(existing, template);
+  if (existing === next) {
+    return { path: resolvedPath, mode: 'merge-jsonc', changed: false, status: 'unchanged' };
+  }
+  if (!dryRun) await atomicWrite(resolvedPath, next);
+  return {
+    path: resolvedPath,
+    mode: 'merge-jsonc',
+    changed: true,
+    status: dryRun ? 'dry-run' : 'wrote',
+  };
+};
 
 const applyReplace = async (
   resolvedPath: string,

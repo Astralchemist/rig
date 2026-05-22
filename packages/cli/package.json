@@ -10,6 +10,7 @@
   "dependencies": {
     "@rig/core": "workspace:*",
     "@rig/mcp": "workspace:*",
-    "@rig/web": "workspace:*"
+    "@rig/web": "workspace:*",
+    "jsonc-parser": "3.3.1"
   }
 }
