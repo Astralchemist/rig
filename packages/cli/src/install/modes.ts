@@ -77,12 +77,32 @@ export async function applyFile(
 
   if (file.mode === 'merge-json') return applyMergeJson(resolvedPath, template, dryRun);
   if (file.mode === 'append-section') return applyAppendSection(resolvedPath, template, dryRun);
+  if (file.mode === 'replace') return applyReplace(resolvedPath, template, dryRun);
 
   return {
     path: resolvedPath,
     mode: file.mode,
     changed: false,
     status: 'skipped-unimplemented',
-    reason: `mode '${file.mode}' lands in a follow-up (Cursor .mdc / Codex TOML / opencode JSONC)`,
+    reason: `mode '${file.mode}' lands in a follow-up (Codex TOML / opencode JSONC)`,
   };
 }
+
+const applyReplace = async (
+  resolvedPath: string,
+  template: unknown,
+  dryRun: boolean,
+): Promise<ApplyResult> => {
+  const body = typeof template === 'string' ? template : JSON.stringify(template, null, 2);
+  const existing = await readOrEmpty(resolvedPath);
+  if (existing === body) {
+    return { path: resolvedPath, mode: 'replace', changed: false, status: 'unchanged' };
+  }
+  if (!dryRun) await atomicWrite(resolvedPath, body);
+  return {
+    path: resolvedPath,
+    mode: 'replace',
+    changed: true,
+    status: dryRun ? 'dry-run' : 'wrote',
+  };
+};

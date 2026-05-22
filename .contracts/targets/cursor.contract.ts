@@ -29,7 +29,10 @@ export default defineTargetContract({
       role: 'instructions',
       path: '.cursor/rules/rig.mdc',
       mode: 'replace',
-      template: '{{GENERATED:cursor.instructions.md}}',
+      // Cursor .mdc rules need YAML-ish frontmatter so the rule is loaded
+      // unconditionally instead of pattern-matched against the open file.
+      template:
+        '---\ndescription: Rig MCP usage guide — when to use which tool\nalwaysApply: true\n---\n\n{{GENERATED:cursor.instructions.md}}',
     },
   ],
   uninstall_strategy: 'reverse',
