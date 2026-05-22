@@ -1,6 +1,7 @@
 import cors from '@fastify/cors';
 import { Rig } from '@rig/core';
 import Fastify, { type FastifyInstance } from 'fastify';
+import { registerRoutes } from './routes.ts';
 
 export interface ServeWebOptions {
   projectRoot: string;
@@ -33,6 +34,7 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
   });
 
   app.get('/health', async () => ({ ok: true, name: 'rig-web', version: '0.0.1' }));
+  registerRoutes(app, rig);
 
   const address = await app.listen({ host, port });
   return {

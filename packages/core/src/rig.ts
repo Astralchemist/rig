@@ -9,6 +9,10 @@ import {
   type TaggedEdge,
 } from './db/edge-queries.ts';
 import { getFiles as fqGetFiles, type FileRow } from './db/file-queries.ts';
+import {
+  getGraphSnapshot as gsGetGraphSnapshot,
+  type GraphSnapshot,
+} from './db/graph-snapshot.ts';
 import { searchNodes as sqSearchNodes, type SearchOptions } from './db/search-queries.ts';
 import type { Embedder } from './embed/types.ts';
 import {
@@ -33,6 +37,7 @@ export type { SyncResult } from './sync.ts';
 export type { TaggedEdge, NeighborsOptions } from './db/edge-queries.ts';
 export type { SearchOptions } from './db/search-queries.ts';
 export type { FileRow } from './db/file-queries.ts';
+export type { GraphSnapshot } from './db/graph-snapshot.ts';
 
 export class Rig {
   readonly projectRoot: string;
@@ -115,6 +120,10 @@ export class Rig {
 
   getFiles(filter?: string): FileRow[] {
     return fqGetFiles(this.database.adapter, filter);
+  }
+
+  snapshot(limit = 500): GraphSnapshot {
+    return gsGetGraphSnapshot(this.database.adapter, limit);
   }
 
   getMagneticPull(id: NodeId, k = 10): PullResult[] {
