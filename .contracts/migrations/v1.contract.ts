@@ -82,10 +82,36 @@ CREATE TABLE IF NOT EXISTS unresolved_refs (
 );
 
 CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(
-  name, qualified_name, content=''
+  name, qualified_name, node_id UNINDEXED
 );
+
+CREATE TRIGGER IF NOT EXISTS nodes_after_insert AFTER INSERT ON nodes BEGIN
+  INSERT INTO nodes_fts(name, qualified_name, node_id)
+  VALUES (
+    NEW.name,
+    COALESCE(json_extract(NEW.data, '$.qualifiedName'), NEW.name),
+    NEW.id
+  );
+END;
+
+CREATE TRIGGER IF NOT EXISTS nodes_after_update AFTER UPDATE ON nodes BEGIN
+  DELETE FROM nodes_fts WHERE node_id = OLD.id;
+  INSERT INTO nodes_fts(name, qualified_name, node_id)
+  VALUES (
+    NEW.name,
+    COALESCE(json_extract(NEW.data, '$.qualifiedName'), NEW.name),
+    NEW.id
+  );
+END;
+
+CREATE TRIGGER IF NOT EXISTS nodes_after_delete AFTER DELETE ON nodes BEGIN
+  DELETE FROM nodes_fts WHERE node_id = OLD.id;
+END;
   `.trim(),
   rollback: `
+DROP TRIGGER IF EXISTS nodes_after_delete;
+DROP TRIGGER IF EXISTS nodes_after_update;
+DROP TRIGGER IF EXISTS nodes_after_insert;
 DROP TABLE IF EXISTS nodes_fts;
 DROP TABLE IF EXISTS unresolved_refs;
 DROP TABLE IF EXISTS activations;

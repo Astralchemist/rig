@@ -32,23 +32,36 @@ export interface SearchOptions {
   limit?: number | undefined;
 }
 
-// Phase 1.6: LIKE-based. FTS5 wiring (population + content-table mapping) is a
-// follow-up; the nodes_fts virtual table exists but no triggers populate it.
+// Each user-supplied token becomes a quoted prefix-match — so the user can
+// type "authStor" and hit "authStore", and special FTS5 syntax in their query
+// is treated literally.
+const toFtsQuery = (raw: string): string =>
+  raw
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((t) => `"${t.replace(/"/g, '""')}"*`)
+    .join(' ');
+
 export const searchNodes = (
   db: SqliteAdapter,
   query: string,
   opts: SearchOptions = {},
 ): Node[] => {
   const limit = opts.limit ?? 20;
-  const pattern = `%${query}%`;
-  const params: unknown[] = [pattern, pattern];
+  const ftsQuery = toFtsQuery(query);
+  if (!ftsQuery) return [];
+
   let sql =
-    `SELECT id, type, name, data FROM nodes WHERE (name LIKE ? OR data LIKE ?)`;
+    `SELECT n.id, n.type, n.name, n.data FROM nodes_fts
+     JOIN nodes n ON n.id = nodes_fts.node_id
+     WHERE nodes_fts MATCH ?`;
+  const params: unknown[] = [ftsQuery];
   if (opts.kind) {
-    sql += ` AND type = ?`;
+    sql += ` AND n.type = ?`;
     params.push(opts.kind);
   }
-  sql += ` ORDER BY name LIMIT ?`;
+  sql += ` ORDER BY bm25(nodes_fts) LIMIT ?`;
   params.push(limit);
   return (db.prepare(sql).all(...params) as NodeRow[]).map(rowToNode);
 };
