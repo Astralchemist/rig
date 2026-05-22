@@ -50,12 +50,37 @@ describe('Phase 1.3 — resolver + traversal', () => {
     }
   });
 
-  it('records unresolved imports without writing false edges', async () => {
+  it('resolves relative module imports to file nodes', async () => {
+    const rig = await Rig.open(root);
+    try {
+      await rig.indexAll();
+      const aFile = rig.database.adapter
+        .prepare("SELECT id FROM nodes WHERE type = 'file' AND name LIKE '%a.ts'")
+        .get() as { id: string } | null;
+      const bFile = rig.database.adapter
+        .prepare("SELECT id FROM nodes WHERE type = 'file' AND name LIKE '%b.ts'")
+        .get() as { id: string } | null;
+      expect(aFile).not.toBeNull();
+      expect(bFile).not.toBeNull();
+      const importEdge = rig.database.adapter
+        .prepare(
+          "SELECT 1 FROM edges WHERE src = ? AND dst = ? AND kind = 'imports'",
+        )
+        .get(aFile!.id, bFile!.id);
+      expect(importEdge).not.toBeNull();
+    } finally {
+      rig.close();
+    }
+  });
+
+  it('leaves bare-specifier imports unresolved (npm package)', async () => {
+    const npmA = join(root, 'src', 'uses_npm.ts');
+    writeFileSync(npmA, "import { z } from 'zod';\nexport const s = z;\n");
     const rig = await Rig.open(root);
     try {
       await rig.indexAll();
       const unresolved = rig.database.adapter
-        .prepare("SELECT target_name FROM unresolved_refs WHERE target_name = './b'")
+        .prepare("SELECT target_name FROM unresolved_refs WHERE target_name = 'zod'")
         .all() as { target_name: string }[];
       expect(unresolved.length).toBeGreaterThanOrEqual(1);
     } finally {

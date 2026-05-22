@@ -40,7 +40,7 @@ export async function runIndexAll(
     fileCount++;
   }
   const stats = database.adapter.transaction(() =>
-    resolveReferences(database.adapter, allNodes, allRefs, allEdges),
+    resolveReferences(database.adapter, allNodes, allRefs, allEdges, projectRoot),
   )();
   if (embedder) {
     await embedAndStore(embedder, database.adapter, allNodes);

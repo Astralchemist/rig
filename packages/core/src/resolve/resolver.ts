@@ -1,5 +1,7 @@
 import type { SqliteAdapter } from '../db/adapter.ts';
 import type { Edge, Node, UnresolvedReference } from '../extract/upstream-types.ts';
+import { resolveModuleImport } from './import-resolver.ts';
+import { loadProjectAliases } from './path-aliases.ts';
 
 export interface ResolveStats {
   edges: number;
@@ -7,28 +9,32 @@ export interface ResolveStats {
 }
 
 /**
- * Phase 1.6+ resolver — extract-time direct edges (e.g. `contains`) plus
- * by-name reference resolution.
+ * Phase 1.6+ resolver — extract-time direct edges, name-match resolution for
+ * non-import refs, tsconfig-paths + relative-path resolution for imports.
  *
  * - Direct edges from the extractor (`contains`, future intra-file edges)
  *   are written verbatim with provenance='ast'.
- * - Refs resolved by exact name match across all known nodes; ambiguous
- *   stay in unresolved_refs (refusing false positives).
- * - Imports stay unresolved (module-path → file resolution depends on
- *   tsconfig path aliases that we explicitly deferred).
+ * - Imports use the file-path index + tsconfig.json paths to resolve module
+ *   paths to file nodes. Bare specifiers (npm packages) stay unresolved.
+ * - Other refs (calls/references/extends/implements) resolved by exact name
+ *   match across all known nodes; ambiguous stay in unresolved_refs.
  */
 export const resolveReferences = (
   db: SqliteAdapter,
   allNodes: Node[],
   refs: UnresolvedReference[],
   directEdges: Edge[] = [],
+  projectRoot?: string,
 ): ResolveStats => {
   const byName = new Map<string, string[]>();
+  const fileByPath = new Map<string, string>();
   for (const n of allNodes) {
     const ids = byName.get(n.name);
     if (ids) ids.push(n.id);
     else byName.set(n.name, [n.id]);
+    if (n.kind === 'file') fileByPath.set(n.filePath, n.id);
   }
+  const aliases = projectRoot ? loadProjectAliases(projectRoot) : null;
 
   db.exec("DELETE FROM edges WHERE provenance = 'ast'");
   db.exec('DELETE FROM unresolved_refs');
@@ -51,8 +57,23 @@ export const resolveReferences = (
 
   for (const ref of refs) {
     if (ref.referenceKind === 'imports') {
-      insertUnresolved.run(ref.fromNodeId, ref.referenceName, ref.filePath ?? '', ref.line);
-      unresolved++;
+      const fileId =
+        projectRoot && ref.filePath
+          ? resolveModuleImport({
+              modulePath: ref.referenceName,
+              importingFile: ref.filePath,
+              fileByPath,
+              projectRoot,
+              aliases,
+            })
+          : null;
+      if (fileId && fileId !== ref.fromNodeId) {
+        insertEdge.run(ref.fromNodeId, fileId, 'imports', 'ast', now);
+        edges++;
+      } else {
+        insertUnresolved.run(ref.fromNodeId, ref.referenceName, ref.filePath ?? '', ref.line);
+        unresolved++;
+      }
       continue;
     }
     const cands = byName.get(ref.referenceName);
