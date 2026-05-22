@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Map, type Snapshot } from './Map.tsx';
+import { NodeDetail } from './NodeDetail.tsx';
 
 interface Status {
   initialized: boolean;
@@ -70,6 +71,9 @@ export function App(): JSX.Element {
         {err && <span style={{ color: '#f87171' }}>error: {err}</span>}
       </header>
       {snap && snap.nodes.length > 0 && <Map snapshot={snap} onSelect={setSelected} />}
+      {selected && (
+        <NodeDetail id={selected} onClose={() => setSelected(null)} onJump={setSelected} />
+      )}
       {snap && snap.nodes.length === 0 && (
         <div style={{ padding: 80, textAlign: 'center', color: '#6b7280' }}>
           <p>The graph is empty.</p>
