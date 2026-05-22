@@ -1,6 +1,5 @@
 import type { Database } from './db/database.ts';
 import type { Embedder } from './embed/types.ts';
-import type { NodeId } from './types.ts';
 
 export const RIG_DIR_NAME = '.rig';
 export const DB_FILE_NAME = 'rig.db';
@@ -9,12 +8,6 @@ export interface RigOptions {
   projectRoot: string;
   database: Database;
   embedder?: Embedder;
-}
-
-export interface PullResult {
-  nodeId: NodeId;
-  score: number;
-  components: { structural: number; semantic: number; recency: number };
 }
 
 export interface StatusInfo {

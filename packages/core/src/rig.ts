@@ -10,11 +10,11 @@ import {
   getNode as gqGetNode,
 } from './graph/traversal.ts';
 import { runIndexAll } from './index-all.ts';
+import { computeMagneticPull, type PullResult } from './pull.ts';
 import {
   DB_FILE_NAME,
   RIG_DIR_NAME,
   type IndexResult,
-  type PullResult,
   type RigOptions,
   type StatusInfo,
 } from './rig-types.ts';
@@ -29,7 +29,8 @@ import type {
 import type { Embedder } from './embed/types.ts';
 
 export { DB_FILE_NAME, RIG_DIR_NAME };
-export type { IndexResult, PullResult, RigOptions, StatusInfo };
+export type { IndexResult, RigOptions, StatusInfo };
+export type { PullResult } from './pull.ts';
 
 const rigDirOf = (root: string): string => join(resolve(root), RIG_DIR_NAME);
 const dbPathOf = (root: string): string => join(rigDirOf(root), DB_FILE_NAME);
@@ -119,8 +120,13 @@ export class Rig {
     throw new NotImplemented('Rig.getNeighbors');
   }
 
-  getMagneticPull(_id: NodeId, _k = 10): PullResult[] {
-    throw new NotImplemented('Rig.getMagneticPull');
+  getMagneticPull(id: NodeId, k = 10): PullResult[] {
+    const candidates = (
+      this.database.adapter
+        .prepare('SELECT id FROM nodes WHERE id != ?')
+        .all(id) as { id: string }[]
+    ).map((r) => r.id);
+    return computeMagneticPull(id, candidates, { db: this.database.adapter }).slice(0, k);
   }
 
   async addNode(
