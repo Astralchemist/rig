@@ -1,12 +1,18 @@
 {
   "permissions": {
     "allow": [
+      "mcp__rig__rig_propose_edge",
       "mcp__rig__rig_files",
       "mcp__rig__rig_impact",
+      "mcp__rig__rig_cluster",
+      "mcp__rig__rig_focus",
       "mcp__rig__rig_node",
+      "mcp__rig__rig_undo",
       "mcp__rig__rig_callers",
+      "mcp__rig__rig_annotate",
       "mcp__rig__rig_pull",
       "mcp__rig__rig_neighbors",
+      "mcp__rig__rig_add_node",
       "mcp__rig__rig_search",
       "mcp__rig__rig_callees",
       "mcp__rig__rig_status"

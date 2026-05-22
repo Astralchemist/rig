@@ -26,7 +26,6 @@ export interface ProposeArgs {
   dst: string;
   kind?: string;
   weight?: number;
-  provenance: string;
   rationale: string;
 }
 
@@ -37,12 +36,28 @@ export interface AddNodeArgs {
   rationale: string;
 }
 
+export interface AnnotateArgs {
+  nodeId: string;
+  note: string;
+  rationale: string;
+}
+
+export interface ClusterArgs {
+  memberIds: string[];
+  label: string;
+  rationale: string;
+}
+
 export class RigWrites {
   constructor(private readonly db: Database) {}
 
   proposeEdge(args: ProposeArgs, ctx: WriteCtx): number {
     const adapter = this.db.adapter;
-    const pendingId = peProposeEdge(adapter, { ...args, sessionId: ctx.sessionId });
+    const pendingId = peProposeEdge(adapter, {
+      ...args,
+      provenance: ctx.actor,
+      sessionId: ctx.sessionId,
+    });
     recordMutation(adapter, {
       sessionId: ctx.sessionId,
       kind: 'propose_edge',
@@ -78,6 +93,76 @@ export class RigWrites {
 
   listPending(): PendingEdgeRow[] {
     return peList(this.db.adapter);
+  }
+
+  addNode(args: AddNodeArgs, ctx: WriteCtx): string {
+    const id = `${args.type}:${crypto.randomUUID()}`;
+    const now = Date.now();
+    const data = { ...(args.data ?? {}), rationale: args.rationale };
+    this.db.adapter
+      .prepare(
+        `INSERT INTO nodes (id, type, name, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(id, args.type, args.name, JSON.stringify(data), now, now);
+    recordMutation(this.db.adapter, {
+      sessionId: ctx.sessionId,
+      kind: 'add_node',
+      payload: { id, type: args.type, name: args.name },
+      actor: ctx.actor,
+    });
+    return id;
+  }
+
+  annotateNode(args: AnnotateArgs, ctx: WriteCtx): boolean {
+    const adapter = this.db.adapter;
+    const row = adapter
+      .prepare(`SELECT data FROM nodes WHERE id = ?`)
+      .get(args.nodeId) as { data: string } | null;
+    if (!row) return false;
+    const data = JSON.parse(row.data) as Record<string, unknown>;
+    const arr = Array.isArray(data.annotations) ? (data.annotations as unknown[]) : [];
+    arr.push({ note: args.note, ts: Date.now(), actor: ctx.actor, rationale: args.rationale });
+    data.annotations = arr;
+    adapter
+      .prepare(`UPDATE nodes SET data = ?, updated_at = ? WHERE id = ?`)
+      .run(JSON.stringify(data), Date.now(), args.nodeId);
+    recordMutation(adapter, {
+      sessionId: ctx.sessionId,
+      kind: 'annotate',
+      payload: { nodeId: args.nodeId, noteCount: arr.length },
+      actor: ctx.actor,
+    });
+    return true;
+  }
+
+  clusterNodes(args: ClusterArgs, ctx: WriteCtx): string {
+    const adapter = this.db.adapter;
+    const id = `cluster:${crypto.randomUUID()}`;
+    const now = Date.now();
+    adapter.transaction(() => {
+      adapter
+        .prepare(
+          `INSERT INTO nodes (id, type, name, data, created_at, updated_at) VALUES (?, 'cluster', ?, ?, ?, ?)`,
+        )
+        .run(
+          id,
+          args.label,
+          JSON.stringify({ members: args.memberIds, rationale: args.rationale }),
+          now,
+          now,
+        );
+      const ins = adapter.prepare(
+        `INSERT INTO edges (src, dst, kind, provenance, created_at) VALUES (?, ?, 'contains', ?, ?)`,
+      );
+      for (const m of args.memberIds) ins.run(id, m, ctx.actor, now);
+    })();
+    recordMutation(adapter, {
+      sessionId: ctx.sessionId,
+      kind: 'cluster',
+      payload: { id, members: args.memberIds, label: args.label },
+      actor: ctx.actor,
+    });
+    return id;
   }
 
   recordFocus(nodeIds: string[], ctx: WriteCtx): void {

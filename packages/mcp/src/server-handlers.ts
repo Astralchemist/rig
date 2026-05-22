@@ -75,6 +75,15 @@ export const makeMessageHandler = (
 
     try {
       if (method === 'initialize') {
+        const params = (message as JsonRpcRequest).params;
+        const clientInfo =
+          isParams(params) && isParams(params.clientInfo)
+            ? (params.clientInfo as { name?: unknown; version?: unknown })
+            : null;
+        const clientName =
+          clientInfo && typeof clientInfo.name === 'string' ? clientInfo.name : 'unknown';
+        // Stamp this MCP session as ai:<client> so write tools have provenance.
+        ctx.provenance = `ai:${clientName}`;
         transport.sendResult(id as string | number, SERVER_INFO);
         return;
       }

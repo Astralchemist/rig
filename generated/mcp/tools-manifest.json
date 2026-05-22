@@ -109,6 +109,66 @@
       ]
     },
     {
+      "name": "rig_propose_edge",
+      "description": "Propose a semantic edge between two anchors",
+      "tier": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "src": {
+            "type": "string"
+          },
+          "dst": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "default": "related"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 0.5
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 10
+          }
+        },
+        "required": [
+          "src",
+          "dst",
+          "rationale"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pending_id": {
+            "type": "integer"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "pending_id",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND",
+        "PROVENANCE_REQUIRED",
+        "RATIONALE_REQUIRED"
+      ]
+    },
+    {
       "name": "rig_files",
       "description": "List indexed files",
       "tier": "light",
@@ -237,6 +297,107 @@
       ]
     },
     {
+      "name": "rig_cluster",
+      "description": "Create a cluster meta-anchor over existing anchors",
+      "tier": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 2
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 10
+          }
+        },
+        "required": [
+          "node_ids",
+          "label",
+          "rationale"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "cluster_id": {
+            "type": "string"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "cluster_id",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND",
+        "PROVENANCE_REQUIRED",
+        "RATIONALE_REQUIRED"
+      ]
+    },
+    {
+      "name": "rig_focus",
+      "description": "Ask the UI to focus on a set of anchors",
+      "tier": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "maxItems": 20
+          }
+        },
+        "required": [
+          "node_ids"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ok",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "PROVENANCE_REQUIRED"
+      ]
+    },
+    {
       "name": "rig_node",
       "description": "Fetch anchor metadata by id",
       "tier": "light",
@@ -304,6 +465,62 @@
       ]
     },
     {
+      "name": "rig_undo",
+      "description": "Reverse the last mutation in this session",
+      "tier": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "undone": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "ts": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "ts"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "undone",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "PROVENANCE_REQUIRED"
+      ]
+    },
+    {
       "name": "rig_callers",
       "description": "List direct callers of an anchor",
       "tier": "light",
@@ -364,6 +581,57 @@
       "errors": [
         "NOT_INITIALIZED",
         "NODE_NOT_FOUND"
+      ]
+    },
+    {
+      "name": "rig_annotate",
+      "description": "Append a note to an anchor",
+      "tier": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 10
+          }
+        },
+        "required": [
+          "node_id",
+          "note",
+          "rationale"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ok",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND",
+        "PROVENANCE_REQUIRED",
+        "RATIONALE_REQUIRED"
       ]
     },
     {
@@ -528,6 +796,62 @@
       "errors": [
         "NOT_INITIALIZED",
         "NODE_NOT_FOUND"
+      ]
+    },
+    {
+      "name": "rig_add_node",
+      "description": "Add a new anchor extracted from conversation",
+      "tier": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": {},
+            "default": {}
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 10
+          }
+        },
+        "required": [
+          "type",
+          "name",
+          "rationale"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "PROVENANCE_REQUIRED",
+        "RATIONALE_REQUIRED"
       ]
     },
     {

@@ -111,6 +111,48 @@ Heavy tier — must be invoked from a sub-agent, not the main session.
 Use rig_explore for raw exploration; use rig_context when you want a
 single ready-to-prompt block.
 
+## write tools
+
+### `rig_propose_edge`
+
+Write a pending semantic edge that the user must accept before it becomes
+canonical. Rationale is shown in the accept popover and stored in the
+mutation_log forever.
+
+Prefer rig_propose_edge to creating edges directly — the user accepts
+the connection before it solidifies.
+
+### `rig_cluster`
+
+Create a new node of type 'cluster' with 'contains' edges to each member.
+The cluster becomes its own searchable anchor. Use when you spot a
+group of related anchors that deserves a name.
+
+### `rig_focus`
+
+Emit a focus:requested event over WebSocket so the map UI pans and
+zooms to the given anchors. No graph mutation; logged in mutation_log
+for audit.
+
+### `rig_undo`
+
+Walk back the most recent mutation in the current MCP session — propose
+becomes deleted, accept becomes pending again, reject becomes pending,
+add_node deletes the node. Undos are themselves logged; the chain is
+auditable.
+
+### `rig_annotate`
+
+Append a free-text note to a node's data.annotations array. Useful for
+the AI to leave a breadcrumb on a node ("this is the auth boundary",
+"renamed from FooBar in commit abc1234").
+
+### `rig_add_node`
+
+Create a new anchor immediately (nodes are cheaper to add than edges).
+Use only when the user has explicitly named a new concept in
+conversation; do not invent anchors from inference alone.
+
 ## Two-tier gate
 
 NEVER call `rig_explore` or `rig_context` directly in the main session — spawn a sub-agent for these.
