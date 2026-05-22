@@ -13,6 +13,9 @@
     "./extract/*": "./src/extract/*.ts"
   },
   "dependencies": {
-    "@rig/contracts": "workspace:*"
+    "@rig/contracts": "workspace:*",
+    "ignore": "7.0.5",
+    "tree-sitter-wasms": "0.1.13",
+    "web-tree-sitter": "^0.25.3"
   }
 }

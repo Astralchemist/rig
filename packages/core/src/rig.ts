@@ -1,7 +1,12 @@
-import { existsSync, mkdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, statSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { Database } from './db/database.ts';
 import { readCounts } from './db/counts.ts';
+import { upsertFile, upsertNode } from './db/node-queries.ts';
+import { extractFromSource } from './extract/extractor.ts';
+import { walkProject } from './extract/walker.ts';
 import { NotImplemented } from './types.ts';
 import type {
   NodeId,
@@ -34,6 +39,12 @@ export interface StatusInfo {
   edges_semantic: number;
   files: number;
   last_sync_ts: number | null;
+}
+
+export interface IndexResult {
+  files: number;
+  nodes: number;
+  elapsed_ms: number;
 }
 
 const rigDirOf = (root: string): string => join(resolve(root), RIG_DIR_NAME);
@@ -83,6 +94,27 @@ export class Rig {
       files: c.files,
       last_sync_ts: c.last_activation_ts,
     };
+  }
+
+  async indexAll(): Promise<IndexResult> {
+    const start = Date.now();
+    let nodeCount = 0;
+    let fileCount = 0;
+    for await (const file of walkProject(this.projectRoot)) {
+      const source = await readFile(file.absPath, 'utf-8');
+      const mtime = statSync(file.absPath).mtimeMs;
+      const hash = createHash('sha256').update(source).digest('hex').slice(0, 16);
+      const result = await extractFromSource(file.relPath, source);
+      this.database.adapter.transaction(() => {
+        upsertFile(this.database.adapter, file.relPath, Math.floor(mtime), hash);
+        for (const node of result.nodes) {
+          upsertNode(this.database.adapter, node);
+          nodeCount++;
+        }
+      })();
+      fileCount++;
+    }
+    return { files: fileCount, nodes: nodeCount, elapsed_ms: Date.now() - start };
   }
 
   searchNodes(_query: string): RigNode[] {

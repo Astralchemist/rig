@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { runIndex } from './index-cmd.ts';
 import { runInit } from './init.ts';
 import { runStatus } from './status.ts';
 
@@ -10,7 +11,7 @@ const NOT_YET = (phase: string) => (): void => {
 const COMMANDS: Record<string, (cwd: string) => void | Promise<void>> = {
   init: runInit,
   status: runStatus,
-  index: NOT_YET('1'),
+  index: runIndex,
   sync: NOT_YET('1'),
   query: NOT_YET('1'),
   files: NOT_YET('1'),
@@ -25,7 +26,7 @@ usage: rig <command>
 commands:
   init        create .rig/ in the current directory
   status      report index health
-  index       (Phase 1) extract + resolve + embed
+  index       extract + write nodes to .rig/rig.db
   sync        (Phase 1) incremental update
   query       (Phase 1) CLI search
   files       (Phase 1) list indexed files

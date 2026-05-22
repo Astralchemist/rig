@@ -24,5 +24,5 @@ export const runInit = async (cwd: string): Promise<void> => {
   rig.close();
   console.log(`rig: initialized at ${rigDir}`);
   console.log('  schema:           v1');
-  console.log('  next:             `rig index` (Phase 1.2 — not implemented yet)');
+  console.log('  next:             `rig index`');
 };
