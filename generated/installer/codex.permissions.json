@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__rig__rig_files",
+      "mcp__rig__rig_impact",
+      "mcp__rig__rig_node",
+      "mcp__rig__rig_callers",
+      "mcp__rig__rig_pull",
+      "mcp__rig__rig_neighbors",
+      "mcp__rig__rig_search",
+      "mcp__rig__rig_callees",
+      "mcp__rig__rig_status"
+    ],
+    "ask": []
+  }
+}

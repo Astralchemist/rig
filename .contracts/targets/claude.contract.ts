@@ -29,7 +29,7 @@ export default defineTargetContract({
       path: '~/.claude/CLAUDE.md',
       mode: 'append-section',
       section_marker: '## Rig',
-      template: '{{GENERATED:claude-md-section.md}}',
+      template: '{{GENERATED:claude.instructions.md}}',
     },
   ],
   uninstall_strategy: 'reverse',

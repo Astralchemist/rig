@@ -2,7 +2,13 @@ import { z } from 'zod';
 import { targetNameSchema } from '../shared.ts';
 import type { TargetName } from '../shared.ts';
 
-export const FILE_MODES = ['merge-json', 'append-section', 'replace', 'write-toml'] as const;
+export const FILE_MODES = [
+  'merge-json',
+  'merge-jsonc',
+  'append-section',
+  'replace',
+  'write-toml',
+] as const;
 export type FileMode = (typeof FILE_MODES)[number];
 
 export const FILE_ROLES = ['mcp_config', 'permissions', 'instructions'] as const;
