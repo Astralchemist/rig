@@ -1,0 +1,157 @@
+// GENERATED FILE — DO NOT EDIT.
+// Source: .contracts/events/focus-requested.contract.ts, .contracts/events/selection-changed.contract.ts, .contracts/events/edge-accepted.contract.ts, .contracts/events/edge-proposed.contract.ts, .contracts/events/node-added.contract.ts, .contracts/events/edge-rejected.contract.ts
+// Edit the .contract.ts file(s), then run `bun run gen`.
+
+// focus:requested
+// payload (JSON Schema):
+// {
+//   "type": "object",
+//   "properties": {
+//     "node_ids": {
+//       "type": "array",
+//       "items": {
+//         "type": "string"
+//       }
+//     }
+//   },
+//   "required": [
+//     "node_ids"
+//   ],
+//   "additionalProperties": false,
+//   "$schema": "http://json-schema.org/draft-07/schema#"
+// }
+
+// selection:changed
+// payload (JSON Schema):
+// {
+//   "type": "object",
+//   "properties": {
+//     "node_id": {
+//       "type": [
+//         "string",
+//         "null"
+//       ]
+//     }
+//   },
+//   "required": [
+//     "node_id"
+//   ],
+//   "additionalProperties": false,
+//   "$schema": "http://json-schema.org/draft-07/schema#"
+// }
+
+// edge:accepted
+// payload (JSON Schema):
+// {
+//   "type": "object",
+//   "properties": {
+//     "pending_id": {
+//       "type": "integer"
+//     },
+//     "src": {
+//       "type": "string"
+//     },
+//     "dst": {
+//       "type": "string"
+//     }
+//   },
+//   "required": [
+//     "pending_id",
+//     "src",
+//     "dst"
+//   ],
+//   "additionalProperties": false,
+//   "$schema": "http://json-schema.org/draft-07/schema#"
+// }
+
+// edge:proposed
+// payload (JSON Schema):
+// {
+//   "type": "object",
+//   "properties": {
+//     "pending_id": {
+//       "type": "integer"
+//     },
+//     "src": {
+//       "type": "string"
+//     },
+//     "dst": {
+//       "type": "string"
+//     },
+//     "kind": {
+//       "type": "string"
+//     },
+//     "weight": {
+//       "type": "number"
+//     },
+//     "provenance": {
+//       "type": "string"
+//     },
+//     "rationale": {
+//       "type": "string"
+//     },
+//     "proposed_at": {
+//       "type": "integer"
+//     }
+//   },
+//   "required": [
+//     "pending_id",
+//     "src",
+//     "dst",
+//     "kind",
+//     "weight",
+//     "provenance",
+//     "rationale",
+//     "proposed_at"
+//   ],
+//   "additionalProperties": false,
+//   "$schema": "http://json-schema.org/draft-07/schema#"
+// }
+
+// node:added
+// payload (JSON Schema):
+// {
+//   "type": "object",
+//   "properties": {
+//     "id": {
+//       "type": "string"
+//     },
+//     "type": {
+//       "type": "string"
+//     },
+//     "name": {
+//       "type": "string"
+//     }
+//   },
+//   "required": [
+//     "id",
+//     "type",
+//     "name"
+//   ],
+//   "additionalProperties": false,
+//   "$schema": "http://json-schema.org/draft-07/schema#"
+// }
+
+// edge:rejected
+// payload (JSON Schema):
+// {
+//   "type": "object",
+//   "properties": {
+//     "pending_id": {
+//       "type": "integer"
+//     }
+//   },
+//   "required": [
+//     "pending_id"
+//   ],
+//   "additionalProperties": false,
+//   "$schema": "http://json-schema.org/draft-07/schema#"
+// }
+
+export type WsEvent =
+  | { type: 'focus:requested'; payload: unknown /* see schema above */ }
+  | { type: 'selection:changed'; payload: unknown /* see schema above */ }
+  | { type: 'edge:accepted'; payload: unknown /* see schema above */ }
+  | { type: 'edge:proposed'; payload: unknown /* see schema above */ }
+  | { type: 'node:added'; payload: unknown /* see schema above */ }
+  | { type: 'edge:rejected'; payload: unknown /* see schema above */ };

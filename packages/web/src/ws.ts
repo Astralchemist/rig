@@ -1,7 +1,9 @@
+import type { Rig } from '@rig/core';
 import { watch, type FSWatcher } from 'node:fs';
 import type { Server as HttpServer } from 'node:http';
 import { join, resolve } from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
+import { deriveEvents } from './ws-derive.ts';
 
 export interface WsHandle {
   close: () => Promise<void>;
@@ -20,7 +22,10 @@ const RIG_DIR = '.rig';
 // emit one db:changed event 200ms after the last observed change.
 const DEBOUNCE_MS = 200;
 
-export const attachWs = (httpServer: HttpServer, projectRoot: string): WsHandle => {
+export const attachWs = (httpServer: HttpServer, rig: Rig): WsHandle => {
+  const projectRoot = rig.projectRoot;
+  let lastMutationTs = Date.now();
+
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   const clients = new Set<WebSocket>();
 
@@ -44,12 +49,23 @@ export const attachWs = (httpServer: HttpServer, projectRoot: string): WsHandle 
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
       timer = null;
-      broadcast({ type: 'db:changed', ts: Date.now() });
+      const ts = Date.now();
+      broadcast({ type: 'db:changed', ts });
+      try {
+        const mutations = rig.writes.mutationsSince(lastMutationTs);
+        const derived = deriveEvents(rig, mutations);
+        for (const e of derived) {
+          broadcast({ type: e.type, ts: e.ts, payload: e.payload });
+        }
+        if (mutations.length) {
+          lastMutationTs = Math.max(lastMutationTs, ...mutations.map((m) => m.ts));
+        }
+      } catch {
+        // Mutation log unavailable (e.g., DB closing) — stick with db:changed.
+      }
     }, DEBOUNCE_MS);
   };
 
-  // Watch the .rig directory (catches db, db-wal, db-shm churn even if WAL
-  // hadn't been created when the server booted).
   try {
     const w = watch(join(root, RIG_DIR), { persistent: false }, (_evt, filename) => {
       if (filename && filename.startsWith('rig.db')) onDbChange();

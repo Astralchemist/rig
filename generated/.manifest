@@ -32,6 +32,7 @@
     "mcp/handlers/rig_search.handler.ts": "ca32b0de149f8a73",
     "mcp/handlers/rig_status.handler.ts": "ddf2754733594794",
     "mcp/handlers/rig_undo.handler.ts": "2addb3a0315adb0d",
-    "mcp/tools-manifest.json": "587342cf149e7742"
+    "mcp/tools-manifest.json": "587342cf149e7742",
+    "web/ws-events.ts": "b39c35c3680a7ebe"
   }
 }

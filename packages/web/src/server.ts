@@ -39,7 +39,7 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
   registerRoutes(app, rig);
 
   const address = await app.listen({ host, port });
-  const ws = attachWs(app.server, opts.projectRoot);
+  const ws = attachWs(app.server, rig);
   return {
     app,
     rig,
