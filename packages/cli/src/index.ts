@@ -1,6 +1,8 @@
 #!/usr/bin/env bun
 import { runIndex } from './index-cmd.ts';
 import { runInit } from './init.ts';
+import { runInstall } from './install-cmd.ts';
+import { runServe } from './serve-cmd.ts';
 import { runStatus } from './status.ts';
 
 const NOT_YET = (phase: string) => (): void => {
@@ -15,8 +17,8 @@ const COMMANDS: Record<string, (cwd: string) => void | Promise<void>> = {
   sync: NOT_YET('1'),
   query: NOT_YET('1'),
   files: NOT_YET('1'),
-  install: NOT_YET('1'),
-  serve: NOT_YET('1 / 2'),
+  install: runInstall,
+  serve: runServe,
 };
 
 const HELP = `rig — local-first semantic knowledge graph
