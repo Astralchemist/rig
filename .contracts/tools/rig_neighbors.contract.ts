@@ -39,6 +39,7 @@ it scores by structural distance + semantic similarity + recency.
     cursor: 'allow',
     codex: 'auto-allow',
     opencode: 'allow',
+    openrouter: 'auto-allow',
   },
   records_activation: true,
 });

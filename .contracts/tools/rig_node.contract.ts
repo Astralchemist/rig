@@ -35,6 +35,7 @@ is worth pulling neighbors or callers for.
     cursor: 'allow',
     codex: 'auto-allow',
     opencode: 'allow',
+    openrouter: 'auto-allow',
   },
   records_activation: true,
 });

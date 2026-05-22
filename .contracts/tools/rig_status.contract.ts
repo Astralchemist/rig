@@ -25,6 +25,7 @@ Use as a smoke test before any other rig_* call to confirm the index is initiali
     cursor: 'allow',
     codex: 'auto-allow',
     opencode: 'allow',
+    openrouter: 'auto-allow',
   },
   records_activation: false,
 });

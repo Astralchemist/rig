@@ -36,6 +36,7 @@ For one-hop callers use rig_callers.
     cursor: 'allow',
     codex: 'auto-allow',
     opencode: 'allow',
+    openrouter: 'auto-allow',
   },
   records_activation: true,
 });

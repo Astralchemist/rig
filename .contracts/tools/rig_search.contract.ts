@@ -37,6 +37,7 @@ score by graph proximity or semantic similarity.
     cursor: 'allow',
     codex: 'auto-allow',
     opencode: 'allow',
+    openrouter: 'auto-allow',
   },
   records_activation: false,
 });

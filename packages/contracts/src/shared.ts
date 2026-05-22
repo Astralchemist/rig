@@ -1,7 +1,14 @@
 import { z } from 'zod';
 import type { ZodTypeAny } from 'zod';
 
-export const TARGET_NAMES = ['claude', 'cursor', 'codex', 'opencode', 'hermes'] as const;
+export const TARGET_NAMES = [
+  'claude',
+  'cursor',
+  'codex',
+  'opencode',
+  'hermes',
+  'openrouter',
+] as const;
 export type TargetName = (typeof TARGET_NAMES)[number];
 export const targetNameSchema = z.enum(TARGET_NAMES);
 

@@ -12,6 +12,8 @@
     "installer/cursor.permissions.json": "78a6f16755bc0333",
     "installer/opencode.instructions.md": "e81aa6cf2c51ac60",
     "installer/opencode.permissions.json": "78a6f16755bc0333",
+    "installer/openrouter.instructions.md": "3859670aa78216fe",
+    "installer/openrouter.permissions.json": "78a6f16755bc0333",
     "mcp/handlers-index.ts": "a9264fbb52c0ce2b",
     "mcp/handlers/rig_callees.handler.ts": "41945f900c2a4718",
     "mcp/handlers/rig_callers.handler.ts": "9d932f214b57fc15",

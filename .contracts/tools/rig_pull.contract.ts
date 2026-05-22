@@ -41,6 +41,7 @@ Use rig_neighbors only when you need the raw edge view.
     cursor: 'allow',
     codex: 'auto-allow',
     opencode: 'allow',
+    openrouter: 'auto-allow',
   },
   records_activation: true,
 });
