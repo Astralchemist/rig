@@ -1,22 +1,20 @@
 #!/usr/bin/env bun
+import { runFiles } from './files-cmd.ts';
 import { runIndex } from './index-cmd.ts';
 import { runInit } from './init.ts';
 import { runInstall } from './install-cmd.ts';
+import { runQuery } from './query-cmd.ts';
 import { runServe } from './serve-cmd.ts';
 import { runStatus } from './status.ts';
-
-const NOT_YET = (phase: string) => (): void => {
-  console.error(`rig: this command is not implemented yet (lands in Phase ${phase})`);
-  process.exit(2);
-};
+import { runSync } from './sync-cmd.ts';
 
 const COMMANDS: Record<string, (cwd: string) => void | Promise<void>> = {
   init: runInit,
   status: runStatus,
   index: runIndex,
-  sync: NOT_YET('1'),
-  query: NOT_YET('1'),
-  files: NOT_YET('1'),
+  sync: runSync,
+  query: runQuery,
+  files: runFiles,
   install: runInstall,
   serve: runServe,
 };
