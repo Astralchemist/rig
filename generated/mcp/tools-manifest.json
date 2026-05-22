@@ -2,6 +2,113 @@
   "version": 1,
   "tools": [
     {
+      "name": "rig_explore",
+      "description": "Full neighborhoods + source for a question",
+      "tier": "heavy",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Free-text question or topic"
+          },
+          "max_anchors": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 5
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "anchors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "file_path": {
+                  "type": "string"
+                },
+                "start_line": {
+                  "type": "integer"
+                },
+                "end_line": {
+                  "type": "integer"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "related": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "kind"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "kind",
+                "file_path",
+                "start_line",
+                "end_line",
+                "source",
+                "related"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "anchors",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "MAIN_SESSION_FORBIDDEN"
+      ]
+    },
+    {
       "name": "rig_files",
       "description": "List indexed files",
       "tier": "light",
@@ -616,6 +723,65 @@
       },
       "errors": [
         "NOT_INITIALIZED"
+      ]
+    },
+    {
+      "name": "rig_context",
+      "description": "Build a context bundle for a task",
+      "tier": "heavy",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What the agent is trying to do"
+          },
+          "max_nodes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 10
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "markdown",
+              "json"
+            ],
+            "default": "markdown"
+          }
+        },
+        "required": [
+          "task"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "context": {
+            "type": "string"
+          },
+          "anchor_count": {
+            "type": "integer"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "context",
+          "anchor_count",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "MAIN_SESSION_FORBIDDEN"
       ]
     }
   ]

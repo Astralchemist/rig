@@ -11,6 +11,9 @@
       "mcp__rig__rig_callees",
       "mcp__rig__rig_status"
     ],
-    "ask": []
+    "ask": [
+      "mcp__rig__rig_explore",
+      "mcp__rig__rig_context"
+    ]
   }
 }

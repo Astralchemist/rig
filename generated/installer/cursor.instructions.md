@@ -89,6 +89,28 @@ use rig_pull.
 Returns counts of nodes, edges, files, and the last sync timestamp.
 Use as a smoke test before any other rig_* call to confirm the index is initialized.
 
+## heavy tools
+
+### `rig_explore`
+
+Search the index for a question and return the top-K anchors with their
+source bodies and one-hop related anchors. Returns full file slices, so
+this is token-heavy.
+
+NEVER call this in the main agent session — spawn a sub-agent. The
+two-tier gate is enforced by the dispatcher (MAIN_SESSION_FORBIDDEN).
+For lightweight metadata-only navigation use rig_pull or rig_neighbors.
+
+### `rig_context`
+
+Build a context bundle of the top-K anchors most relevant to a task,
+formatted for direct LLM consumption (markdown by default; JSON
+available). Uses search + magnetic-pull ranking.
+
+Heavy tier — must be invoked from a sub-agent, not the main session.
+Use rig_explore for raw exploration; use rig_context when you want a
+single ready-to-prompt block.
+
 ## Two-tier gate
 
 NEVER call `rig_explore` or `rig_context` directly in the main session — spawn a sub-agent for these.
