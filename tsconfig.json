@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["bun"],
+    "paths": {
+      "@rig/contracts": ["./packages/contracts/src/index.ts"],
+      "@rig/contracts/*": ["./packages/contracts/src/*"],
+      "@rig/core": ["./packages/core/src/index.ts"],
+      "@rig/core/*": ["./packages/core/src/*"],
+      "@rig/mcp": ["./packages/mcp/src/index.ts"],
+      "@rig/mcp/*": ["./packages/mcp/src/*"]
+    }
+  },
+  "include": [
+    "packages/*/src/**/*.ts",
+    "scripts/**/*.ts",
+    ".contracts/**/*.ts",
+    "generated/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist", "vendor"]
+}

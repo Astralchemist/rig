@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__rig__rig_status"
+    ],
+    "ask": []
+  }
+}

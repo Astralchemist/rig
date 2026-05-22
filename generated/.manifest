@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "files": {
+    "core/anchors-registry.ts": "2055509ff9ba3cda",
+    "core/migrations.ts": "4766a6b68a6b83b5",
+    "core/schema.sql": "5e6ba613ff2ef2d8",
+    "installer/claude.instructions.md": "f0e1f67af0525041",
+    "installer/claude.permissions.json": "1e68331a592016fd",
+    "mcp/handlers-index.ts": "22d2fee77dae414d",
+    "mcp/handlers/rig_status.handler.ts": "7d3012583e1557fe",
+    "mcp/tools-manifest.json": "84a5bcd8a6abe8a4"
+  }
+}

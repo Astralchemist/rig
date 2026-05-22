@@ -1,0 +1,17 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.rig/
+.env
+.env.local
+*.log
+.DS_Store
+
+# Claude Code project-local config
+.claude/
+
+# vendored upstream — pulled at Phase 0.5, not shipped
+vendor/
+
+# Bun
+bun.lockb.bak

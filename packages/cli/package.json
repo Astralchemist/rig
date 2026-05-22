@@ -1,0 +1,15 @@
+{
+  "name": "@rig/cli",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "bin": {
+    "rig": "src/index.ts"
+  },
+  "dependencies": {
+    "@rig/core": "workspace:*",
+    "@rig/mcp": "workspace:*",
+    "@rig/web": "workspace:*"
+  }
+}

@@ -1,0 +1,5 @@
+Placeholder. When the CodeGraph reference (github.com/colbymchenry/codegraph)
+is vendored into vendor/codegraph/ in Phase 0.5, copy its upstream LICENSE
+file here verbatim and record the commit SHA + date in docs/codegraph-snapshot.md.
+
+Until then, no upstream code has been pulled into this repo.

@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "tools": [
+    {
+      "name": "rig_status",
+      "description": "Report rig index health",
+      "tier": "light",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "initialized": {
+            "type": "boolean"
+          },
+          "nodes": {
+            "type": "integer"
+          },
+          "edges_structural": {
+            "type": "integer"
+          },
+          "edges_semantic": {
+            "type": "integer"
+          },
+          "files": {
+            "type": "integer"
+          },
+          "last_sync_ts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "initialized",
+          "nodes",
+          "edges_structural",
+          "edges_semantic",
+          "files",
+          "last_sync_ts",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "rig",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Local-first semantic knowledge graph",
+  "author": "Astralchemist <kingolajohn55@gmail.com>",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "gen": "bun run scripts/gen.ts",
+    "gen:check": "bun run scripts/gen-check.ts",
+    "test": "bun test",
+    "install:hooks": "bash scripts/install-hooks.sh"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20",
+    "prettier": "^3",
+    "typescript": "^5.5",
+    "zod": "^3.23",
+    "zod-to-json-schema": "^3.23"
+  },
+  "comments": {
+    "optionalDependencies": "Native escape hatches (sqlite-vec, fastembed-rs) land here in Phase 3+. See docs/buildbrief.md addendum on distribution posture A."
+  }
+}

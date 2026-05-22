@@ -1,0 +1,62 @@
+import { z } from 'zod';
+import type { ZodTypeAny } from 'zod';
+import { permissionLevelSchema, targetNameSchema, zodSchema } from '../shared.ts';
+import type { PermissionLevel, TargetName } from '../shared.ts';
+
+export const TOOL_TIERS = ['light', 'heavy', 'write', 'live'] as const;
+export type ToolTier = (typeof TOOL_TIERS)[number];
+
+export const toolContractSchema = z
+  .object({
+    name: z
+      .string()
+      .min(1)
+      .regex(/^rig_[a-z][a-z0-9_]*$/, 'must start with rig_ and be snake_case'),
+    tier: z.enum(TOOL_TIERS),
+    summary: z.string().min(1).max(60),
+    description: z.string().min(10),
+    input: zodSchema,
+    output: zodSchema,
+    errors: z.array(z.string().min(1)).default([]),
+    permissions: z.record(targetNameSchema, permissionLevelSchema).default({}),
+    // tier-specific (validated by refinement below)
+    records_activation: z.boolean().optional(),
+    main_session_forbidden: z.boolean().optional(),
+    provenance_required: z.boolean().optional(),
+    broadcasts: z.string().optional(),
+    inverse: z.string().optional(),
+    requires_rationale: z.boolean().optional(),
+    subscription_kind: z.string().optional(),
+  })
+  .strict()
+  .superRefine((c, ctx) => {
+    if (c.tier === 'heavy' && c.main_session_forbidden !== true) {
+      ctx.addIssue({ code: 'custom', message: 'heavy tier requires main_session_forbidden: true' });
+    }
+    if (c.tier === 'write' && !c.provenance_required) {
+      ctx.addIssue({ code: 'custom', message: 'write tier requires provenance_required: true' });
+    }
+    if (c.tier === 'live' && !c.subscription_kind) {
+      ctx.addIssue({ code: 'custom', message: 'live tier requires subscription_kind' });
+    }
+  });
+
+export interface ToolContract {
+  name: string;
+  tier: ToolTier;
+  summary: string;
+  description: string;
+  input: ZodTypeAny;
+  output: ZodTypeAny;
+  errors?: readonly string[];
+  permissions?: Partial<Record<TargetName, PermissionLevel>>;
+  records_activation?: boolean;
+  main_session_forbidden?: boolean;
+  provenance_required?: boolean;
+  broadcasts?: string;
+  inverse?: string;
+  requires_rationale?: boolean;
+  subscription_kind?: string;
+}
+
+export const defineToolContract = <T extends ToolContract>(c: T): T => c;
