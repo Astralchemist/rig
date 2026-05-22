@@ -6,7 +6,11 @@ import { upsertFile, upsertNode } from './db/node-queries.ts';
 import { embedAndStore } from './embed/index-embeddings.ts';
 import type { Embedder } from './embed/types.ts';
 import { extractFromSource } from './extract/extractor.ts';
-import type { Node as ExtractNode, UnresolvedReference } from './extract/upstream-types.ts';
+import type {
+  Edge as ExtractEdge,
+  Node as ExtractNode,
+  UnresolvedReference,
+} from './extract/upstream-types.ts';
 import { walkProject } from './extract/walker.ts';
 import { resolveReferences } from './resolve/resolver.ts';
 import type { IndexResult } from './rig-types.ts';
@@ -18,6 +22,7 @@ export async function runIndexAll(
 ): Promise<IndexResult> {
   const start = Date.now();
   const allNodes: ExtractNode[] = [];
+  const allEdges: ExtractEdge[] = [];
   const allRefs: UnresolvedReference[] = [];
   let fileCount = 0;
   for await (const file of walkProject(projectRoot)) {
@@ -30,11 +35,12 @@ export async function runIndexAll(
       for (const node of result.nodes) upsertNode(database.adapter, node);
     })();
     allNodes.push(...result.nodes);
+    allEdges.push(...result.edges);
     allRefs.push(...result.unresolvedReferences);
     fileCount++;
   }
   const stats = database.adapter.transaction(() =>
-    resolveReferences(database.adapter, allNodes, allRefs),
+    resolveReferences(database.adapter, allNodes, allRefs, allEdges),
   )();
   if (embedder) {
     await embedAndStore(embedder, database.adapter, allNodes);

@@ -1,5 +1,5 @@
 import type { SqliteAdapter } from '../db/adapter.ts';
-import type { Node, UnresolvedReference } from '../extract/upstream-types.ts';
+import type { Edge, Node, UnresolvedReference } from '../extract/upstream-types.ts';
 
 export interface ResolveStats {
   edges: number;
@@ -7,18 +7,21 @@ export interface ResolveStats {
 }
 
 /**
- * Phase 1.3 resolver — minimal but honest.
+ * Phase 1.6+ resolver — extract-time direct edges (e.g. `contains`) plus
+ * by-name reference resolution.
  *
- * - Calls resolved by exact name match across all known nodes; if exactly one
- *   candidate, write a 'calls' edge with provenance='ast'. Ambiguous matches
+ * - Direct edges from the extractor (`contains`, future intra-file edges)
+ *   are written verbatim with provenance='ast'.
+ * - Refs resolved by exact name match across all known nodes; ambiguous
  *   stay in unresolved_refs (refusing false positives).
- * - Imports recorded as unresolved_refs (module-path → file resolution is
- *   Phase 1.6+; depends on tsconfig path aliases we explicitly deferred).
+ * - Imports stay unresolved (module-path → file resolution depends on
+ *   tsconfig path aliases that we explicitly deferred).
  */
 export const resolveReferences = (
   db: SqliteAdapter,
   allNodes: Node[],
   refs: UnresolvedReference[],
+  directEdges: Edge[] = [],
 ): ResolveStats => {
   const byName = new Map<string, string[]>();
   for (const n of allNodes) {
@@ -27,7 +30,7 @@ export const resolveReferences = (
     else byName.set(n.name, [n.id]);
   }
 
-  db.exec('DELETE FROM edges WHERE provenance = \'ast\'');
+  db.exec("DELETE FROM edges WHERE provenance = 'ast'");
   db.exec('DELETE FROM unresolved_refs');
 
   const insertEdge = db.prepare(
@@ -40,6 +43,12 @@ export const resolveReferences = (
   let edges = 0;
   let unresolved = 0;
   const now = Date.now();
+
+  for (const e of directEdges) {
+    insertEdge.run(e.source, e.target, e.kind, 'ast', now);
+    edges++;
+  }
+
   for (const ref of refs) {
     if (ref.referenceKind === 'imports') {
       insertUnresolved.run(ref.fromNodeId, ref.referenceName, ref.filePath ?? '', ref.line);

@@ -4,6 +4,7 @@ import { EXTRACTORS } from './languages/index.ts';
 import { extractMarkdown } from './markdown.ts';
 import { fileIdOf, makeFileNode } from './node-builders.ts';
 import type {
+  Edge,
   ExtractionResult,
   Language,
   Node,
@@ -39,18 +40,20 @@ export async function extractFromSource(
   const fileId = fileIdOf(filePath);
   const nodes: Node[] = [makeFileNode(fileId, filePath, language)];
   const refs: UnresolvedReference[] = [];
+  const edges: Edge[] = [];
   visit(tree.rootNode, {
     extractor,
     filePath,
     language,
     nodes,
+    edges,
     refs,
     scope: [{ id: fileId, name: filePath }],
     source,
   });
   return {
     nodes,
-    edges: [],
+    edges,
     unresolvedReferences: refs,
     errors: [],
     durationMs: Date.now() - start,

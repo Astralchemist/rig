@@ -2,7 +2,7 @@ import { Node as SyntaxNode } from 'web-tree-sitter';
 import { calleeNameOf, declKindOf, nameFor } from './node-builders.ts';
 import { generateNodeId, getPrecedingDocstring } from './tree-sitter-helpers.ts';
 import type { LanguageExtractor } from './tree-sitter-types.ts';
-import type { Language, Node, UnresolvedReference } from './upstream-types.ts';
+import type { Edge, EdgeKind, Language, Node, UnresolvedReference } from './upstream-types.ts';
 
 interface ScopeFrame {
   id: string;
@@ -14,10 +14,55 @@ export interface VisitCtx {
   filePath: string;
   language: Language;
   nodes: Node[];
+  edges: Edge[];
   refs: UnresolvedReference[];
   scope: ScopeFrame[];
   source: string;
 }
+
+const TYPE_IDENT_NODE_TYPES = new Set(['type_identifier']);
+// extends_clause: `class C extends B`. extends_type_clause: `interface I extends J`.
+const HERITAGE_NODE_TYPES = new Set([
+  'extends_clause',
+  'extends_type_clause',
+  'implements_clause',
+]);
+// Inside heritage, tree-sitter uses plain `identifier` for class extends and
+// `type_identifier` for interface extends / implements. Walk both.
+const HERITAGE_TARGET_TYPES = new Set(['type_identifier', 'identifier']);
+
+const pushReference = (
+  node: SyntaxNode,
+  ctx: VisitCtx,
+  kind: EdgeKind,
+): void => {
+  const owner = ctx.scope[ctx.scope.length - 1];
+  if (!owner) return;
+  ctx.refs.push({
+    fromNodeId: owner.id,
+    referenceName: node.text,
+    referenceKind: kind,
+    line: node.startPosition.row + 1,
+    column: node.startPosition.column,
+    filePath: ctx.filePath,
+    language: ctx.language,
+  });
+};
+
+const pushHeritageRefs = (
+  node: SyntaxNode,
+  ctx: VisitCtx,
+  kind: EdgeKind,
+): void => {
+  if (HERITAGE_TARGET_TYPES.has(node.type)) {
+    pushReference(node, ctx, kind);
+    return;
+  }
+  for (let i = 0; i < node.namedChildCount; i++) {
+    const c = node.namedChild(i);
+    if (c) pushHeritageRefs(c, ctx, kind);
+  }
+};
 
 export function visit(node: SyntaxNode, ctx: VisitCtx): void {
   if (ctx.extractor.callTypes.includes(node.type)) {
@@ -49,6 +94,22 @@ export function visit(node: SyntaxNode, ctx: VisitCtx): void {
     }
   }
 
+  // Heritage clauses → 'extends' or 'implements'. Walk subtree for any
+  // identifier or type_identifier and return early so they don't double-count
+  // as plain 'references'.
+  if (HERITAGE_NODE_TYPES.has(node.type)) {
+    const heritageKind: EdgeKind =
+      node.type === 'implements_clause' ? 'implements' : 'extends';
+    pushHeritageRefs(node, ctx, heritageKind);
+    return;
+  }
+
+  // Type identifiers anywhere else (parameter types, return types, generics).
+  if (TYPE_IDENT_NODE_TYPES.has(node.type)) {
+    pushReference(node, ctx, 'references');
+    return;
+  }
+
   const kind = declKindOf(node.type, ctx.extractor);
   if (kind) {
     const name = nameFor(node, ctx.extractor);
@@ -75,6 +136,11 @@ export function visit(node: SyntaxNode, ctx: VisitCtx): void {
         isStatic: ctx.extractor.isStatic?.(node) ?? false,
         updatedAt: Date.now(),
       });
+      // Direct `contains` edge from the enclosing scope to this declaration.
+      const parent = ctx.scope[ctx.scope.length - 1];
+      if (parent) {
+        ctx.edges.push({ source: parent.id, target: id, kind: 'contains' });
+      }
       ctx.scope.push({ id, name });
       for (let i = 0; i < node.namedChildCount; i++) {
         const c = node.namedChild(i);
