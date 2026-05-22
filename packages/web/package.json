@@ -9,9 +9,15 @@
     "@fastify/cors": "11.2.0",
     "@rig/core": "workspace:*",
     "fastify": "5.8.5",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
     "ws": "8.20.1"
   },
   "devDependencies": {
-    "@types/ws": "8.18.1"
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
+    "@types/ws": "8.18.1",
+    "@vitejs/plugin-react": "6.0.2",
+    "vite": "8.0.14"
   }
 }
