@@ -6,7 +6,15 @@ import { Database } from './db/database.ts';
 import { readCounts } from './db/counts.ts';
 import { upsertFile, upsertNode } from './db/node-queries.ts';
 import { extractFromSource } from './extract/extractor.ts';
+import type { Node as ExtractNode, UnresolvedReference } from './extract/upstream-types.ts';
 import { walkProject } from './extract/walker.ts';
+import {
+  getCallees as gqGetCallees,
+  getCallers as gqGetCallers,
+  getImpactRadius as gqGetImpactRadius,
+  getNode as gqGetNode,
+} from './graph/traversal.ts';
+import { resolveReferences } from './resolve/resolver.ts';
 import { NotImplemented } from './types.ts';
 import type {
   NodeId,
@@ -44,6 +52,8 @@ export interface StatusInfo {
 export interface IndexResult {
   files: number;
   nodes: number;
+  edges: number;
+  unresolved: number;
   elapsed_ms: number;
 }
 
@@ -98,7 +108,8 @@ export class Rig {
 
   async indexAll(): Promise<IndexResult> {
     const start = Date.now();
-    let nodeCount = 0;
+    const allNodes: ExtractNode[] = [];
+    const allRefs: UnresolvedReference[] = [];
     let fileCount = 0;
     for await (const file of walkProject(this.projectRoot)) {
       const source = await readFile(file.absPath, 'utf-8');
@@ -107,22 +118,55 @@ export class Rig {
       const result = await extractFromSource(file.relPath, source);
       this.database.adapter.transaction(() => {
         upsertFile(this.database.adapter, file.relPath, Math.floor(mtime), hash);
-        for (const node of result.nodes) {
-          upsertNode(this.database.adapter, node);
-          nodeCount++;
-        }
+        for (const node of result.nodes) upsertNode(this.database.adapter, node);
       })();
+      allNodes.push(...result.nodes);
+      allRefs.push(...result.unresolvedReferences);
       fileCount++;
     }
-    return { files: fileCount, nodes: nodeCount, elapsed_ms: Date.now() - start };
+    const stats = this.database.adapter.transaction(() =>
+      resolveReferences(this.database.adapter, allNodes, allRefs),
+    )();
+    return {
+      files: fileCount,
+      nodes: allNodes.length,
+      edges: stats.edges,
+      unresolved: stats.unresolved,
+      elapsed_ms: Date.now() - start,
+    };
   }
 
   searchNodes(_query: string): RigNode[] {
     throw new NotImplemented('Rig.searchNodes');
   }
 
-  getNode(_id: NodeId): RigNode | null {
-    throw new NotImplemented('Rig.getNode');
+  getNode(id: NodeId): RigNode | null {
+    const n = gqGetNode(this.database.adapter, id);
+    return n ? this.toRigNode(n) : null;
+  }
+
+  getCallers(id: NodeId): RigNode[] {
+    return gqGetCallers(this.database.adapter, id).map((n) => this.toRigNode(n));
+  }
+
+  getCallees(id: NodeId): RigNode[] {
+    return gqGetCallees(this.database.adapter, id).map((n) => this.toRigNode(n));
+  }
+
+  getImpactRadius(id: NodeId, depth = 3): RigNode[] {
+    return gqGetImpactRadius(this.database.adapter, id, depth).map((n) => this.toRigNode(n));
+  }
+
+  private toRigNode(n: ExtractNode): RigNode {
+    return {
+      id: n.id,
+      type: n.kind,
+      name: n.name,
+      data: n as unknown as Record<string, unknown>,
+      pull_score: 0,
+      created_at: n.updatedAt,
+      updated_at: n.updatedAt,
+    };
   }
 
   getNeighbors(_id: NodeId): (StructuralEdge | SemanticEdge)[] {

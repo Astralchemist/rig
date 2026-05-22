@@ -12,6 +12,8 @@ export const runIndex = async (cwd: string): Promise<void> => {
     console.log(`done`);
     console.log(`  files:            ${r.files}`);
     console.log(`  nodes:            ${r.nodes}`);
+    console.log(`  edges:            ${r.edges}`);
+    console.log(`  unresolved:       ${r.unresolved}`);
     console.log(`  elapsed:          ${r.elapsed_ms}ms`);
   } finally {
     rig.close();
