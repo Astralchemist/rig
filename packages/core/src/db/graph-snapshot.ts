@@ -19,10 +19,21 @@ export interface GraphSnapshotSemanticEdge {
   weight: number;
 }
 
+export interface GraphSnapshotPendingEdge {
+  id: number;
+  src: string;
+  dst: string;
+  kind: string;
+  weight: number;
+  rationale: string;
+  provenance: string;
+}
+
 export interface GraphSnapshot {
   nodes: GraphSnapshotNode[];
   edges_structural: GraphSnapshotEdge[];
   edges_semantic: GraphSnapshotSemanticEdge[];
+  pending_edges: GraphSnapshotPendingEdge[];
 }
 
 export const getGraphSnapshot = (db: SqliteAdapter, limit = 500): GraphSnapshot => {
@@ -32,7 +43,7 @@ export const getGraphSnapshot = (db: SqliteAdapter, limit = 500): GraphSnapshot 
     )
     .all(limit) as GraphSnapshotNode[];
   if (nodes.length === 0) {
-    return { nodes: [], edges_structural: [], edges_semantic: [] };
+    return { nodes: [], edges_structural: [], edges_semantic: [], pending_edges: [] };
   }
   const ids = new Set(nodes.map((n) => n.id));
   const placeholders = nodes.map(() => '?').join(',');
@@ -46,9 +57,15 @@ export const getGraphSnapshot = (db: SqliteAdapter, limit = 500): GraphSnapshot 
       `SELECT src, dst, weight FROM edges_semantic WHERE src IN (${placeholders}) AND dst IN (${placeholders})`,
     )
     .all(...nodes.map((n) => n.id), ...nodes.map((n) => n.id)) as GraphSnapshotSemanticEdge[];
+  const pendingRows = db
+    .prepare(
+      `SELECT id, src, dst, kind, weight, rationale, provenance FROM pending_edges WHERE status = 'pending'`,
+    )
+    .all() as GraphSnapshotPendingEdge[];
   return {
     nodes,
     edges_structural: structRows.filter((e) => ids.has(e.src) && ids.has(e.dst)),
     edges_semantic: semRows.filter((e) => ids.has(e.src) && ids.has(e.dst)),
+    pending_edges: pendingRows.filter((e) => ids.has(e.src) && ids.has(e.dst)),
   };
 };

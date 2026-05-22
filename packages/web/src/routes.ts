@@ -76,4 +76,33 @@ export const registerRoutes = (app: FastifyInstance, rig: Rig): void => {
   app.get<{ Querystring: FilesQuery }>('/api/files', async (req) =>
     rig.getFiles(req.query.filter),
   );
+
+  app.get('/api/pending-edges', async () => rig.writes.listPending());
+
+  app.post<{ Params: { id: string } }>(
+    '/api/pending-edges/:id/accept',
+    async (req, reply) => {
+      const id = Number.parseInt(req.params.id, 10);
+      if (Number.isNaN(id)) return reply.code(400).send({ error: 'invalid id' });
+      const row = rig.writes.acceptPending(id, { sessionId: 'web', actor: 'user:web' });
+      if (!row) return reply.code(404).send({ error: 'pending edge not found or already resolved' });
+      return { ok: true, accepted: row };
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    '/api/pending-edges/:id/reject',
+    async (req, reply) => {
+      const id = Number.parseInt(req.params.id, 10);
+      if (Number.isNaN(id)) return reply.code(400).send({ error: 'invalid id' });
+      const ok = rig.writes.rejectPending(id, { sessionId: 'web', actor: 'user:web' });
+      if (!ok) return reply.code(404).send({ error: 'pending edge not found or already resolved' });
+      return { ok: true };
+    },
+  );
+
+  app.post('/api/undo', async () => {
+    const undone = rig.writes.undoLast({ sessionId: 'web', actor: 'user:web' });
+    return { undone: undone ? { id: undone.id, kind: undone.kind, ts: undone.ts } : null };
+  });
 };
