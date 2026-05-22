@@ -73,6 +73,13 @@ export const deriveEvents = (rig: Rig, mutations: MutationRow[]): DerivedEvent[]
       case 'undo':
         out.push({ type: 'undone', ts: m.ts, payload: p });
         break;
+      case 'selection':
+        out.push({
+          type: 'selection:changed',
+          ts: m.ts,
+          payload: { node_id: p.nodeId ?? null },
+        });
+        break;
       default:
         // annotate has no UI event for now
         break;

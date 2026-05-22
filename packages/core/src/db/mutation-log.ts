@@ -8,6 +8,7 @@ export type MutationKind =
   | 'annotate'
   | 'cluster'
   | 'focus'
+  | 'selection'
   | 'undo';
 
 export interface MutationRow {
@@ -60,7 +61,8 @@ export const lastUndoableMutation = (
   const row = db
     .prepare(
       `SELECT id, ts, session_id, kind, payload, actor FROM mutation_log
-       WHERE session_id = ? AND kind != 'undo' AND kind != 'focus'
+       WHERE session_id = ?
+       AND kind NOT IN ('undo', 'focus', 'selection')
        ORDER BY ts DESC LIMIT 1`,
     )
     .get(sessionId) as RawRow | null;

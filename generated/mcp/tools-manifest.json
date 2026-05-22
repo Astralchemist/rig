@@ -297,6 +297,78 @@
       ]
     },
     {
+      "name": "rig_subscribe",
+      "description": "Pull mutation events since a cursor",
+      "tier": "live",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "since_ts": {
+            "type": "integer",
+            "default": 0
+          },
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "ts": {
+                  "type": "integer"
+                },
+                "session_id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "payload": {},
+                "actor": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "ts",
+                "session_id",
+                "kind",
+                "actor"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "next_cursor": {
+            "type": "integer"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "events",
+          "next_cursor",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED"
+      ]
+    },
+    {
       "name": "rig_cluster",
       "description": "Create a cluster meta-anchor over existing anchors",
       "tier": "write",

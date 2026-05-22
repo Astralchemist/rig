@@ -4,6 +4,7 @@
       "mcp__rig__rig_propose_edge",
       "mcp__rig__rig_files",
       "mcp__rig__rig_impact",
+      "mcp__rig__rig_subscribe",
       "mcp__rig__rig_cluster",
       "mcp__rig__rig_focus",
       "mcp__rig__rig_node",

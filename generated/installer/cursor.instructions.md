@@ -153,6 +153,18 @@ Create a new anchor immediately (nodes are cheaper to add than edges).
 Use only when the user has explicitly named a new concept in
 conversation; do not invent anchors from inference alone.
 
+## live tools
+
+### `rig_subscribe`
+
+Long-poll endpoint for following the user's UI activity from an agent
+session. Pass the last next_cursor value you saw; receive every
+mutation_log row since then (selections, edges proposed/accepted/
+rejected, nodes added). Polling every 2s is a good default.
+
+Use this to inject "user is now looking at <anchor>" context into your
+next agent turn without the user typing.
+
 ## Two-tier gate
 
 NEVER call `rig_explore` or `rig_context` directly in the main session — spawn a sub-agent for these.

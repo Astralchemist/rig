@@ -46,6 +46,15 @@ export function App(): JSX.Element {
     return () => ws.close();
   }, []);
 
+  // Post selection changes so an agent polling rig_subscribe can follow gaze.
+  useEffect(() => {
+    void fetch('/api/selection', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ node_id: selected }),
+    });
+  }, [selected]);
+
   return (
     <div style={{ position: 'fixed', inset: 0 }}>
       <header
