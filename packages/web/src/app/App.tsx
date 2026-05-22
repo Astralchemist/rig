@@ -26,7 +26,7 @@ export function App(): JSX.Element {
     try {
       const [s, g] = await Promise.all([
         fetch('/api/status').then((r) => r.json() as Promise<Status>),
-        fetch('/api/graph?limit=500').then((r) => r.json() as Promise<Snapshot>),
+        fetch('/api/graph?limit=2000').then((r) => r.json() as Promise<Snapshot>),
       ]);
       setStatus(s);
       setSnap(g);
