@@ -10,13 +10,15 @@ const EXPECTED_TABLES = [
   'edges_semantic',
   'embeddings',
   'files',
+  'mutation_log',
   'nodes',
   'nodes_fts',
+  'pending_edges',
   'schema_versions',
   'unresolved_refs',
 ];
 
-describe('Database — schema v1', () => {
+describe('Database — schema', () => {
   let dir: string;
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'rig-db-'));
@@ -25,9 +27,9 @@ describe('Database — schema v1', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it('applies migration v1 on a fresh DB', () => {
+  it('applies all migrations on a fresh DB', () => {
     const db = Database.open(join(dir, 'rig.db'));
-    expect(db.appliedVersions()).toEqual([1]);
+    expect(db.appliedVersions()).toEqual([1, 2]);
     db.close();
   });
 
@@ -51,8 +53,8 @@ describe('Database — schema v1', () => {
     const count = db.adapter
       .prepare('SELECT COUNT(*) AS n FROM schema_versions')
       .get() as { n: number };
-    expect(count.n).toBe(1);
-    expect(db.appliedVersions()).toEqual([1]);
+    expect(count.n).toBe(2);
+    expect(db.appliedVersions()).toEqual([1, 2]);
     db.close();
   });
 
