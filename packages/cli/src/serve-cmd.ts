@@ -43,6 +43,12 @@ export async function runServe(cwd: string): Promise<void> {
   if (wantMcp) {
     // Blocks on stdin. Stays alongside the web server until both close.
     await serveMcp({ projectRoot: cwd });
+    return;
   }
-  // Web-only: Fastify's listening socket keeps the event loop alive on its own.
+
+  // Web-only: keep the event loop alive explicitly. Bun has been observed to
+  // exit when the main promise resolves even with a listening socket, and we
+  // also want to swallow stray SIGPIPE from disconnected tail pipes.
+  process.on('SIGPIPE', () => {});
+  await new Promise<void>(() => {});
 }
