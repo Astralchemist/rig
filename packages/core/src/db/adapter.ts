@@ -7,13 +7,16 @@ export interface SqliteStatement {
 export interface SqliteAdapter {
   exec(sql: string): void;
   prepare(sql: string): SqliteStatement;
+  pragma(statement: string): unknown;
+  transaction<T>(fn: () => T): () => T;
   /**
    * Load a native SQLite extension (e.g. sqlite-vec) from a path.
-   * Seam for native escape hatches per posture A — Phase 0 stub is a no-op
-   * but the surface exists so callers can be wired now.
+   * Seam for native escape hatches per posture A — callers can wire it now
+   * even if the only current backend is bun:sqlite.
    */
   loadExtension(path: string): void;
   close(): void;
+  readonly open: boolean;
 }
 
 export interface SqliteAdapterFactory {

@@ -1,15 +1,20 @@
-import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { Rig } from '@rig/core';
 
-export const runStatus = (cwd: string): void => {
-  const rigDir = join(resolve(cwd), '.rig');
-  if (!existsSync(rigDir)) {
+export const runStatus = async (cwd: string): Promise<void> => {
+  if (!Rig.isInitialized(cwd)) {
     console.log('rig: not initialized in this directory. Run `rig init` first.');
     return;
   }
-  console.log('rig: initialized');
-  console.log('  nodes:            0 (Phase 1 — indexing not implemented)');
-  console.log('  edges_structural: 0');
-  console.log('  edges_semantic:   0');
-  console.log('  files:            0');
+  const rig = await Rig.open(cwd);
+  try {
+    const s = await rig.status();
+    console.log('rig: initialized');
+    console.log(`  nodes:            ${s.nodes}`);
+    console.log(`  edges_structural: ${s.edges_structural}`);
+    console.log(`  edges_semantic:   ${s.edges_semantic}`);
+    console.log(`  files:            ${s.files}`);
+    console.log(`  last_sync_ts:     ${s.last_sync_ts ?? '(none)'}`);
+  } finally {
+    rig.close();
+  }
 };

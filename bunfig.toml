@@ -1,2 +1,5 @@
 [install]
 exact = true
+
+[test]
+root = "__tests__"

@@ -23,7 +23,8 @@
       "@rig/core": ["./packages/core/src/index.ts"],
       "@rig/core/*": ["./packages/core/src/*"],
       "@rig/mcp": ["./packages/mcp/src/index.ts"],
-      "@rig/mcp/*": ["./packages/mcp/src/*"]
+      "@rig/mcp/*": ["./packages/mcp/src/*"],
+      "@rig/generated/*": ["./generated/*"]
     }
   },
   "include": [

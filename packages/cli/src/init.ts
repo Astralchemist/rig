@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { Rig, RIG_DIR_NAME } from '@rig/core';
 
 const DEFAULT_CONFIG = {
   version: 1,
@@ -8,15 +9,20 @@ const DEFAULT_CONFIG = {
   embedder: { kind: 'local', model: 'Xenova/bge-small-en-v1.5' },
 };
 
-export const runInit = (cwd: string): void => {
+export const runInit = async (cwd: string): Promise<void> => {
   const root = resolve(cwd);
-  const rigDir = join(root, '.rig');
+  const rigDir = join(root, RIG_DIR_NAME);
   if (existsSync(rigDir)) {
     console.log(`rig: already initialized at ${rigDir}`);
     return;
   }
-  mkdirSync(rigDir, { recursive: true });
-  writeFileSync(join(rigDir, 'config.json'), JSON.stringify(DEFAULT_CONFIG, null, 2) + '\n');
+  const rig = await Rig.init(root);
+  const cfgPath = join(rigDir, 'config.json');
+  if (!existsSync(cfgPath)) {
+    writeFileSync(cfgPath, JSON.stringify(DEFAULT_CONFIG, null, 2) + '\n');
+  }
+  rig.close();
   console.log(`rig: initialized at ${rigDir}`);
-  console.log('  next: `rig index` (Phase 1 — not implemented yet)');
+  console.log('  schema:           v1');
+  console.log('  next:             `rig index` (Phase 1.2 — not implemented yet)');
 };
