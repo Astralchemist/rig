@@ -11,7 +11,7 @@ import type {
   Node as ExtractNode,
   UnresolvedReference,
 } from './extract/upstream-types.ts';
-import { walkProject } from './extract/walker.ts';
+import { walkProject, type WalkOptions } from './extract/walker.ts';
 import { resolveReferences } from './resolve/resolver.ts';
 import { detectCommunities } from './graph/communities.ts';
 import { recomputeHubness } from './graph/hubness.ts';
@@ -30,13 +30,14 @@ export async function runIndexAll(
   database: Database,
   embedder?: Embedder,
   onProgress?: (p: IndexProgress) => void,
+  walkOpts?: WalkOptions,
 ): Promise<IndexResult> {
   const start = Date.now();
   const allNodes: ExtractNode[] = [];
   const allEdges: ExtractEdge[] = [];
   const allRefs: UnresolvedReference[] = [];
   let fileCount = 0;
-  for await (const file of walkProject(projectRoot)) {
+  for await (const file of walkProject(projectRoot, walkOpts)) {
     const source = await readFile(file.absPath, 'utf-8');
     const mtime = statSync(file.absPath).mtimeMs;
     const hash = createHash('sha256').update(source).digest('hex').slice(0, 16);
