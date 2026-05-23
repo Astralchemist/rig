@@ -8,7 +8,8 @@ import type { Embedder } from './embed/types.ts';
 import { extractFromSource } from './extract/extractor.ts';
 import type { Node as ExtractNode } from './extract/upstream-types.ts';
 import { walkProject } from './extract/walker.ts';
-import { recomputeHubness } from './graph/hubness.ts';
+import { recomputeHubness, recomputeHubnessForFiles } from './graph/hubness.ts';
+import { inferTestsEdges } from './graph/tests-edges.ts';
 
 export interface SyncResult {
   filesChanged: number;
@@ -38,6 +39,7 @@ export async function runSync(
   for (const r of knownRows) known.set(r.path, r.hash);
 
   const changedNodes: ExtractNode[] = [];
+  const changedPaths: string[] = [];
   const seen = new Set<string>();
   for await (const file of walkProject(projectRoot)) {
     seen.add(file.relPath);
@@ -52,6 +54,7 @@ export async function runSync(
       for (const node of result.nodes) upsertNode(database.adapter, node);
     })();
     changedNodes.push(...result.nodes);
+    changedPaths.push(file.relPath);
     filesChanged++;
   }
 
@@ -73,8 +76,13 @@ export async function runSync(
     filesPurged++;
   }
 
-  if (filesChanged > 0 || filesPurged > 0) {
+  if (filesPurged > 0) {
+    // Purges can affect type rosters globally; full recompute is safer.
     recomputeHubness(database.adapter);
+    inferTestsEdges(database.adapter);
+  } else if (filesChanged > 0) {
+    recomputeHubnessForFiles(database.adapter, changedPaths);
+    inferTestsEdges(database.adapter);
   }
   return { filesChanged, filesPurged, durationMs: Date.now() - start };
 }
