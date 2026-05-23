@@ -1,0 +1,19 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+
+export interface State {
+  url: string;
+  projectRoot: string;
+  srcId: string;
+  dstId: string;
+  pendingId: number;
+  pendingId2: number;
+}
+
+export const readState = (): State => {
+  const raw = readFileSync(resolve(HERE, '.state.json'), 'utf-8');
+  return JSON.parse(raw) as State;
+};

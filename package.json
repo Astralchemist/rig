@@ -13,9 +13,11 @@
     "gen": "bun run scripts/gen.ts",
     "gen:check": "bun run scripts/gen-check.ts",
     "test": "bun test",
+    "test:e2e": "playwright test",
     "install:hooks": "bash scripts/install-hooks.sh"
   },
   "devDependencies": {
+    "@playwright/test": "1.60.0",
     "@types/bun": "latest",
     "@types/node": "^20",
     "prettier": "^3",
