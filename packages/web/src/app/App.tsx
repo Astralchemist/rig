@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Chat } from './Chat.tsx';
-import { Map, type Snapshot } from './Map.tsx';
+import { Map as RigMap, type Snapshot } from './Map.tsx';
 import { NodeDetail } from './NodeDetail.tsx';
 import { NodePopover } from './NodePopover.tsx';
 import { SearchPalette } from './SearchPalette.tsx';
@@ -157,7 +157,7 @@ export function App(): JSX.Element {
         </button>
       </header>
       {snap && snap.nodes.length > 0 && (
-        <Map
+        <RigMap
           snapshot={snap}
           onSelect={(id, pos) => {
             setSelected(id);

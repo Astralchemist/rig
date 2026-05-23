@@ -212,6 +212,18 @@ export class RigWrites {
     });
   }
 
+  // Record that the user's selection in the map changed. Feeds rig_subscribe
+  // so an agent can follow the user's gaze. Stored as a 'selection' mutation
+  // so ws-derive can emit selection:changed events.
+  recordSelection(nodeId: string | null, ctx: WriteCtx): void {
+    recordMutation(this.db.adapter, {
+      sessionId: ctx.sessionId,
+      kind: 'selection',
+      payload: { nodeId },
+      actor: ctx.actor,
+    });
+  }
+
   mutationsSince(sinceTs: number, sessionId?: string): MutationRow[] {
     return listMutationsSince(this.db.adapter, sinceTs, sessionId);
   }

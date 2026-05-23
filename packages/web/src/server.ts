@@ -64,6 +64,10 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
     token = loadOrCreateToken(join(opts.projectRoot, '.rig'));
     app.addHook('preHandler', requireBearer(token));
     registerAuthRoutes(app, { token, cookieMaxAgeSec: 60 * 60 * 24 * 7 });
+  } else {
+    // Always expose /api/session/me so the React TokenGate probe doesn't 404.
+    // When auth is off, every caller is "authed".
+    app.get('/api/session/me', async () => ({ authed: true, auth_required: false }));
   }
 
   app.get('/health', async () => ({ ok: true, name: 'rig-web', version: '0.0.1', auth: authOn }));
