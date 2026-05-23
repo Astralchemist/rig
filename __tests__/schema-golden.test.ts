@@ -47,12 +47,18 @@ describe('schema golden (v1 + v2)', () => {
     expect(SCHEMA).toContain('node_id UNINDEXED');
   });
 
-  test('migrations are versioned 1, 2, 3, 4, 5', () => {
+  test('migrations are versioned 1, 2, 3, 4, 5, 6', () => {
     expect(SCHEMA).toContain('-- v1:');
     expect(SCHEMA).toContain('-- v2:');
     expect(SCHEMA).toContain('-- v3:');
     expect(SCHEMA).toContain('-- v4:');
     expect(SCHEMA).toContain('-- v5:');
+    expect(SCHEMA).toContain('-- v6:');
+  });
+
+  test('v6 adds community_id column + index', () => {
+    expect(SCHEMA).toMatch(/ALTER TABLE nodes ADD COLUMN community_id/);
+    expect(SCHEMA).toContain('CREATE INDEX IF NOT EXISTS idx_nodes_community');
   });
 
   test('v5 adds text_hash to embeddings', () => {

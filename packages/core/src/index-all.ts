@@ -13,12 +13,13 @@ import type {
 } from './extract/upstream-types.ts';
 import { walkProject } from './extract/walker.ts';
 import { resolveReferences } from './resolve/resolver.ts';
+import { detectCommunities } from './graph/communities.ts';
 import { recomputeHubness } from './graph/hubness.ts';
 import { inferTestsEdges } from './graph/tests-edges.ts';
 import type { IndexResult } from './rig-types.ts';
 
 export interface IndexProgress {
-  phase: 'extract' | 'resolve' | 'embed' | 'tests-edges' | 'hubness';
+  phase: 'extract' | 'resolve' | 'embed' | 'tests-edges' | 'hubness' | 'communities';
   current?: number;
   total?: number;
   detail?: string;
@@ -63,6 +64,9 @@ export async function runIndexAll(
   inferTestsEdges(database.adapter);
   onProgress?.({ phase: 'hubness' });
   recomputeHubness(database.adapter);
+  onProgress?.({ phase: 'communities' });
+  const communityCount = detectCommunities(database.adapter);
+  onProgress?.({ phase: 'communities', total: communityCount });
   return {
     files: fileCount,
     nodes: allNodes.length,

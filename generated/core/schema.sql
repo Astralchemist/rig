@@ -1,5 +1,5 @@
 -- GENERATED FILE — DO NOT EDIT.
--- Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts, .contracts/migrations/v5.contract.ts
+-- Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts, .contracts/migrations/v5.contract.ts, .contracts/migrations/v6.contract.ts
 -- Edit the .contract.ts file(s), then run `bun run gen`.
 
 -- v1: Initial Rig schema: nodes, structural + semantic edges, embeddings, activations, FTS5
@@ -200,3 +200,7 @@ CREATE TRIGGER IF NOT EXISTS aliases_provenance_nonempty
 
 -- v5: A3.5 perf: text_hash on embeddings lets re-index skip unchanged nodes
 ALTER TABLE embeddings ADD COLUMN text_hash TEXT NOT NULL DEFAULT '';
+
+-- v6: A4-lite: community_id column on nodes for label-propagation clustering
+ALTER TABLE nodes ADD COLUMN community_id INTEGER NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_nodes_community ON nodes(community_id);
