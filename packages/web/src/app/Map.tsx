@@ -6,6 +6,8 @@ export interface SnapshotNode {
   type: string;
   name: string;
   pull_score: number;
+  is_hub?: number;
+  hubness?: number;
 }
 
 export interface SnapshotPending {
@@ -41,6 +43,7 @@ interface GraphLink {
 const KIND_COLOR: Record<string, string> = {
   file: '#94a3b8',
   module: '#a78bfa',
+  'markdown-section': '#fcd34d',
   class: '#fbbf24',
   function: '#34d399',
   method: '#60a5fa',
@@ -54,39 +57,69 @@ const KIND_COLOR: Record<string, string> = {
 };
 
 const colorFor = (kind: string): string => KIND_COLOR[kind] ?? '#9ca3af';
-const radiusFor = (pull: number): number => 4 + Math.max(0, Math.min(1, pull)) * 20;
+const radiusFor = (n: SnapshotNode): number => {
+  const base = 4 + Math.max(0, Math.min(1, n.pull_score)) * 14;
+  const hubBoost = n.is_hub ? 6 + (n.hubness ?? 0) * 8 : 0;
+  return base + hubBoost;
+};
 
 export interface MapProps {
   snapshot: Snapshot;
   onSelect: (id: string) => void;
   onAccept: (pendingId: number) => void;
   onReject: (pendingId: number) => void;
+  // Bump the token to programmatically zoom-to-node (e.g. from the Cmd-K palette).
+  // Plain selection via canvas click does NOT bump this — only intentional jumps.
+  focusToken?: { id: string; ts: number } | null;
+  selectedId?: string | null;
 }
 
-export function Map({ snapshot, onSelect, onAccept, onReject }: MapProps): JSX.Element {
+export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, selectedId }: MapProps): JSX.Element {
+  // Visible-kind set. Mutable via filter chips above the canvas. `null` means
+  // "show everything"; a Set means "show only these kinds".
+  const allKinds = useMemo(
+    () =>
+      Array.from(new Set(snapshot.nodes.map((n) => n.type))).sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    [snapshot.nodes],
+  );
+  const [hiddenKinds, setHiddenKinds] = useState<Set<string>>(new Set());
+  const [hubsOnly, setHubsOnly] = useState(false);
+
   const graphData = useMemo(() => {
-    const nodes: GraphNode[] = snapshot.nodes.map((n) => ({ ...n }));
+    const visible = (n: SnapshotNode): boolean => {
+      if (hubsOnly && !n.is_hub) return false;
+      return !hiddenKinds.has(n.type);
+    };
+    const visibleNodes = snapshot.nodes.filter(visible);
+    const visibleIds = new Set(visibleNodes.map((n) => n.id));
+    const nodes: GraphNode[] = visibleNodes.map((n) => ({ ...n }));
+    const linkFilter = <T extends { src: string; dst: string }>(e: T): boolean =>
+      visibleIds.has(e.src) && visibleIds.has(e.dst);
     const links: GraphLink[] = [
-      ...snapshot.edges_structural.map((e) => ({
+      ...snapshot.edges_structural.filter(linkFilter).map((e) => ({
         source: e.src,
         target: e.dst,
         table: 'structural' as const,
       })),
-      ...snapshot.edges_semantic.map((e) => ({
+      ...snapshot.edges_semantic.filter(linkFilter).map((e) => ({
         source: e.src,
         target: e.dst,
         table: 'semantic' as const,
         weight: e.weight,
       })),
-      ...snapshot.pending_edges.map((p) => ({
-        source: p.src,
-        target: p.dst,
-        table: 'pending' as const,
-        pending: p,
-      })),
+      ...snapshot.pending_edges
+        .filter((p) => visibleIds.has(p.src) && visibleIds.has(p.dst))
+        .map((p) => ({
+          source: p.src,
+          target: p.dst,
+          table: 'pending' as const,
+          pending: p,
+        })),
     ];
     return { nodes, links };
-  }, [snapshot]);
+  }, [snapshot, hiddenKinds, hubsOnly]);
 
   const ref = useRef<ForceGraphMethods<GraphNode, GraphLink>>();
   const [size, setSize] = useState({ w: 800, h: 600 });
@@ -100,8 +133,74 @@ export function Map({ snapshot, onSelect, onAccept, onReject }: MapProps): JSX.E
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // Camera pan to the focused node when the parent bumps focusToken.
+  useEffect(() => {
+    if (!focusToken) return;
+    const node = graphData.nodes.find((n) => n.id === focusToken.id);
+    if (!node || node.x === undefined || node.y === undefined) return;
+    ref.current?.centerAt(node.x, node.y, 600);
+    ref.current?.zoom(4, 600);
+  }, [focusToken, graphData.nodes]);
+
+  const toggleKind = (k: string): void => {
+    setHiddenKinds((s) => {
+      const next = new Set(s);
+      next.has(k) ? next.delete(k) : next.add(k);
+      return next;
+    });
+  };
+
   return (
     <>
+      <div
+        style={{
+          position: 'absolute',
+          top: 56,
+          left: 12,
+          zIndex: 10,
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 6,
+          maxWidth: 'calc(100vw - 24px)',
+        }}
+      >
+        <button
+          onClick={() => setHubsOnly((v) => !v)}
+          title="Show only hub nodes"
+          style={{
+            padding: '4px 10px',
+            fontSize: 11,
+            border: '1px solid #1f2937',
+            borderRadius: 12,
+            background: hubsOnly ? '#fbbf24' : '#111827',
+            color: hubsOnly ? '#0b0d12' : '#fbbf24',
+            cursor: 'pointer',
+          }}
+        >
+          {hubsOnly ? '◉ hubs only' : '○ hubs only'}
+        </button>
+        {allKinds.map((k) => {
+          const hidden = hiddenKinds.has(k);
+          return (
+            <button
+              key={k}
+              onClick={() => toggleKind(k)}
+              style={{
+                padding: '4px 10px',
+                fontSize: 11,
+                border: `1px solid ${hidden ? '#1f2937' : colorFor(k)}`,
+                borderRadius: 12,
+                background: hidden ? '#0b0d12' : `${colorFor(k)}22`,
+                color: hidden ? '#6b7280' : colorFor(k),
+                cursor: 'pointer',
+                opacity: hidden ? 0.5 : 1,
+              }}
+            >
+              {k}
+            </button>
+          );
+        })}
+      </div>
       <ForceGraph2D
         ref={ref}
         width={size.w}
@@ -120,15 +219,33 @@ export function Map({ snapshot, onSelect, onAccept, onReject }: MapProps): JSX.E
         nodeLabel={(n) => `${(n as GraphNode).type}: ${(n as GraphNode).name}`}
         nodeCanvasObject={(rawNode, ctx, scale) => {
           const n = rawNode as GraphNode;
-          const r = radiusFor(n.pull_score);
+          const r = radiusFor(n);
+          const x = n.x ?? 0;
+          const y = n.y ?? 0;
+          if (n.is_hub) {
+            // Halo ring for hubs — wider when hubness is higher.
+            const haloR = r + 3 + (n.hubness ?? 0) * 4;
+            ctx.beginPath();
+            ctx.arc(x, y, haloR, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.55)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
           ctx.beginPath();
-          ctx.arc(n.x ?? 0, n.y ?? 0, r, 0, 2 * Math.PI);
+          ctx.arc(x, y, r, 0, 2 * Math.PI);
           ctx.fillStyle = colorFor(n.type);
           ctx.fill();
-          if (scale > 1.2) {
-            ctx.fillStyle = '#e5e7eb';
-            ctx.font = `${10 / scale}px ui-sans-serif`;
-            ctx.fillText(n.name, (n.x ?? 0) + r + 2, (n.y ?? 0) + 3);
+          if (selectedId === n.id) {
+            ctx.beginPath();
+            ctx.arc(x, y, r + 4, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#60a5fa';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+          if (scale > 1.2 || n.is_hub) {
+            ctx.fillStyle = n.is_hub ? '#fbbf24' : '#e5e7eb';
+            ctx.font = `${(n.is_hub ? 11 : 10) / scale}px ui-sans-serif`;
+            ctx.fillText(n.name, x + r + 2, y + 3);
           }
         }}
         onNodeClick={(n) => onSelect((n as GraphNode).id)}

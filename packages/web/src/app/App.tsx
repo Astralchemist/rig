@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Chat } from './Chat.tsx';
 import { Map, type Snapshot } from './Map.tsx';
 import { NodeDetail } from './NodeDetail.tsx';
+import { SearchPalette } from './SearchPalette.tsx';
 
 interface Status {
   initialized: boolean;
@@ -16,6 +17,7 @@ export function App(): JSX.Element {
   const [status, setStatus] = useState<Status | null>(null);
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [focusToken, setFocusToken] = useState<{ id: string; ts: number } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const selectedName = useMemo(
     () => snap?.nodes.find((n) => n.id === selected)?.name ?? null,
@@ -45,6 +47,28 @@ export function App(): JSX.Element {
     });
     return () => ws.close();
   }, []);
+
+  // URL hash → initial selection (shareable links). #node:abc123 selects + focuses.
+  useEffect(() => {
+    const fromHash = (): void => {
+      const h = location.hash.replace(/^#/, '');
+      if (h) {
+        setSelected(h);
+        setFocusToken({ id: h, ts: Date.now() });
+      }
+    };
+    fromHash();
+    window.addEventListener('hashchange', fromHash);
+    return () => window.removeEventListener('hashchange', fromHash);
+  }, []);
+
+  // Selection → URL hash. Always replace so back-button doesn't trap users.
+  useEffect(() => {
+    const next = selected ? `#${selected}` : '';
+    if (location.hash !== next) {
+      history.replaceState(null, '', `${location.pathname}${location.search}${next}`);
+    }
+  }, [selected]);
 
   // Post selection changes so an agent polling rig_subscribe can follow gaze.
   useEffect(() => {
@@ -111,6 +135,8 @@ export function App(): JSX.Element {
         <Map
           snapshot={snap}
           onSelect={setSelected}
+          focusToken={focusToken}
+          selectedId={selected}
           onAccept={async (id) => {
             await fetch(`/api/pending-edges/${id}/accept`, { method: 'POST' });
             await refresh();
@@ -121,8 +147,37 @@ export function App(): JSX.Element {
           }}
         />
       )}
+      <SearchPalette
+        onPick={(id) => {
+          setSelected(id);
+          setFocusToken({ id, ts: Date.now() });
+        }}
+      />
+      <kbd
+        style={{
+          position: 'absolute',
+          bottom: 12,
+          left: 12,
+          padding: '4px 8px',
+          background: '#111827',
+          border: '1px solid #1f2937',
+          borderRadius: 4,
+          color: '#9ca3af',
+          fontSize: 11,
+          zIndex: 10,
+        }}
+      >
+        ⌘K to search
+      </kbd>
       {selected && (
-        <NodeDetail id={selected} onClose={() => setSelected(null)} onJump={setSelected} />
+        <NodeDetail
+          id={selected}
+          onClose={() => setSelected(null)}
+          onJump={(id) => {
+            setSelected(id);
+            setFocusToken({ id, ts: Date.now() });
+          }}
+        />
       )}
       <Chat selected={selected} selectedName={selectedName} />
       {snap && snap.nodes.length === 0 && (
