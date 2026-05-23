@@ -26,6 +26,7 @@ describe('heavy-tool tier guard', () => {
     sessionId: 'test',
     isMainSession,
     provenance: null,
+    recordActivation: () => {},
   });
 
   test('rig_explore throws MAIN_SESSION_FORBIDDEN from main session', async () => {

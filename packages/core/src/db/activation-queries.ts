@@ -1,9 +1,11 @@
 import type { SqliteAdapter } from './adapter.ts';
 
+export type ActivationSource = 'query' | 'expand' | 'click' | 'ai' | 'mcp' | 'web';
+
 export const recordActivation = (
   db: SqliteAdapter,
   nodeId: string,
-  source: 'query' | 'expand' | 'click' | 'ai',
+  source: ActivationSource | string = 'mcp',
 ): void => {
   db.prepare('INSERT INTO activations (node_id, ts, source) VALUES (?, ?, ?)').run(
     nodeId,

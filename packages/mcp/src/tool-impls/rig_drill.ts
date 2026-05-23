@@ -8,6 +8,7 @@ type Result = z.infer<typeof contract.output>;
 export async function run(args: Args, ctx: ToolContext): Promise<Result> {
   const start = Date.now();
   if (!ctx.rig.getNode(args.hub_id)) throw new ToolError('NODE_NOT_FOUND', args.hub_id);
+  ctx.recordActivation(args.hub_id);
   const results = ctx.rig.drillFromHub(args.hub_id, {
     query: args.query,
     maxDepth: args.max_depth,

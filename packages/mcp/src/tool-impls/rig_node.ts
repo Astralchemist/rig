@@ -12,6 +12,7 @@ export async function run(args: Args, ctx: ToolContext): Promise<Result> {
   const start = Date.now();
   const node = ctx.rig.getNode(args.id);
   if (!node) throw new ToolError('NODE_NOT_FOUND', args.id);
+  ctx.recordActivation(args.id);
   const data = node.data;
   const counts = ctx.rig.getNeighborCounts(args.id);
   return {

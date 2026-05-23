@@ -38,6 +38,7 @@ export class Beta { do(): void {} }`,
     sessionId: 'test-session',
     isMainSession: false,
     provenance,
+    recordActivation: () => {},
   });
 
   test('PROVENANCE_REQUIRED fires when ctx.provenance is null', async () => {

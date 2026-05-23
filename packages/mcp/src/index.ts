@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Rig } from '@rig/core';
-import { ToolError, type ToolContext, type ToolHandler } from './dispatch.ts';
+import { ToolError, makeActivationRecorder, type ToolContext, type ToolHandler } from './dispatch.ts';
 import {
   buildHandlersMap,
   makeMessageHandler,
@@ -53,6 +53,7 @@ export async function serveMcp(opts: ServeMcpOptions = {}): Promise<void> {
     isMainSession: true,
     // No writes in Phase 1, so provenance is always absent.
     provenance: null,
+    recordActivation: makeActivationRecorder(rig),
   };
 
   const transport = new StdioTransport();

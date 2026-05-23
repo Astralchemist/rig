@@ -8,6 +8,7 @@ type Result = z.infer<typeof contract.output>;
 export async function run(args: Args, ctx: ToolContext): Promise<Result> {
   const start = Date.now();
   if (!ctx.rig.getNode(args.id)) throw new ToolError('NODE_NOT_FOUND', args.id);
+  ctx.recordActivation(args.id);
   const rows = ctx.rig.getAliases(args.id);
   return {
     aliases: rows.map((r) => ({

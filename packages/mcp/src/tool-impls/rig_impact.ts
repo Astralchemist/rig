@@ -11,6 +11,7 @@ export async function run(args: Args, ctx: ToolContext): Promise<Result> {
   if (!ctx.rig.getNode(args.id)) {
     throw new ToolError('NODE_NOT_FOUND', args.id);
   }
+  ctx.recordActivation(args.id);
   return {
     nodes: ctx.rig.getImpactRadius(args.id, args.depth).map(toNodeRef),
     elapsed_ms: Date.now() - start,

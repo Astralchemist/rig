@@ -10,6 +10,7 @@ export async function run(args: Args, ctx: ToolContext): Promise<Result> {
   if (!ctx.rig.getNode(args.id)) {
     throw new ToolError('NODE_NOT_FOUND', args.id);
   }
+  ctx.recordActivation(args.id);
   const edges = ctx.rig.getNeighbors(args.id, {
     kind: args.kind,
     limit: args.limit,
