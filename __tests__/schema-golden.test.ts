@@ -47,11 +47,16 @@ describe('schema golden (v1 + v2)', () => {
     expect(SCHEMA).toContain('node_id UNINDEXED');
   });
 
-  test('migrations are versioned 1, 2, 3, 4', () => {
+  test('migrations are versioned 1, 2, 3, 4, 5', () => {
     expect(SCHEMA).toContain('-- v1:');
     expect(SCHEMA).toContain('-- v2:');
     expect(SCHEMA).toContain('-- v3:');
     expect(SCHEMA).toContain('-- v4:');
+    expect(SCHEMA).toContain('-- v5:');
+  });
+
+  test('v5 adds text_hash to embeddings', () => {
+    expect(SCHEMA).toMatch(/ALTER TABLE embeddings ADD COLUMN text_hash/);
   });
 
   test('v3 adds is_hub + hubness columns + hub indexes', () => {

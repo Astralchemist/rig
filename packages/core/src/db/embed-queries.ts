@@ -10,11 +10,23 @@ export const upsertEmbedding = (
   nodeId: string,
   model: string,
   vector: Float32Array,
+  textHash = '',
 ): void => {
   db.prepare(
-    `INSERT INTO embeddings (node_id, model, dim, vector) VALUES (?, ?, ?, ?)
-     ON CONFLICT(node_id) DO UPDATE SET model=excluded.model, dim=excluded.dim, vector=excluded.vector`,
-  ).run(nodeId, model, vector.length, toBlob(vector));
+    `INSERT INTO embeddings (node_id, model, dim, vector, text_hash) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(node_id) DO UPDATE SET model=excluded.model, dim=excluded.dim, vector=excluded.vector, text_hash=excluded.text_hash`,
+  ).run(nodeId, model, vector.length, toBlob(vector), textHash);
+};
+
+// Used by embedAndStore to skip re-embedding nodes whose embedding text hasn't
+// changed since last index.
+export const getEmbeddingFingerprint = (
+  db: SqliteAdapter,
+  nodeId: string,
+): { model: string; text_hash: string } | null => {
+  return db
+    .prepare(`SELECT model, text_hash FROM embeddings WHERE node_id = ?`)
+    .get(nodeId) as { model: string; text_hash: string } | null;
 };
 
 export const getEmbedding = (db: SqliteAdapter, nodeId: string): Float32Array | null => {
