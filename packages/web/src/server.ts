@@ -1,3 +1,4 @@
+import compress from '@fastify/compress';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import { Rig } from '@rig/core';
@@ -42,6 +43,7 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
   await app.register(cors, {
     origin: [`http://${host}:${port}`, 'http://localhost:7474', 'http://127.0.0.1:7474'],
   });
+  await app.register(compress, { global: true, encodings: ['gzip', 'deflate'], threshold: 1024 });
 
   app.get('/health', async () => ({ ok: true, name: 'rig-web', version: '0.0.1' }));
   registerRoutes(app, rig);
