@@ -1,11 +1,34 @@
 {
   "name": "rig",
-  "version": "0.0.1",
-  "private": true,
+  "version": "0.1.0",
+  "private": false,
   "type": "module",
   "description": "Local-first semantic knowledge graph",
   "author": "Astralchemist <kingolajohn55@gmail.com>",
   "license": "MIT",
+  "homepage": "https://github.com/Astralchemist/rig",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Astralchemist/rig.git"
+  },
+  "bin": {
+    "rig": "./dist/rig"
+  },
+  "files": [
+    "dist",
+    "generated",
+    ".contracts",
+    "packages/*/src",
+    "packages/*/package.json",
+    "packages/web/dist",
+    "LICENSE",
+    "LICENSE-CODEGRAPH.txt",
+    "README.md"
+  ],
+  "engines": {
+    "bun": ">=1.1",
+    "node": ">=20 <25"
+  },
   "workspaces": [
     "packages/*"
   ],
@@ -14,7 +37,14 @@
     "gen:check": "bun run scripts/gen-check.ts",
     "test": "bun test",
     "test:e2e": "playwright test",
-    "install:hooks": "bash scripts/install-hooks.sh"
+    "install:hooks": "bash scripts/install-hooks.sh",
+    "build": "bun run build:web && bun run build:cli",
+    "build:web": "cd packages/web && bunx vite build",
+    "build:cli": "bun build packages/cli/src/index.ts --compile --outfile dist/rig",
+    "prepublishOnly": "bun run build && bun test && bun run gen:check"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^12"
   },
   "devDependencies": {
     "@playwright/test": "1.60.0",
@@ -26,6 +56,6 @@
     "zod-to-json-schema": "^3.23"
   },
   "comments": {
-    "optionalDependencies": "Native escape hatches (sqlite-vec, fastembed-rs) land here in Phase 3+. See docs/buildbrief.md addendum on distribution posture A."
+    "design": "Local-first per docs/buildbrief.md. bun:sqlite primary, better-sqlite3 as optional Node fallback. Native escape hatches (sqlite-vec, fastembed-rs) land in optionalDependencies in Phase 6+."
   }
 }
