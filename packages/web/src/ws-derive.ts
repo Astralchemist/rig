@@ -63,6 +63,13 @@ export const deriveEvents = (rig: Rig, mutations: MutationRow[]): DerivedEvent[]
         }
         break;
       }
+      case 'add_alias':
+        out.push({
+          type: 'alias:added',
+          ts: m.ts,
+          payload: { node_id: p.nodeId, alias: p.alias },
+        });
+        break;
       case 'promote_hub':
         out.push({
           type: 'node:promoted',

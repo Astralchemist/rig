@@ -1,10 +1,11 @@
 // GENERATED FILE — DO NOT EDIT.
-// Source: .contracts/tools/rig_explore.contract.ts, .contracts/tools/rig_propose_edge.contract.ts, .contracts/tools/rig_hubs.contract.ts, .contracts/tools/rig_files.contract.ts, .contracts/tools/rig_drill.contract.ts, .contracts/tools/rig_impact.contract.ts, .contracts/tools/rig_promote.contract.ts, .contracts/tools/rig_subscribe.contract.ts, .contracts/tools/rig_cluster.contract.ts, .contracts/tools/rig_focus.contract.ts, .contracts/tools/rig_node.contract.ts, .contracts/tools/rig_undo.contract.ts, .contracts/tools/rig_callers.contract.ts, .contracts/tools/rig_annotate.contract.ts, .contracts/tools/rig_pull.contract.ts, .contracts/tools/rig_neighbors.contract.ts, .contracts/tools/rig_add_node.contract.ts, .contracts/tools/rig_search.contract.ts, .contracts/tools/rig_callees.contract.ts, .contracts/tools/rig_status.contract.ts, .contracts/tools/rig_hub_of.contract.ts, .contracts/tools/rig_context.contract.ts
+// Source: .contracts/tools/rig_explore.contract.ts, .contracts/tools/rig_propose_edge.contract.ts, .contracts/tools/rig_hubs.contract.ts, .contracts/tools/rig_add_alias.contract.ts, .contracts/tools/rig_files.contract.ts, .contracts/tools/rig_drill.contract.ts, .contracts/tools/rig_impact.contract.ts, .contracts/tools/rig_promote.contract.ts, .contracts/tools/rig_subscribe.contract.ts, .contracts/tools/rig_cluster.contract.ts, .contracts/tools/rig_focus.contract.ts, .contracts/tools/rig_node.contract.ts, .contracts/tools/rig_undo.contract.ts, .contracts/tools/rig_callers.contract.ts, .contracts/tools/rig_annotate.contract.ts, .contracts/tools/rig_pull.contract.ts, .contracts/tools/rig_neighbors.contract.ts, .contracts/tools/rig_add_node.contract.ts, .contracts/tools/rig_search.contract.ts, .contracts/tools/rig_callees.contract.ts, .contracts/tools/rig_status.contract.ts, .contracts/tools/rig_hub_of.contract.ts, .contracts/tools/rig_context.contract.ts, .contracts/tools/rig_aliases.contract.ts
 // Edit the .contract.ts file(s), then run `bun run gen`.
 
 export { rigExploreHandler } from './handlers/rig_explore.handler.ts';
 export { rigProposeEdgeHandler } from './handlers/rig_propose_edge.handler.ts';
 export { rigHubsHandler } from './handlers/rig_hubs.handler.ts';
+export { rigAddAliasHandler } from './handlers/rig_add_alias.handler.ts';
 export { rigFilesHandler } from './handlers/rig_files.handler.ts';
 export { rigDrillHandler } from './handlers/rig_drill.handler.ts';
 export { rigImpactHandler } from './handlers/rig_impact.handler.ts';
@@ -24,3 +25,4 @@ export { rigCalleesHandler } from './handlers/rig_callees.handler.ts';
 export { rigStatusHandler } from './handlers/rig_status.handler.ts';
 export { rigHubOfHandler } from './handlers/rig_hub_of.handler.ts';
 export { rigContextHandler } from './handlers/rig_context.handler.ts';
+export { rigAliasesHandler } from './handlers/rig_aliases.handler.ts';

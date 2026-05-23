@@ -47,10 +47,11 @@ describe('schema golden (v1 + v2)', () => {
     expect(SCHEMA).toContain('node_id UNINDEXED');
   });
 
-  test('migrations are versioned 1, 2, 3', () => {
+  test('migrations are versioned 1, 2, 3, 4', () => {
     expect(SCHEMA).toContain('-- v1:');
     expect(SCHEMA).toContain('-- v2:');
     expect(SCHEMA).toContain('-- v3:');
+    expect(SCHEMA).toContain('-- v4:');
   });
 
   test('v3 adds is_hub + hubness columns + hub indexes', () => {
@@ -58,6 +59,12 @@ describe('schema golden (v1 + v2)', () => {
     expect(SCHEMA).toMatch(/ALTER TABLE nodes ADD COLUMN hubness/);
     expect(SCHEMA).toContain('CREATE INDEX IF NOT EXISTS idx_nodes_is_hub');
     expect(SCHEMA).toContain('CREATE INDEX IF NOT EXISTS idx_nodes_hubness');
+  });
+
+  test('v4 adds aliases table + FTS + provenance trigger', () => {
+    expect(SCHEMA).toContain('CREATE TABLE IF NOT EXISTS aliases');
+    expect(SCHEMA).toContain('CREATE VIRTUAL TABLE IF NOT EXISTS aliases_fts');
+    expect(SCHEMA).toContain('CREATE TRIGGER IF NOT EXISTS aliases_provenance_nonempty');
   });
 
   test('embeddings table has vector BLOB + dim columns', () => {

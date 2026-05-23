@@ -1,5 +1,5 @@
 // GENERATED FILE — DO NOT EDIT.
-// Source: .contracts/events/focus-requested.contract.ts, .contracts/events/selection-changed.contract.ts, .contracts/events/node-promoted.contract.ts, .contracts/events/edge-accepted.contract.ts, .contracts/events/edge-proposed.contract.ts, .contracts/events/node-added.contract.ts, .contracts/events/edge-rejected.contract.ts
+// Source: .contracts/events/focus-requested.contract.ts, .contracts/events/selection-changed.contract.ts, .contracts/events/node-promoted.contract.ts, .contracts/events/edge-accepted.contract.ts, .contracts/events/alias-added.contract.ts, .contracts/events/edge-proposed.contract.ts, .contracts/events/node-added.contract.ts, .contracts/events/edge-rejected.contract.ts
 // Edit the .contract.ts file(s), then run `bun run gen`.
 
 // focus:requested
@@ -79,6 +79,26 @@
 //     "pending_id",
 //     "src",
 //     "dst"
+//   ],
+//   "additionalProperties": false,
+//   "$schema": "http://json-schema.org/draft-07/schema#"
+// }
+
+// alias:added
+// payload (JSON Schema):
+// {
+//   "type": "object",
+//   "properties": {
+//     "node_id": {
+//       "type": "string"
+//     },
+//     "alias": {
+//       "type": "string"
+//     }
+//   },
+//   "required": [
+//     "node_id",
+//     "alias"
 //   ],
 //   "additionalProperties": false,
 //   "$schema": "http://json-schema.org/draft-07/schema#"
@@ -173,6 +193,7 @@ export type WsEvent =
   | { type: 'selection:changed'; payload: unknown /* see schema above */ }
   | { type: 'node:promoted'; payload: unknown /* see schema above */ }
   | { type: 'edge:accepted'; payload: unknown /* see schema above */ }
+  | { type: 'alias:added'; payload: unknown /* see schema above */ }
   | { type: 'edge:proposed'; payload: unknown /* see schema above */ }
   | { type: 'node:added'; payload: unknown /* see schema above */ }
   | { type: 'edge:rejected'; payload: unknown /* see schema above */ };

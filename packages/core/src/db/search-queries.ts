@@ -52,16 +52,29 @@ export const searchNodes = (
   const ftsQuery = toFtsQuery(query);
   if (!ftsQuery) return [];
 
-  let sql =
-    `SELECT n.id, n.type, n.name, n.data FROM nodes_fts
-     JOIN nodes n ON n.id = nodes_fts.node_id
-     WHERE nodes_fts MATCH ?`;
+  // FTS5 hits over nodes_fts (name/qualified_name) UNIONed with aliases_fts.
+  // GROUP BY id keeps one row per canonical anchor; MIN(rank) preserves the
+  // best match across both sources. bm25 returns negative-ish values where
+  // lower is better — MIN gives us the strongest hit.
+  const kindFilter = opts.kind ? `AND n.type = ?` : '';
+  const sql = `
+    SELECT id, type, name, data, MIN(rank) AS rank FROM (
+      SELECT n.id, n.type, n.name, n.data, bm25(nodes_fts) AS rank
+      FROM nodes_fts JOIN nodes n ON n.id = nodes_fts.node_id
+      WHERE nodes_fts MATCH ? ${kindFilter}
+      UNION ALL
+      SELECT n.id, n.type, n.name, n.data, bm25(aliases_fts) AS rank
+      FROM aliases_fts JOIN nodes n ON n.id = aliases_fts.node_id
+      WHERE aliases_fts MATCH ? ${kindFilter}
+    )
+    GROUP BY id
+    ORDER BY rank
+    LIMIT ?
+  `;
   const params: unknown[] = [ftsQuery];
-  if (opts.kind) {
-    sql += ` AND n.type = ?`;
-    params.push(opts.kind);
-  }
-  sql += ` ORDER BY bm25(nodes_fts) LIMIT ?`;
+  if (opts.kind) params.push(opts.kind);
+  params.push(ftsQuery);
+  if (opts.kind) params.push(opts.kind);
   params.push(limit);
   return (db.prepare(sql).all(...params) as NodeRow[]).map(rowToNode);
 };

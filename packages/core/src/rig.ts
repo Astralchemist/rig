@@ -24,6 +24,7 @@ import {
 } from './graph/traversal.ts';
 import { runIndexAll } from './index-all.ts';
 import { computeMagneticPull, type PullResult } from './pull.ts';
+import { listAliases, type AliasRow } from './db/alias-queries.ts';
 import { drillFromHub, type DrillResult } from './graph/hub-drill.ts';
 import { getTopHubs, hubsOf, promoteHub, type HubRef } from './graph/hubness.ts';
 import { dbPathOf, rigDirOf, toRigNode } from './rig-shape.ts';
@@ -39,6 +40,7 @@ export type { IndexResult, RigOptions, StatusInfo };
 export type { PullResult } from './pull.ts';
 export type { HubRef } from './graph/hubness.ts';
 export type { DrillResult } from './graph/hub-drill.ts';
+export type { AliasRow } from './db/alias-queries.ts';
 export type { SyncResult } from './sync.ts';
 export type { TaggedEdge, NeighborsOptions } from './db/edge-queries.ts';
 export type { SearchOptions } from './db/search-queries.ts';
@@ -169,6 +171,10 @@ export class Rig {
 
   promoteHub(id: NodeId): boolean {
     return promoteHub(this.database.adapter, id);
+  }
+
+  getAliases(id: NodeId): AliasRow[] {
+    return listAliases(this.database.adapter, id);
   }
 
   getMagneticPull(id: NodeId, k = 10): PullResult[] {

@@ -1,5 +1,5 @@
 // GENERATED FILE — DO NOT EDIT.
-// Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts
+// Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts
 // Edit the .contract.ts file(s), then run `bun run gen`.
 
 export interface Migration {
@@ -27,5 +27,11 @@ export const MIGRATIONS: readonly Migration[] = [
     description: "Phase 3.5 A1: hub-and-spoke topology — is_hub + hubness on nodes",
     forward: "ALTER TABLE nodes ADD COLUMN is_hub INTEGER NOT NULL DEFAULT 0;\nALTER TABLE nodes ADD COLUMN hubness REAL NOT NULL DEFAULT 0;\nALTER TABLE nodes ADD COLUMN hub_explicit INTEGER NOT NULL DEFAULT 0;\nCREATE INDEX IF NOT EXISTS idx_nodes_is_hub ON nodes(is_hub) WHERE is_hub = 1;\nCREATE INDEX IF NOT EXISTS idx_nodes_hubness ON nodes(hubness DESC);",
     rollback: "DROP INDEX IF EXISTS idx_nodes_hubness;\nDROP INDEX IF EXISTS idx_nodes_is_hub;\n-- SQLite cannot DROP COLUMN before 3.35; rollback is destructive (table recreate).\n-- Left as a no-op for forward-only deployments.",
+  },
+  {
+    version: 4,
+    description: "Phase 3.5 A3: aliases table + FTS5 union for canonical-anchor resolution",
+    forward: "CREATE TABLE IF NOT EXISTS aliases (\n  node_id TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,\n  alias TEXT NOT NULL,\n  provenance TEXT NOT NULL,\n  rationale TEXT,\n  created_at INTEGER NOT NULL,\n  PRIMARY KEY (node_id, alias)\n);\nCREATE INDEX IF NOT EXISTS idx_aliases_alias ON aliases(alias);\n\nCREATE VIRTUAL TABLE IF NOT EXISTS aliases_fts USING fts5(\n  alias, node_id UNINDEXED, tokenize = 'unicode61'\n);\n\nCREATE TRIGGER IF NOT EXISTS aliases_after_insert AFTER INSERT ON aliases BEGIN\n  INSERT INTO aliases_fts(alias, node_id) VALUES (NEW.alias, NEW.node_id);\nEND;\n\nCREATE TRIGGER IF NOT EXISTS aliases_after_delete AFTER DELETE ON aliases BEGIN\n  DELETE FROM aliases_fts WHERE node_id = OLD.node_id AND alias = OLD.alias;\nEND;\n\nCREATE TRIGGER IF NOT EXISTS aliases_provenance_nonempty\n  BEFORE INSERT ON aliases\n  WHEN NEW.provenance IS NULL OR NEW.provenance = ''\n  BEGIN\n    SELECT RAISE(ABORT, 'aliases: provenance required');\n  END;",
+    rollback: "DROP TRIGGER IF EXISTS aliases_provenance_nonempty;\nDROP TRIGGER IF EXISTS aliases_after_delete;\nDROP TRIGGER IF EXISTS aliases_after_insert;\nDROP TABLE IF EXISTS aliases_fts;\nDROP INDEX IF EXISTS idx_aliases_alias;\nDROP TABLE IF EXISTS aliases;",
   },
 ];

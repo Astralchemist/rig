@@ -3,6 +3,7 @@
     "allow": [
       "mcp__rig__rig_propose_edge",
       "mcp__rig__rig_hubs",
+      "mcp__rig__rig_add_alias",
       "mcp__rig__rig_files",
       "mcp__rig__rig_drill",
       "mcp__rig__rig_impact",
@@ -20,7 +21,8 @@
       "mcp__rig__rig_search",
       "mcp__rig__rig_callees",
       "mcp__rig__rig_status",
-      "mcp__rig__rig_hub_of"
+      "mcp__rig__rig_hub_of",
+      "mcp__rig__rig_aliases"
     ],
     "ask": [
       "mcp__rig__rig_explore",

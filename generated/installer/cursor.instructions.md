@@ -111,6 +111,13 @@ Walk outward from an anchor via structural edges, return the first hub layer
 reached (up to maxDepth hops). Use to answer "what part of the system does
 this belong to" without traversing the full graph.
 
+### `rig_aliases`
+
+Return every alias name pointing at a given canonical anchor. Aliases are
+alternate names (e.g. `pd` for `pandas`, `useState` for `React.useState`)
+that resolve to the same node via FTS5 search. Each carries the actor that
+registered it.
+
 ## heavy tools
 
 ### `rig_explore`
@@ -143,6 +150,15 @@ mutation_log forever.
 
 Prefer rig_propose_edge to creating edges directly — the user accepts
 the connection before it solidifies.
+
+### `rig_add_alias`
+
+Add an alternate name for an anchor so searches for the alias return the
+canonical node. Use for AI-discovered or user-asserted alternate names
+(e.g. `pd` → `pandas`, `useState` → `React.useState`).
+
+The alias is registered with the caller's provenance. Re-adding the same
+(node, alias) pair is a no-op; the second call returns added=false.
 
 ### `rig_promote`
 

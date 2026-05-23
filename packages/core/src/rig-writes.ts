@@ -1,3 +1,4 @@
+import { addAlias as aqAdd, removeAlias as aqRemove } from './db/alias-queries.ts';
 import type { Database } from './db/database.ts';
 import {
   lastUndoableMutation,
@@ -165,6 +166,24 @@ export class RigWrites {
     return id;
   }
 
+  addAlias(args: { nodeId: string; alias: string; rationale: string }, ctx: WriteCtx): boolean {
+    const adapter = this.db.adapter;
+    const ok = aqAdd(adapter, {
+      nodeId: args.nodeId,
+      alias: args.alias,
+      provenance: ctx.actor,
+      rationale: args.rationale,
+    });
+    if (!ok) return false;
+    recordMutation(adapter, {
+      sessionId: ctx.sessionId,
+      kind: 'add_alias',
+      payload: { nodeId: args.nodeId, alias: args.alias, rationale: args.rationale },
+      actor: ctx.actor,
+    });
+    return true;
+  }
+
   promoteHub(nodeId: string, rationale: string, ctx: WriteCtx): boolean {
     const adapter = this.db.adapter;
     const ok = adapter.prepare(`SELECT 1 FROM nodes WHERE id = ?`).get(nodeId);
@@ -223,6 +242,9 @@ export class RigWrites {
         break;
       case 'add_node':
         adapter.prepare(`DELETE FROM nodes WHERE id = ?`).run(p.id as string);
+        break;
+      case 'add_alias':
+        aqRemove(adapter, p.nodeId as string, p.alias as string);
         break;
       default:
         // annotate/cluster are not yet undoable; log nothing.
