@@ -14,7 +14,7 @@ import {
   type GraphSnapshot,
 } from './db/graph-snapshot.ts';
 import { searchNodes as sqSearchNodes, type SearchOptions } from './db/search-queries.ts';
-import { DeterministicEmbedder } from './embed/deterministic-embedder.ts';
+import { selectEmbedder } from './embed/select.ts';
 import type { Embedder } from './embed/types.ts';
 import {
   getCallees as gqGetCallees,
@@ -68,7 +68,7 @@ export class Rig {
     return new Rig({
       projectRoot: root,
       database: Database.open(dbPathOf(root)),
-      embedder: opts.embedder ?? new DeterministicEmbedder(),
+      embedder: opts.embedder ?? selectEmbedder(root),
     });
   }
 
@@ -83,7 +83,7 @@ export class Rig {
     return new Rig({
       projectRoot: root,
       database: Database.open(dbPathOf(root)),
-      embedder: opts.embedder ?? new DeterministicEmbedder(),
+      embedder: opts.embedder ?? selectEmbedder(root),
     });
   }
 
