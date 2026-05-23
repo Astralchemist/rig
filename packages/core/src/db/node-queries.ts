@@ -40,6 +40,13 @@ export const upsertNode = (db: SqliteAdapter, n: Node): void => {
   ).run(n.id, n.kind, n.name, data, now, now);
 };
 
+// Remove all nodes (and cascading edges/embeddings) for a file path. Call
+// before re-extracting so position-keyed node IDs don't leave stale duplicates
+// when content shifts. Used by sync (on file change) and index --force.
+export const purgeFileNodes = (db: SqliteAdapter, filePath: string): void => {
+  db.prepare(`DELETE FROM nodes WHERE json_extract(data, '$.filePath') = ?`).run(filePath);
+};
+
 export const upsertFile = (
   db: SqliteAdapter,
   path: string,

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import type { Database } from './db/database.ts';
-import { upsertFile, upsertNode } from './db/node-queries.ts';
+import { purgeFileNodes, upsertFile, upsertNode } from './db/node-queries.ts';
 import { embedAndStore } from './embed/index-embeddings.ts';
 import type { Embedder } from './embed/types.ts';
 import { extractFromSource } from './extract/extractor.ts';
@@ -32,6 +32,7 @@ export async function runIndexAll(
     const hash = createHash('sha256').update(source).digest('hex').slice(0, 16);
     const result = await extractFromSource(file.relPath, source);
     database.adapter.transaction(() => {
+      purgeFileNodes(database.adapter, file.relPath);
       upsertFile(database.adapter, file.relPath, Math.floor(mtime), hash);
       for (const node of result.nodes) upsertNode(database.adapter, node);
     })();
