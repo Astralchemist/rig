@@ -1,5 +1,5 @@
 -- GENERATED FILE — DO NOT EDIT.
--- Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts
+-- Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts
 -- Edit the .contract.ts file(s), then run `bun run gen`.
 
 -- v1: Initial Rig schema: nodes, structural + semantic edges, embeddings, activations, FTS5
@@ -160,3 +160,10 @@ CREATE TRIGGER IF NOT EXISTS pending_edges_rationale_nonempty
   BEGIN
     SELECT RAISE(ABORT, 'pending_edges: rationale required');
   END;
+
+-- v3: Phase 3.5 A1: hub-and-spoke topology — is_hub + hubness on nodes
+ALTER TABLE nodes ADD COLUMN is_hub INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE nodes ADD COLUMN hubness REAL NOT NULL DEFAULT 0;
+ALTER TABLE nodes ADD COLUMN hub_explicit INTEGER NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_nodes_is_hub ON nodes(is_hub) WHERE is_hub = 1;
+CREATE INDEX IF NOT EXISTS idx_nodes_hubness ON nodes(hubness DESC);

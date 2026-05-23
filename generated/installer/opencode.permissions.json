@@ -2,8 +2,11 @@
   "permissions": {
     "allow": [
       "mcp__rig__rig_propose_edge",
+      "mcp__rig__rig_hubs",
       "mcp__rig__rig_files",
+      "mcp__rig__rig_drill",
       "mcp__rig__rig_impact",
+      "mcp__rig__rig_promote",
       "mcp__rig__rig_subscribe",
       "mcp__rig__rig_cluster",
       "mcp__rig__rig_focus",
@@ -16,7 +19,8 @@
       "mcp__rig__rig_add_node",
       "mcp__rig__rig_search",
       "mcp__rig__rig_callees",
-      "mcp__rig__rig_status"
+      "mcp__rig__rig_status",
+      "mcp__rig__rig_hub_of"
     ],
     "ask": [
       "mcp__rig__rig_explore",

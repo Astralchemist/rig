@@ -47,9 +47,17 @@ describe('schema golden (v1 + v2)', () => {
     expect(SCHEMA).toContain('node_id UNINDEXED');
   });
 
-  test('migrations are versioned 1 and 2', () => {
+  test('migrations are versioned 1, 2, 3', () => {
     expect(SCHEMA).toContain('-- v1:');
     expect(SCHEMA).toContain('-- v2:');
+    expect(SCHEMA).toContain('-- v3:');
+  });
+
+  test('v3 adds is_hub + hubness columns + hub indexes', () => {
+    expect(SCHEMA).toMatch(/ALTER TABLE nodes ADD COLUMN is_hub/);
+    expect(SCHEMA).toMatch(/ALTER TABLE nodes ADD COLUMN hubness/);
+    expect(SCHEMA).toContain('CREATE INDEX IF NOT EXISTS idx_nodes_is_hub');
+    expect(SCHEMA).toContain('CREATE INDEX IF NOT EXISTS idx_nodes_hubness');
   });
 
   test('embeddings table has vector BLOB + dim columns', () => {

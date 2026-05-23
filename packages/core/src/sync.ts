@@ -8,6 +8,7 @@ import type { Embedder } from './embed/types.ts';
 import { extractFromSource } from './extract/extractor.ts';
 import type { Node as ExtractNode } from './extract/upstream-types.ts';
 import { walkProject } from './extract/walker.ts';
+import { recomputeHubness } from './graph/hubness.ts';
 
 export interface SyncResult {
   filesChanged: number;
@@ -71,5 +72,8 @@ export async function runSync(
     filesPurged++;
   }
 
+  if (filesChanged > 0 || filesPurged > 0) {
+    recomputeHubness(database.adapter);
+  }
   return { filesChanged, filesPurged, durationMs: Date.now() - start };
 }

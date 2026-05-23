@@ -165,6 +165,25 @@ export class RigWrites {
     return id;
   }
 
+  promoteHub(nodeId: string, rationale: string, ctx: WriteCtx): boolean {
+    const adapter = this.db.adapter;
+    const ok = adapter.prepare(`SELECT 1 FROM nodes WHERE id = ?`).get(nodeId);
+    if (!ok) return false;
+    adapter
+      .prepare(`UPDATE nodes SET hub_explicit = 1, is_hub = 1, hubness = MAX(hubness, 0.3) WHERE id = ?`)
+      .run(nodeId);
+    const hubness = (adapter
+      .prepare(`SELECT hubness FROM nodes WHERE id = ?`)
+      .get(nodeId) as { hubness: number }).hubness;
+    recordMutation(adapter, {
+      sessionId: ctx.sessionId,
+      kind: 'promote_hub',
+      payload: { id: nodeId, hubness, rationale },
+      actor: ctx.actor,
+    });
+    return true;
+  }
+
   recordFocus(nodeIds: string[], ctx: WriteCtx): void {
     recordMutation(this.db.adapter, {
       sessionId: ctx.sessionId,

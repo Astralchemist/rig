@@ -169,6 +169,76 @@
       ]
     },
     {
+      "name": "rig_hubs",
+      "description": "List top hubs by hubness score",
+      "tier": "light",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "description": "Filter by anchor kind (e.g. file, module)"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "hubs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "hubness": {
+                  "type": "number"
+                },
+                "explicit": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "kind",
+                "hubness",
+                "explicit"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "hubs",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED"
+      ]
+    },
+    {
       "name": "rig_files",
       "description": "List indexed files",
       "tier": "light",
@@ -224,6 +294,88 @@
       },
       "errors": [
         "NOT_INITIALIZED"
+      ]
+    },
+    {
+      "name": "rig_drill",
+      "description": "Explore a hub's sub-tree, ranked by magnetic pull",
+      "tier": "light",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "hub_id": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "max_depth": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6,
+            "default": 3
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50
+          }
+        },
+        "required": [
+          "hub_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "depth": {
+                  "type": "integer"
+                },
+                "pull_score": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "kind",
+                "depth",
+                "pull_score"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "results",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND"
       ]
     },
     {
@@ -294,6 +446,52 @@
         "NOT_INITIALIZED",
         "NODE_NOT_FOUND",
         "DEPTH_OUT_OF_RANGE"
+      ]
+    },
+    {
+      "name": "rig_promote",
+      "description": "Explicitly mark a node as a hub",
+      "tier": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 10
+          }
+        },
+        "required": [
+          "id",
+          "rationale"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "promoted": {
+            "type": "boolean"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "promoted",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND",
+        "PROVENANCE_REQUIRED",
+        "RATIONALE_REQUIRED"
       ]
     },
     {
@@ -1119,6 +1317,79 @@
       },
       "errors": [
         "NOT_INITIALIZED"
+      ]
+    },
+    {
+      "name": "rig_hub_of",
+      "description": "Find the nearest hub(s) for a given anchor",
+      "tier": "light",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "max_depth": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6,
+            "default": 3
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "hubs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "hubness": {
+                  "type": "number"
+                },
+                "explicit": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "kind",
+                "hubness",
+                "explicit"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "hubs",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND"
       ]
     },
     {

@@ -24,6 +24,8 @@ import {
 } from './graph/traversal.ts';
 import { runIndexAll } from './index-all.ts';
 import { computeMagneticPull, type PullResult } from './pull.ts';
+import { drillFromHub, type DrillResult } from './graph/hub-drill.ts';
+import { getTopHubs, hubsOf, promoteHub, type HubRef } from './graph/hubness.ts';
 import { dbPathOf, rigDirOf, toRigNode } from './rig-shape.ts';
 import { DB_FILE_NAME, RIG_DIR_NAME } from './rig-types.ts';
 import type { IndexResult, RigOptions, StatusInfo } from './rig-types.ts';
@@ -35,6 +37,8 @@ import { FileWatcher } from './watch.ts';
 export { DB_FILE_NAME, RIG_DIR_NAME };
 export type { IndexResult, RigOptions, StatusInfo };
 export type { PullResult } from './pull.ts';
+export type { HubRef } from './graph/hubness.ts';
+export type { DrillResult } from './graph/hub-drill.ts';
 export type { SyncResult } from './sync.ts';
 export type { TaggedEdge, NeighborsOptions } from './db/edge-queries.ts';
 export type { SearchOptions } from './db/search-queries.ts';
@@ -146,6 +150,25 @@ export class Rig {
 
   snapshot(limit = 500): GraphSnapshot {
     return gsGetGraphSnapshot(this.database.adapter, limit);
+  }
+
+  getTopHubs(opts: { scope?: string; limit?: number } = {}): HubRef[] {
+    return getTopHubs(this.database.adapter, opts);
+  }
+
+  getHubsOf(id: NodeId, maxDepth = 3): HubRef[] {
+    return hubsOf(this.database.adapter, id, maxDepth);
+  }
+
+  drillFromHub(
+    hubId: NodeId,
+    opts: { query?: string; maxDepth?: number; limit?: number } = {},
+  ): DrillResult[] {
+    return drillFromHub(this.database.adapter, hubId, opts);
+  }
+
+  promoteHub(id: NodeId): boolean {
+    return promoteHub(this.database.adapter, id);
   }
 
   getMagneticPull(id: NodeId, k = 10): PullResult[] {

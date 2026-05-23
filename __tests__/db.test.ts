@@ -29,7 +29,7 @@ describe('Database — schema', () => {
 
   it('applies all migrations on a fresh DB', () => {
     const db = Database.open(join(dir, 'rig.db'));
-    expect(db.appliedVersions()).toEqual([1, 2]);
+    expect(db.appliedVersions()).toEqual([1, 2, 3]);
     db.close();
   });
 
@@ -53,8 +53,8 @@ describe('Database — schema', () => {
     const count = db.adapter
       .prepare('SELECT COUNT(*) AS n FROM schema_versions')
       .get() as { n: number };
-    expect(count.n).toBe(2);
-    expect(db.appliedVersions()).toEqual([1, 2]);
+    expect(count.n).toBe(3);
+    expect(db.appliedVersions()).toEqual([1, 2, 3]);
     db.close();
   });
 

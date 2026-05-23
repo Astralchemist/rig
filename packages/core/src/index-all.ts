@@ -13,6 +13,7 @@ import type {
 } from './extract/upstream-types.ts';
 import { walkProject } from './extract/walker.ts';
 import { resolveReferences } from './resolve/resolver.ts';
+import { recomputeHubness } from './graph/hubness.ts';
 import type { IndexResult } from './rig-types.ts';
 
 export async function runIndexAll(
@@ -45,6 +46,7 @@ export async function runIndexAll(
   if (embedder) {
     await embedAndStore(embedder, database.adapter, allNodes);
   }
+  recomputeHubness(database.adapter);
   return {
     files: fileCount,
     nodes: allNodes.length,

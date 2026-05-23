@@ -1,5 +1,5 @@
 // GENERATED FILE — DO NOT EDIT.
-// Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts
+// Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts
 // Edit the .contract.ts file(s), then run `bun run gen`.
 
 export interface Migration {
@@ -21,5 +21,11 @@ export const MIGRATIONS: readonly Migration[] = [
     description: "Phase 3 read-write: pending_edges, mutation_log, provenance triggers",
     forward: "CREATE TABLE IF NOT EXISTS pending_edges (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  src TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,\n  dst TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,\n  kind TEXT NOT NULL DEFAULT 'related',\n  weight REAL NOT NULL DEFAULT 0.5,\n  provenance TEXT NOT NULL,\n  rationale TEXT NOT NULL,\n  proposed_at INTEGER NOT NULL,\n  session_id TEXT NOT NULL,\n  status TEXT NOT NULL CHECK(status IN ('pending','accepted','rejected'))\n);\nCREATE INDEX IF NOT EXISTS idx_pending_edges_status ON pending_edges(status);\nCREATE INDEX IF NOT EXISTS idx_pending_edges_session ON pending_edges(session_id);\n\nCREATE TABLE IF NOT EXISTS mutation_log (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  ts INTEGER NOT NULL,\n  session_id TEXT NOT NULL,\n  kind TEXT NOT NULL,\n  payload TEXT NOT NULL,\n  actor TEXT NOT NULL\n);\nCREATE INDEX IF NOT EXISTS idx_mutation_log_session_ts ON mutation_log(session_id, ts);\nCREATE INDEX IF NOT EXISTS idx_mutation_log_ts ON mutation_log(ts);\n\nCREATE TRIGGER IF NOT EXISTS edges_provenance_nonempty\n  BEFORE INSERT ON edges\n  WHEN NEW.provenance IS NULL OR NEW.provenance = ''\n  BEGIN\n    SELECT RAISE(ABORT, 'edges: provenance required');\n  END;\n\nCREATE TRIGGER IF NOT EXISTS edges_semantic_provenance_nonempty\n  BEFORE INSERT ON edges_semantic\n  WHEN NEW.provenance IS NULL OR NEW.provenance = ''\n  BEGIN\n    SELECT RAISE(ABORT, 'edges_semantic: provenance required');\n  END;\n\nCREATE TRIGGER IF NOT EXISTS pending_edges_provenance_nonempty\n  BEFORE INSERT ON pending_edges\n  WHEN NEW.provenance IS NULL OR NEW.provenance = ''\n  BEGIN\n    SELECT RAISE(ABORT, 'pending_edges: provenance required');\n  END;\n\nCREATE TRIGGER IF NOT EXISTS pending_edges_rationale_nonempty\n  BEFORE INSERT ON pending_edges\n  WHEN NEW.rationale IS NULL OR NEW.rationale = ''\n  BEGIN\n    SELECT RAISE(ABORT, 'pending_edges: rationale required');\n  END;",
     rollback: "DROP TRIGGER IF EXISTS pending_edges_rationale_nonempty;\nDROP TRIGGER IF EXISTS pending_edges_provenance_nonempty;\nDROP TRIGGER IF EXISTS edges_semantic_provenance_nonempty;\nDROP TRIGGER IF EXISTS edges_provenance_nonempty;\nDROP TABLE IF EXISTS mutation_log;\nDROP TABLE IF EXISTS pending_edges;",
+  },
+  {
+    version: 3,
+    description: "Phase 3.5 A1: hub-and-spoke topology — is_hub + hubness on nodes",
+    forward: "ALTER TABLE nodes ADD COLUMN is_hub INTEGER NOT NULL DEFAULT 0;\nALTER TABLE nodes ADD COLUMN hubness REAL NOT NULL DEFAULT 0;\nALTER TABLE nodes ADD COLUMN hub_explicit INTEGER NOT NULL DEFAULT 0;\nCREATE INDEX IF NOT EXISTS idx_nodes_is_hub ON nodes(is_hub) WHERE is_hub = 1;\nCREATE INDEX IF NOT EXISTS idx_nodes_hubness ON nodes(hubness DESC);",
+    rollback: "DROP INDEX IF EXISTS idx_nodes_hubness;\nDROP INDEX IF EXISTS idx_nodes_is_hub;\n-- SQLite cannot DROP COLUMN before 3.35; rollback is destructive (table recreate).\n-- Left as a no-op for forward-only deployments.",
   },
 ];

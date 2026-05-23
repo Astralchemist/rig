@@ -1,5 +1,5 @@
 // GENERATED FILE — DO NOT EDIT.
-// Source: .contracts/events/focus-requested.contract.ts, .contracts/events/selection-changed.contract.ts, .contracts/events/edge-accepted.contract.ts, .contracts/events/edge-proposed.contract.ts, .contracts/events/node-added.contract.ts, .contracts/events/edge-rejected.contract.ts
+// Source: .contracts/events/focus-requested.contract.ts, .contracts/events/selection-changed.contract.ts, .contracts/events/node-promoted.contract.ts, .contracts/events/edge-accepted.contract.ts, .contracts/events/edge-proposed.contract.ts, .contracts/events/node-added.contract.ts, .contracts/events/edge-rejected.contract.ts
 // Edit the .contract.ts file(s), then run `bun run gen`.
 
 // focus:requested
@@ -35,6 +35,26 @@
 //   },
 //   "required": [
 //     "node_id"
+//   ],
+//   "additionalProperties": false,
+//   "$schema": "http://json-schema.org/draft-07/schema#"
+// }
+
+// node:promoted
+// payload (JSON Schema):
+// {
+//   "type": "object",
+//   "properties": {
+//     "id": {
+//       "type": "string"
+//     },
+//     "hubness": {
+//       "type": "number"
+//     }
+//   },
+//   "required": [
+//     "id",
+//     "hubness"
 //   ],
 //   "additionalProperties": false,
 //   "$schema": "http://json-schema.org/draft-07/schema#"
@@ -151,6 +171,7 @@
 export type WsEvent =
   | { type: 'focus:requested'; payload: unknown /* see schema above */ }
   | { type: 'selection:changed'; payload: unknown /* see schema above */ }
+  | { type: 'node:promoted'; payload: unknown /* see schema above */ }
   | { type: 'edge:accepted'; payload: unknown /* see schema above */ }
   | { type: 'edge:proposed'; payload: unknown /* see schema above */ }
   | { type: 'node:added'; payload: unknown /* see schema above */ }

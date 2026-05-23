@@ -8,6 +8,15 @@ Rig exposes these MCP tools. Always prefer them over file reads for graph questi
 
 ## light tools
 
+### `rig_hubs`
+
+Return the most "hub-like" anchors in the graph, ranked by hubness. Hubs are
+high-fanout structural concentrations (top 5% per anchor type) plus any node
+explicitly promoted via rig_promote.
+
+Use as the entry point when navigating a large graph — pick a hub, then call
+rig_drill to explore its sub-tree.
+
 ### `rig_files`
 
 List files known to the rig index, optionally filtered by a substring of
@@ -17,6 +26,13 @@ last_indexed_ts?}.
 Use for "what does rig know about" sanity checks and to discover entry
 points before searching. For symbol lookup inside a file use rig_search
 with a kind filter.
+
+### `rig_drill`
+
+Walk outward from a hub via structural edges (contains > references > calls >
+imports), rank descendants by magnetic pull from the hub. Optional name query
+filters the returned set. Use after rig_hubs to drill into one part of the
+graph instead of dumping the whole neighborhood.
 
 ### `rig_impact`
 
@@ -89,6 +105,12 @@ use rig_pull.
 Returns counts of nodes, edges, files, and the last sync timestamp.
 Use as a smoke test before any other rig_* call to confirm the index is initialized.
 
+### `rig_hub_of`
+
+Walk outward from an anchor via structural edges, return the first hub layer
+reached (up to maxDepth hops). Use to answer "what part of the system does
+this belong to" without traversing the full graph.
+
 ## heavy tools
 
 ### `rig_explore`
@@ -121,6 +143,14 @@ mutation_log forever.
 
 Prefer rig_propose_edge to creating edges directly — the user accepts
 the connection before it solidifies.
+
+### `rig_promote`
+
+Promote any node to hub status regardless of its fanout score. Used when the
+user or AI has identified a concept-level anchor that the structural heuristic
+missed (a "principle" waypoint, a domain entity, a documentation root).
+
+Hubs surface in rig_hubs results and bias rig_pull rankings.
 
 ### `rig_cluster`
 
