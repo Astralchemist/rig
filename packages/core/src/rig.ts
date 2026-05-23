@@ -109,8 +109,8 @@ export class Rig {
     };
   }
 
-  indexAll(): Promise<IndexResult> {
-    return runIndexAll(this.projectRoot, this.database, this.embedder);
+  indexAll(opts: { onProgress?: (p: import('./index-all.ts').IndexProgress) => void } = {}): Promise<IndexResult> {
+    return runIndexAll(this.projectRoot, this.database, this.embedder, opts.onProgress);
   }
 
   sync(): Promise<SyncResult> {

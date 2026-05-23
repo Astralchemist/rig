@@ -1,5 +1,28 @@
 import { Rig } from '@rig/core';
 
+const isTty = process.stderr.isTTY === true;
+
+// Single-line stderr status updates while indexing. On a TTY we rewrite the
+// line with \r so the user sees one updating row; otherwise we line-print so
+// the trail survives in log files.
+const writeStatus = (line: string): void => {
+  if (isTty) process.stderr.write(`\r\x1b[K${line}`);
+  else process.stderr.write(line + '\n');
+};
+
+const fmtPhase = (phase: string, current?: number, total?: number, detail?: string): string => {
+  const counter =
+    current !== undefined && total !== undefined
+      ? `${current}/${total}`
+      : current !== undefined
+        ? `${current}`
+        : total !== undefined
+          ? `${total} pending`
+          : '';
+  const detailStr = detail ? `  ${detail}` : '';
+  return `  ${phase.padEnd(12)} ${counter}${detailStr}`;
+};
+
 export const runIndex = async (cwd: string): Promise<void> => {
   if (!Rig.isInitialized(cwd)) {
     console.error('rig: not initialized. Run `rig init` first.');
@@ -7,9 +30,12 @@ export const runIndex = async (cwd: string): Promise<void> => {
   }
   const rig = await Rig.open(cwd);
   try {
-    process.stdout.write('rig: indexing... ');
-    const r = await rig.indexAll();
-    console.log(`done`);
+    process.stderr.write('rig: indexing...\n');
+    const r = await rig.indexAll({
+      onProgress: (p) => writeStatus(fmtPhase(p.phase, p.current, p.total, p.detail)),
+    });
+    if (isTty) process.stderr.write('\r\x1b[K');
+    console.log(`rig: done`);
     console.log(`  files:            ${r.files}`);
     console.log(`  nodes:            ${r.nodes}`);
     console.log(`  edges:            ${r.edges}`);

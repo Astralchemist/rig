@@ -17,10 +17,18 @@ import { recomputeHubness } from './graph/hubness.ts';
 import { inferTestsEdges } from './graph/tests-edges.ts';
 import type { IndexResult } from './rig-types.ts';
 
+export interface IndexProgress {
+  phase: 'extract' | 'resolve' | 'embed' | 'tests-edges' | 'hubness';
+  current?: number;
+  total?: number;
+  detail?: string;
+}
+
 export async function runIndexAll(
   projectRoot: string,
   database: Database,
   embedder?: Embedder,
+  onProgress?: (p: IndexProgress) => void,
 ): Promise<IndexResult> {
   const start = Date.now();
   const allNodes: ExtractNode[] = [];
@@ -41,14 +49,19 @@ export async function runIndexAll(
     allEdges.push(...result.edges);
     allRefs.push(...result.unresolvedReferences);
     fileCount++;
+    onProgress?.({ phase: 'extract', current: fileCount, detail: file.relPath });
   }
+  onProgress?.({ phase: 'resolve', total: allRefs.length });
   const stats = database.adapter.transaction(() =>
     resolveReferences(database.adapter, allNodes, allRefs, allEdges, projectRoot),
   )();
   if (embedder) {
+    onProgress?.({ phase: 'embed', total: allNodes.length, detail: embedder.model });
     await embedAndStore(embedder, database.adapter, allNodes);
   }
+  onProgress?.({ phase: 'tests-edges' });
   inferTestsEdges(database.adapter);
+  onProgress?.({ phase: 'hubness' });
   recomputeHubness(database.adapter);
   return {
     files: fileCount,
