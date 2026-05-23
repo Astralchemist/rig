@@ -3,9 +3,10 @@ import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import { Rig } from '@rig/core';
 import { existsSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyInstance } from 'fastify';
+import { loadOrCreateToken, registerAuthRoutes, requireBearer } from './auth.ts';
 import { registerRoutes } from './routes.ts';
 import { attachWs, type WsHandle } from './ws.ts';
 
@@ -17,6 +18,10 @@ export interface ServeWebOptions {
   projectRoot: string;
   host?: string;
   port?: number;
+  // 'auto' (default): require bearer iff host is non-loopback.
+  // true: always require bearer (recommended for any sharing scenario).
+  // false: open. Only safe on loopback.
+  auth?: boolean | 'auto';
 }
 
 export interface WebHandle {
@@ -24,8 +29,11 @@ export interface WebHandle {
   rig: Rig;
   url: string;
   ws: WsHandle;
+  token: string | null;
   close: () => Promise<void>;
 }
+
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
 
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 7474;
@@ -33,19 +41,32 @@ const DEFAULT_PORT = 7474;
 export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
   const host = opts.host ?? DEFAULT_HOST;
   const port = opts.port ?? DEFAULT_PORT;
+  const isLoopback = LOOPBACK_HOSTS.has(host);
+  const authMode = opts.auth ?? 'auto';
+  const authOn = authMode === true || (authMode === 'auto' && !isLoopback);
+
+  if (!isLoopback && !authOn) {
+    throw new Error(
+      `rig serve: refusing to bind ${host} without auth. Pass --auth or use a loopback address.`,
+    );
+  }
 
   const rig = await Rig.open(opts.projectRoot);
   const app = Fastify({ logger: false });
 
-  // Loopback-only by default — when binding outside 127.0.0.1 the bearer-token
-  // gate lands in a follow-up. Same-origin browser clients work without CORS,
-  // but allow localhost for dev tools / curl checks.
   await app.register(cors, {
     origin: [`http://${host}:${port}`, 'http://localhost:7474', 'http://127.0.0.1:7474'],
   });
   await app.register(compress, { global: true, encodings: ['gzip', 'deflate'], threshold: 1024 });
 
-  app.get('/health', async () => ({ ok: true, name: 'rig-web', version: '0.0.1' }));
+  let token: string | null = null;
+  if (authOn) {
+    token = loadOrCreateToken(join(opts.projectRoot, '.rig'));
+    app.addHook('preHandler', requireBearer(token));
+    registerAuthRoutes(app, { token, cookieMaxAgeSec: 60 * 60 * 24 * 7 });
+  }
+
+  app.get('/health', async () => ({ ok: true, name: 'rig-web', version: '0.0.1', auth: authOn }));
   registerRoutes(app, rig);
 
   // Serve the built React app from packages/web/dist/. If dist/ is missing
@@ -77,6 +98,7 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
     rig,
     url: address,
     ws,
+    token,
     close: async () => {
       await ws.close();
       await app.close();

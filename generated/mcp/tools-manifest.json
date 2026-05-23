@@ -1568,6 +1568,53 @@
         "NOT_INITIALIZED",
         "NODE_NOT_FOUND"
       ]
+    },
+    {
+      "name": "rig_session_token",
+      "description": "Hand the user a one-click login URL for the local map",
+      "tier": "light",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string",
+            "default": "127.0.0.1"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535,
+            "default": 7474
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "login_url": {
+            "type": "string"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "token",
+          "login_url",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NO_RUNTIME_TOKEN"
+      ]
     }
   ]
 }

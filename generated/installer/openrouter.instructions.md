@@ -118,6 +118,17 @@ alternate names (e.g. `pd` for `pandas`, `useState` for `React.useState`)
 that resolve to the same node via FTS5 search. Each carries the actor that
 registered it.
 
+### `rig_session_token`
+
+Read the per-server bearer token from .rig/.runtime and return both the raw
+token and a clickable URL the user can paste into their browser to log into
+the map. Used when "open the rig map" comes up in chat — the agent fetches the
+token (because it has filesystem access to .rig/), the user clicks the URL,
+and the cookie gets set.
+
+Returns 'no_runtime_token' in errors when the server isn't running with auth
+enabled (loopback dev mode skips the token by default).
+
 ## heavy tools
 
 ### `rig_explore`

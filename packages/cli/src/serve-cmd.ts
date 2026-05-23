@@ -20,17 +20,31 @@ export async function runServe(cwd: string): Promise<void> {
   const portStr = optionValue('--port');
   const port = portStr ? Number.parseInt(portStr, 10) : undefined;
   const host = optionValue('--host');
+  const wantAuth = flag('--auth');
+  const noAuth = flag('--no-auth');
+  const authOpt: boolean | 'auto' = wantAuth ? true : noAuth ? false : 'auto';
 
-  let webHandle: { close: () => Promise<void> } | null = null;
+  let webHandle: { close: () => Promise<void>; token: string | null } | null = null;
   if (wantWeb) {
-    const handle = await serveWeb({
-      projectRoot: cwd,
-      ...(port !== undefined ? { port } : {}),
-      ...(host !== undefined ? { host } : {}),
-    });
-    webHandle = handle;
-    // stderr — stdout may be MCP JSON-RPC when --all is set.
-    process.stderr.write(`rig web listening on ${handle.url}\n`);
+    try {
+      const handle = await serveWeb({
+        projectRoot: cwd,
+        auth: authOpt,
+        ...(port !== undefined ? { port } : {}),
+        ...(host !== undefined ? { host } : {}),
+      });
+      webHandle = handle;
+      // stderr — stdout may be MCP JSON-RPC when --all is set.
+      process.stderr.write(`rig web listening on ${handle.url}\n`);
+      if (handle.token) {
+        process.stderr.write(`  auth: on   login: ${handle.url}/auth?t=${handle.token}\n`);
+      } else {
+        process.stderr.write(`  auth: off  (loopback dev mode — pass --auth to require a token)\n`);
+      }
+    } catch (e) {
+      process.stderr.write(`rig serve --web failed: ${e instanceof Error ? e.message : String(e)}\n`);
+      process.exit(2);
+    }
   }
 
   const shutdown = async (): Promise<never> => {
