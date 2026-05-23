@@ -1,10 +1,11 @@
 import { MIGRATIONS } from '@rig/generated/core/migrations.ts';
 import type { SqliteAdapter, SqliteAdapterFactory } from './adapter.ts';
-import { bunSqliteFactory } from './bun-adapter.ts';
+import { selectSqliteFactorySync } from './factory.ts';
 
 export class Database {
-  static open(dbPath: string, factory: SqliteAdapterFactory = bunSqliteFactory): Database {
-    const adapter = factory.open(dbPath);
+  static open(dbPath: string, factory?: SqliteAdapterFactory): Database {
+    const f = factory ?? selectSqliteFactorySync();
+    const adapter = f.open(dbPath);
     adapter.pragma('journal_mode = WAL');
     adapter.pragma('foreign_keys = ON');
     const db = new Database(adapter);
