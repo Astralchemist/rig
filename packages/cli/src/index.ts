@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { runDoctor } from './doctor.ts';
 import { runFiles } from './files-cmd.ts';
 import { runIndex } from './index-cmd.ts';
 import { runInit } from './init.ts';
@@ -17,6 +18,7 @@ const COMMANDS: Record<string, (cwd: string) => void | Promise<void>> = {
   files: runFiles,
   install: runInstall,
   serve: runServe,
+  doctor: runDoctor,
 };
 
 const HELP = `rig — local-first semantic knowledge graph
@@ -27,11 +29,12 @@ commands:
   init        create .rig/ in the current directory
   status      report index health
   index       extract + write nodes to .rig/rig.db
-  sync        (Phase 1) incremental update
-  query       (Phase 1) CLI search
-  files       (Phase 1) list indexed files
-  install     (Phase 1) wire Rig into Claude Code / Cursor / Codex / opencode
-  serve       (Phase 1/2) start MCP and/or web server
+  sync        incremental update
+  query       CLI search
+  files       list indexed files
+  install     wire Rig into Claude Code / Cursor / Codex / opencode / openrouter
+  serve       start MCP and/or web server (--mcp / --web / --all [--auth])
+  doctor      diagnose environment, db, model cache, agent configs
 `;
 
 const [, , cmd] = process.argv;
