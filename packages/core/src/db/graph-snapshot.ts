@@ -5,6 +5,8 @@ export interface GraphSnapshotNode {
   type: string;
   name: string;
   pull_score: number;
+  is_hub: number;
+  hubness: number;
 }
 
 export interface GraphSnapshotEdge {
@@ -39,7 +41,7 @@ export interface GraphSnapshot {
 export const getGraphSnapshot = (db: SqliteAdapter, limit = 500): GraphSnapshot => {
   const nodes = db
     .prepare(
-      `SELECT id, type, name, pull_score FROM nodes ORDER BY pull_score DESC, name LIMIT ?`,
+      `SELECT id, type, name, pull_score, is_hub, hubness FROM nodes ORDER BY hubness DESC, pull_score DESC, name LIMIT ?`,
     )
     .all(limit) as GraphSnapshotNode[];
   if (nodes.length === 0) {
