@@ -8,6 +8,7 @@ export interface SnapshotNode {
   pull_score: number;
   is_hub?: number;
   hubness?: number;
+  community_id?: number;
 }
 
 export interface SnapshotPending {
@@ -57,6 +58,16 @@ const KIND_COLOR: Record<string, string> = {
 };
 
 const colorFor = (kind: string): string => KIND_COLOR[kind] ?? '#9ca3af';
+
+// Community palette — distinct hues that round-trip the wheel; index modulo
+// length so any community count works. The first ~12 are well-separated.
+const COMMUNITY_PALETTE = [
+  '#60a5fa', '#34d399', '#fbbf24', '#f472b6', '#a78bfa', '#fb923c',
+  '#22d3ee', '#c084fc', '#ec4899', '#facc15', '#4ade80', '#f87171',
+  '#818cf8', '#fcd34d', '#2dd4bf', '#e879f9',
+];
+const communityColor = (cid: number | undefined): string =>
+  cid === undefined ? '#9ca3af' : COMMUNITY_PALETTE[cid % COMMUNITY_PALETTE.length]!;
 const radiusFor = (n: SnapshotNode): number => {
   const base = 4 + Math.max(0, Math.min(1, n.pull_score)) * 14;
   const hubBoost = n.is_hub ? 6 + (n.hubness ?? 0) * 8 : 0;
@@ -72,9 +83,12 @@ export interface MapProps {
   // Plain selection via canvas click does NOT bump this — only intentional jumps.
   focusToken?: { id: string; ts: number } | null;
   selectedId?: string | null;
+  // Map from node id → timestamp of last pulse. Used to render a fading halo
+  // when the AI (or any tool) touches that anchor.
+  pulses?: Map<string, number>;
 }
 
-export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, selectedId }: MapProps): JSX.Element {
+export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, selectedId, pulses }: MapProps): JSX.Element {
   // Visible-kind set. Mutable via filter chips above the canvas. `null` means
   // "show everything"; a Set means "show only these kinds".
   const allKinds = useMemo(
@@ -86,6 +100,7 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
   );
   const [hiddenKinds, setHiddenKinds] = useState<Set<string>>(new Set());
   const [hubsOnly, setHubsOnly] = useState(false);
+  const [colorMode, setColorMode] = useState<'kind' | 'community'>('kind');
 
   const graphData = useMemo(() => {
     const visible = (n: SnapshotNode): boolean => {
@@ -142,6 +157,18 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
     ref.current?.zoom(4, 600);
   }, [focusToken, graphData.nodes]);
 
+  // Force a redraw while a pulse halo is fading. force-graph normally only
+  // redraws on simulation tick / pan / zoom; without this the halo would
+  // freeze at its initial radius.
+  useEffect(() => {
+    if (!pulses || pulses.size === 0) return;
+    const id = setInterval(() => {
+      // refresh() schedules a single repaint without disrupting the layout.
+      ref.current?.refresh();
+    }, 50);
+    return () => clearInterval(id);
+  }, [pulses]);
+
   const toggleKind = (k: string): void => {
     setHiddenKinds((s) => {
       const next = new Set(s);
@@ -178,6 +205,21 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
           }}
         >
           {hubsOnly ? '◉ hubs only' : '○ hubs only'}
+        </button>
+        <button
+          onClick={() => setColorMode((m) => (m === 'kind' ? 'community' : 'kind'))}
+          title="Toggle node coloring between anchor kind and community"
+          style={{
+            padding: '4px 10px',
+            fontSize: 11,
+            border: '1px solid #1f2937',
+            borderRadius: 12,
+            background: '#111827',
+            color: colorMode === 'community' ? '#60a5fa' : '#9ca3af',
+            cursor: 'pointer',
+          }}
+        >
+          color: {colorMode}
         </button>
         {allKinds.map((k) => {
           const hidden = hiddenKinds.has(k);
@@ -231,9 +273,24 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
             ctx.lineWidth = 1.5;
             ctx.stroke();
           }
+          // Pulse halo — fades over PULSE_MS after the activation timestamp.
+          const PULSE_MS = 1500;
+          const pulseTs = pulses?.get(n.id);
+          if (pulseTs !== undefined) {
+            const age = Date.now() - pulseTs;
+            if (age < PULSE_MS) {
+              const t = 1 - age / PULSE_MS;
+              const pr = r + 6 + (1 - t) * 18;
+              ctx.beginPath();
+              ctx.arc(x, y, pr, 0, 2 * Math.PI);
+              ctx.strokeStyle = `rgba(244, 114, 182, ${t.toFixed(2)})`;
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            }
+          }
           ctx.beginPath();
           ctx.arc(x, y, r, 0, 2 * Math.PI);
-          ctx.fillStyle = colorFor(n.type);
+          ctx.fillStyle = colorMode === 'community' ? communityColor(n.community_id) : colorFor(n.type);
           ctx.fill();
           if (selectedId === n.id) {
             ctx.beginPath();

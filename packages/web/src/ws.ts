@@ -1,4 +1,5 @@
 import type { Rig } from '@rig/core';
+import { activationsSince } from '@rig/core/db/activation-queries.ts';
 import { watch, type FSWatcher } from 'node:fs';
 import type { Server as HttpServer } from 'node:http';
 import { join, resolve } from 'node:path';
@@ -25,6 +26,7 @@ const DEBOUNCE_MS = 200;
 export const attachWs = (httpServer: HttpServer, rig: Rig): WsHandle => {
   const projectRoot = rig.projectRoot;
   let lastMutationTs = Date.now();
+  let lastActivationTs = Date.now();
 
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   const clients = new Set<WebSocket>();
@@ -62,6 +64,23 @@ export const attachWs = (httpServer: HttpServer, rig: Rig): WsHandle => {
         }
       } catch {
         // Mutation log unavailable (e.g., DB closing) — stick with db:changed.
+      }
+      try {
+        const acts = activationsSince(rig.database.adapter, lastActivationTs);
+        if (acts.length > 0) {
+          // Coalesce into one event with all touched node IDs — the UI can
+          // animate them together. Cap at 50 per tick so a runaway query
+          // doesn't drown the WS.
+          const ids = Array.from(new Set(acts.map((a) => a.node_id))).slice(0, 50);
+          broadcast({
+            type: 'activation:fired',
+            ts,
+            payload: { ids, count: acts.length },
+          });
+          lastActivationTs = Math.max(lastActivationTs, ...acts.map((a) => a.ts));
+        }
+      } catch {
+        // activations table missing or db closing — no-op.
       }
     }, DEBOUNCE_MS);
   };

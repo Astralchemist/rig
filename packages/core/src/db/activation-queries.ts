@@ -1,6 +1,26 @@
 import type { SqliteAdapter } from './adapter.ts';
 
+export interface ActivationRow {
+  node_id: string;
+  ts: number;
+  source: string;
+}
+
 export type ActivationSource = 'query' | 'expand' | 'click' | 'ai' | 'mcp' | 'web';
+
+// Pull the activations that arrived since `sinceTs` (exclusive). Used by the
+// WS layer to derive `activation:fired` pulse events whenever the db ticks.
+export const activationsSince = (
+  db: SqliteAdapter,
+  sinceTs: number,
+  limit = 50,
+): ActivationRow[] => {
+  return db
+    .prepare(
+      `SELECT node_id, ts, source FROM activations WHERE ts > ? ORDER BY ts ASC LIMIT ?`,
+    )
+    .all(sinceTs, limit) as ActivationRow[];
+};
 
 export const recordActivation = (
   db: SqliteAdapter,

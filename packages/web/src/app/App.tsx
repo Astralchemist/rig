@@ -21,6 +21,7 @@ export function App(): JSX.Element {
   const [focusToken, setFocusToken] = useState<{ id: string; ts: number } | null>(null);
   const [popover, setPopover] = useState<{ id: string; x: number; y: number } | null>(null);
   const [showDetail, setShowDetail] = useState(false);
+  const [pulses, setPulses] = useState<Map<string, number>>(() => new Map());
   const [err, setErr] = useState<string | null>(null);
   const selectedName = useMemo(
     () => snap?.nodes.find((n) => n.id === selected)?.name ?? null,
@@ -45,8 +46,29 @@ export function App(): JSX.Element {
     void refresh();
     const ws = new WebSocket(`ws://${location.host}/ws`);
     ws.addEventListener('message', (ev) => {
-      const data = JSON.parse(ev.data as string) as { type?: string };
+      const data = JSON.parse(ev.data as string) as {
+        type?: string;
+        payload?: { ids?: string[] };
+      };
       if (data.type === 'db:changed') void refresh();
+      if (data.type === 'activation:fired' && data.payload?.ids) {
+        const now = Date.now();
+        setPulses((prev) => {
+          const next = new Map(prev);
+          for (const id of data.payload!.ids!) next.set(id, now);
+          return next;
+        });
+        // Garbage-collect entries older than the pulse window so the map
+        // doesn't grow unbounded.
+        setTimeout(() => {
+          setPulses((prev) => {
+            const next = new Map<string, number>();
+            const cutoff = Date.now() - 1500;
+            for (const [k, v] of prev) if (v > cutoff) next.set(k, v);
+            return next;
+          });
+        }, 1600);
+      }
     });
     return () => ws.close();
   }, []);
@@ -144,6 +166,7 @@ export function App(): JSX.Element {
           }}
           focusToken={focusToken}
           selectedId={selected}
+          pulses={pulses}
           onAccept={async (id) => {
             await fetch(`/api/pending-edges/${id}/accept`, { method: 'POST' });
             await refresh();
