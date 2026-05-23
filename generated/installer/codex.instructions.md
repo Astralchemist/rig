@@ -82,6 +82,18 @@ Use when you want the raw graph view ("what does this connect to") rather
 than a ranked similarity view. For "what's most related" use rig_pull —
 it scores by structural distance + semantic similarity + recency.
 
+### `rig_critical_path`
+
+Greedy walk outward from the root anchor, picking the highest-scoring outbound
+edge at each step. Score = w_hubness × destination.hubness + w_activation ×
+normalized_activation_count + w_kind × edge_kind_weight (contains > references
+> calls > imports). Returns an ordered chain — the "main thread" through the
+subsystem rooted at this anchor.
+
+Use as a one-shot architecture tour: "what's the spine of this code path"
+or "which chain of anchors carries the most traffic from X". For one-hop
+neighbors use rig_neighbors; for ranked similarity use rig_pull.
+
 ### `rig_search`
 
 Find anchors by name or qualified name via SQLite FTS5. Returns

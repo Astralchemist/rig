@@ -25,6 +25,7 @@ import {
 import { runIndexAll } from './index-all.ts';
 import { computeMagneticPull, type PullResult } from './pull.ts';
 import { listAliases, type AliasRow } from './db/alias-queries.ts';
+import { computeCriticalPath, type CriticalStep } from './graph/critical-path.ts';
 import { drillFromHub, type DrillResult } from './graph/hub-drill.ts';
 import { getTopHubs, hubsOf, promoteHub, type HubRef } from './graph/hubness.ts';
 import { dbPathOf, rigDirOf, toRigNode } from './rig-shape.ts';
@@ -40,6 +41,7 @@ export type { IndexResult, RigOptions, StatusInfo };
 export type { PullResult } from './pull.ts';
 export type { HubRef } from './graph/hubness.ts';
 export type { DrillResult } from './graph/hub-drill.ts';
+export type { CriticalStep } from './graph/critical-path.ts';
 export type { AliasRow } from './db/alias-queries.ts';
 export type { SyncResult } from './sync.ts';
 export type { TaggedEdge, NeighborsOptions } from './db/edge-queries.ts';
@@ -175,6 +177,10 @@ export class Rig {
 
   getAliases(id: NodeId): AliasRow[] {
     return listAliases(this.database.adapter, id);
+  }
+
+  getCriticalPath(id: NodeId, maxSteps = 16): CriticalStep[] {
+    return computeCriticalPath(this.database.adapter, id, maxSteps);
   }
 
   getMagneticPull(id: NodeId, k = 10): PullResult[] {

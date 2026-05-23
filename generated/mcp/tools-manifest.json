@@ -1121,6 +1121,83 @@
       ]
     },
     {
+      "name": "rig_critical_path",
+      "description": "Walk the architecture's spine from a root anchor",
+      "tier": "light",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "max_steps": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 32,
+            "default": 12
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "hubness": {
+                  "type": "number"
+                },
+                "activation_count": {
+                  "type": "integer"
+                },
+                "step_weight": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "kind",
+                "hubness",
+                "activation_count",
+                "step_weight"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "path",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND"
+      ]
+    },
+    {
       "name": "rig_add_node",
       "description": "Add a new anchor extracted from conversation",
       "tier": "write",

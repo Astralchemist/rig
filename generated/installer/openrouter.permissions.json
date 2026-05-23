@@ -17,6 +17,7 @@
       "mcp__rig__rig_annotate",
       "mcp__rig__rig_pull",
       "mcp__rig__rig_neighbors",
+      "mcp__rig__rig_critical_path",
       "mcp__rig__rig_add_node",
       "mcp__rig__rig_search",
       "mcp__rig__rig_callees",
