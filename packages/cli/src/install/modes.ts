@@ -4,7 +4,7 @@ import { atomicWrite } from './atomic.ts';
 import { deepMerge } from './json-merge.ts';
 import { mergeJsonc } from './jsonc-merge.ts';
 import { expandHome } from './paths.ts';
-import { upsertSection } from './section.ts';
+import { upsertSection, upsertSectionSafe } from './section.ts';
 import { expandTokens, type TokenContext } from './tokens.ts';
 import { buildTomlTable, flattenSingleTable, upsertTomlTable } from './toml.ts';
 
@@ -55,11 +55,27 @@ const applyAppendSection = async (
 ): Promise<ApplyResult> => {
   const body = typeof template === 'string' ? template : JSON.stringify(template, null, 2);
   const existing = await readOrEmpty(resolvedPath);
-  const next = upsertSection(existing, body);
+  const { content: next, hadUserEdits, previousBody } = upsertSectionSafe(existing, body);
   if (existing === next) {
     return { path: resolvedPath, mode: 'append-section', changed: false, status: 'unchanged' };
   }
-  if (!dryRun) await atomicWrite(resolvedPath, next);
+  if (!dryRun) {
+    // Preserve any user edits that lived between our markers — drop them in a
+    // .rig-backup sibling so they can be diffed/restored. Without this, a regen
+    // would silently clobber custom instructions.
+    if (hadUserEdits && previousBody) {
+      const backup = `${resolvedPath}.rig-backup`;
+      await atomicWrite(
+        backup,
+        `# Saved by rig install on ${new Date().toISOString()} — content between ` +
+          `<!-- rig:begin --> markers that differed from the generated body.\n\n${previousBody}\n`,
+      );
+      process.stderr.write(
+        `  warn: preserved your edits inside the rig section at ${backup}\n`,
+      );
+    }
+    await atomicWrite(resolvedPath, next);
+  }
   return {
     path: resolvedPath,
     mode: 'append-section',
@@ -67,6 +83,8 @@ const applyAppendSection = async (
     status: dryRun ? 'dry-run' : 'wrote',
   };
 };
+
+void upsertSection; // re-exported elsewhere; keep the import live for typecheck.
 
 export async function applyFile(
   file: TargetFileLike,
