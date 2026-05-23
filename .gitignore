@@ -15,3 +15,9 @@ vendor/
 
 # Bun
 bun.lockb.bak
+
+# Playwright
+e2e/.state.json
+test-results/
+playwright-report/
+playwright/.cache/
