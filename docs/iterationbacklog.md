@@ -1,0 +1,878 @@
+# Rig — Iteration Backlog v0.4
+
+> Companion to the four foundation docs (build brief, extraction map, Phase 3 plan, Phase 1.5 contracts). Holds every architectural idea sketched in conversation that didn't make it into the original spec set. Each item is structured so it can be promoted to its own addendum when you're ready to build it.
+>
+> **Snapshot taken at:** end of the conversation that produced the original four docs, after Phase 0/1/2 shipped and the screenshot showing 792 nodes / 223 edges / 202 files.
+>
+> **Read order before touching this backlog:** finish the extractor diagnostic (Section 0.1 below), confirm the connectivity ratio reaches 2–5 edges/node on the same codebase, then come back here. Most of the prioritization assumes structural edges work correctly.
+
+---
+
+## 0. Where we are
+
+### 0.1 Pre-existing diagnostic (do this first)
+
+The screenshot review surfaced one issue that needs to be cleared before any backlog work starts:
+
+- 223 edges / 792 nodes ≈ 0.28 edges/node — far too low for a real TS codebase
+- `MutationRow` interface shows zero neighbors despite being defined in a real `.ts` file
+- Likely cause: `packages/core/src/extract/languages/typescript.ts` handles concrete imports but not type-only references (`type_identifier`, `predefined_type` AST nodes)
+
+**Acceptance for "ready to start the backlog":** re-index the same codebase, see 2–5 edges/node, see `MutationRow` showing incoming `references` edges from its usage sites. Magnetic pull's structural component (`s`) will start showing non-zero values automatically once edges exist.
+
+### 0.2 Shipped foundation
+
+What the four docs already produced:
+
+- Phase 0 — scaffold, workspaces, vendor/codegraph snapshot
+- Phase 1 — read-only MCP server with light + heavy tools, embeddings, magnetic-pull scoring
+- Phase 1.5 — contract layer (if applied; confirm before assuming downstream)
+- Phase 2 — localhost map UI with force-graph, selection, chat bound to selected node
+- Phase 3 — scaffolding present (the `undo` button in the UI suggests at least the write-tool surface exists; confirm whether the propose → accept loop is wired end-to-end)
+
+### 0.3 What's intentionally not in this doc
+
+Implementation prose for things already specced — the four foundation docs cover that. This is the **next-wave architecture**.
+
+---
+
+## 1. How to use this doc
+
+Each backlog item follows the same structure:
+
+```
+### Code. Name
+- One-liner
+- Why it matters
+- Schema additions
+- New tools
+- Acceptance
+- Dependencies
+- Risk surface
+```
+
+The codes are letter+number (A1, B2, C3, …) for cross-reference. Sections A–G group items by theme. Section 3 gives a recommended sequence across themes; Section 4 lists decisions that need locking before building.
+
+Items are sized so each can be promoted into a full implementation spec — like the Phase 1.5 contracts addendum — when its turn comes. The body of each item is enough to remember the design without re-deriving it from chat.
+
+---
+
+## 2. Backlog items
+
+### A. Graph enrichment
+
+#### A1. Hub-and-spoke topology
+
+**One-liner.** Any node can be a hub; hubness is computed from graph structure; navigation flows hub → sub.
+
+**Why.** Makes 5k+ node graphs legible. Drops token cost on broad queries by roughly 5×. Falls out of existing schema for free.
+
+**Schema:**
+```sql
+ALTER TABLE nodes ADD COLUMN is_hub BOOLEAN DEFAULT FALSE;
+ALTER TABLE nodes ADD COLUMN hubness REAL DEFAULT 0;
+CREATE INDEX idx_nodes_hub ON nodes(is_hub) WHERE is_hub = TRUE;
+```
+
+**Hubness formula:**
+```
+hubness(node) =
+    w_fanout      * outgoing_contains_edges(node)
+  + w_centrality  * betweenness_centrality(node)
+  + w_heat        * heat_score(node)              -- from C1
+  + w_explicit    * is_marked_as_hub(node)
+```
+
+Starting weights: `w_fanout=0.35, w_centrality=0.30, w_heat=0.20, w_explicit=0.15`. Threshold for `is_hub=TRUE`: top 5% by `hubness` per anchor type.
+
+**New tools:**
+- `rig_hubs(scope?, limit=20)` — top hubs in scope (default: whole graph)
+- `rig_hub_of(node_id)` — the hub(s) a sub-node belongs to
+- `rig_drill(hub_id, query?)` — explore a hub's sub-tree, optionally filtered
+- `rig_promote(node_id, rationale)` — explicit hub mark, provenance-tagged
+
+**Acceptance.**
+- [ ] `is_hub` and `hubness` populated at index time
+- [ ] `rig_hubs` returns top-N anchors sorted by hubness
+- [ ] UI defaults to hub-mode rendering when node count > 5,000
+- [ ] `rig_pull` re-ranks light-tier results to surface hubs first
+- [ ] `rig_drill` returns sub-nodes ranked by their pull score within the hub
+
+**Dependencies.** None — builds on existing schema. Improves dramatically once C1 (heat) is in.
+
+**Risk surface.** Cross-cutting concerns (sub-nodes belonging to multiple hubs). Ship with primary-only assignment; add multi-hub or shared-tier in a follow-up if real usage exposes the gap.
+
+---
+
+#### A2. Package manifests as first-class hubs
+
+**One-liner.** Treat dependency-declaration files (`package.json`, `requirements.txt`, `pyproject.toml`, etc.) as queryable anchors carrying version metadata, not as opaque text.
+
+**Why.** Vibecoded apps are ~25% imports. Dependency questions ("what version of pandas do I have?") become 1-hop lookups instead of grep. Conflict detection, unused-dep detection, and version-bump impact all become graph queries.
+
+**New anchor types.**
+- `package-manifest` — represents a single declaration file
+- `declared-dependency` — one entry within a manifest, with version on the node:
+  ```json
+  {
+    "name": "pandas",
+    "version": "2.1.4",
+    "spec": "^2.1.0",
+    "source": "pypi",
+    "manifest_path": "requirements.txt",
+    "is_dev": false
+  }
+  ```
+
+**New edge kinds.**
+- `manifest_declares` — manifest → declared-dependency
+- `imports_package` — code-symbol → declared-dependency (when an import resolves)
+- `resolves_to` — declared-dependency → installed-version (from lock files)
+
+**New extractors** in `packages/core/src/extract/manifests/`:
+- `package.json`, `package-lock.json`, `bun.lockb`, `pnpm-lock.yaml`, `yarn.lock`
+- `requirements.txt`, `requirements-dev.txt`
+- `pyproject.toml`, `Pipfile`, `poetry.lock`, `uv.lock`
+- `Cargo.toml`, `Cargo.lock`
+- `go.mod`, `go.sum`
+
+**New tools.**
+- `rig_deps(manifest_path?)` — list declared deps
+- `rig_dep_conflicts()` — same package, different versions across manifests
+- `rig_unused_deps()` — declared with zero `imports_package` incoming edges
+- `rig_phantom_imports()` — imports without `resolves_to` resolution
+
+**Acceptance.**
+- [ ] All 7 listed package-manager formats parse correctly via golden-file tests
+- [ ] Querying "pandas" returns the declared-dependency with version in the data field, no traversal needed
+- [ ] `rig_dep_conflicts` flags a project that declares pandas 2.1.4 in requirements.txt and 2.2.0 in pyproject.toml
+- [ ] `rig_unused_deps` correctly identifies a dep declared but never imported
+
+**Dependencies.** A1 (hubs) — these are automatic hubs via the hubness formula.
+
+**Risk surface.** Lock-file parsers are format-specific and brittle to format-version changes. Pin the parser version per format; emit warnings on unknown shapes.
+
+---
+
+#### A3. Obsidian-style aliases
+
+**One-liner.** A node can have multiple names that all resolve to the same canonical anchor.
+
+**Why.** Code symbols, doc concepts, and waypoints frequently have multiple names (`useState` vs `React.useState`, `pandas` vs `pd`, `the Sovereign move` vs `declarative contracts`). Aliases collapse them into one anchor instead of producing duplicates.
+
+**Schema:**
+```sql
+CREATE TABLE aliases (
+  node_id TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+  alias TEXT NOT NULL,
+  provenance TEXT NOT NULL,     -- 'ast' | 'user' | 'ai:<model>'
+  PRIMARY KEY (node_id, alias)
+);
+CREATE INDEX idx_aliases_alias ON aliases(alias);
+
+-- FTS5 union: search nodes.name OR aliases.alias
+```
+
+**FTS5 integration.** Search joins against both `nodes.name` and `aliases.alias` so a query for any alias finds the canonical node.
+
+**New tools.**
+- `rig_add_alias(node_id, alias, rationale)` — Phase 3 write tool, provenance required
+- `rig_aliases(node_id)` — list aliases for a node
+
+**Acceptance.**
+- [ ] Indexing `pandas` Python imports creates `pd` as an automatic alias via AST inspection
+- [ ] Searching `pd` returns the same node as `pandas`
+- [ ] User can add an explicit alias via the UI / MCP tool with rationale
+
+**Dependencies.** Phase 3 write tools (already on the roadmap).
+
+**Risk surface.** Alias collisions across unrelated anchors. Enforce that an alias can only resolve to one canonical node within an anchor type; conflicts surface as a UI warning, not a hard error.
+
+---
+
+#### A4. GraphRAG community detection (no LLM)
+
+**One-liner.** Run Leiden algorithm on the graph at index time to assign every node a community ID. Pre-computed clusters power local-vs-global retrieval.
+
+**Why.** At 10k+ nodes the UI needs visual clustering. Community detection is cheap, deterministic, and doesn't need any LLM. Provides the "community boost" term for magnetic pull.
+
+**Schema:**
+```sql
+ALTER TABLE nodes ADD COLUMN community_id INTEGER DEFAULT NULL;
+CREATE INDEX idx_nodes_community ON nodes(community_id);
+
+CREATE TABLE communities (
+  id INTEGER PRIMARY KEY,
+  size INTEGER NOT NULL,
+  label TEXT,                   -- optional human-readable name
+  computed_at INTEGER NOT NULL
+);
+```
+
+**Algorithm.** Leiden, weighted by both structural and semantic edges. Re-run on bulk changes (>50 edges added/removed in a sync), gated behind a 30-second debounce. Incremental Leiden for the >100k case lives in F3.
+
+**New tools.**
+- `rig_communities(limit=20)` — list communities ranked by size or by recent activity
+- `rig_community_of(node_id)` — community + its other members
+
+**Magnetic pull addition.**
+```
+score += w_community * sameCommunity(anchor, candidate)   // 1.0 if same, 0.0 otherwise
+```
+Starting weight: `w_community=0.15`. Rebalance other weights accordingly.
+
+**Acceptance.**
+- [ ] Index a 5k-node codebase, see communities of 50–500 nodes each
+- [ ] UI colors nodes by community in a toggleable view
+- [ ] `rig_pull` returns higher scores for candidates in the same community as the anchor
+
+**Dependencies.** A1 (hubs benefit from community signal in the hubness formula).
+
+**Risk surface.** Leiden non-deterministic across runs. Pin a random seed; record `computed_at` so the user can tell when community labels are stale.
+
+---
+
+#### A5. Mem0-style consolidation job
+
+**One-liner.** Periodic background job that merges redundant nodes (same name, same kind, same file) and consolidates near-duplicate semantic edges.
+
+**Why.** Repeated indexing of churning code creates duplicate nodes for renamed/moved entities. Aliases handle the alternate-name case (A3); consolidation handles the actual-duplicate case.
+
+**Mechanism.** Nightly job (or on `rig consolidate` CLI command):
+1. Find groups of nodes with identical `(name, kind, file_path)` triples
+2. Pick the one with the most edges as canonical; rewrite edges from the others to point at the canonical; mark the others for deletion
+3. For semantic edges between the same pair within `±epsilon` of weight, keep only the most recent
+
+**New tools.** CLI only: `rig consolidate [--dry-run]`. MCP can call this via a heavy tool if needed.
+
+**Acceptance.**
+- [ ] Dry-run mode prints the merge plan without changes
+- [ ] Real run reduces node count without breaking any queries
+- [ ] Mutation log records every consolidation step (so it's auditable and reversible)
+
+**Dependencies.** Phase 3 mutation log.
+
+**Risk surface.** Aggressive consolidation can erase intentional duplicates. Default to dry-run; require explicit `--apply` to commit.
+
+---
+
+### B. Memory layer
+
+#### B1. Conversation waypoints (basic)
+
+**One-liner.** Discrete, structured markers the AI drops at decision points in a conversation. Survive context-window compaction.
+
+**Why.** Context windows fill. Compaction is lossy. Waypoints are structured data that the AI is instructed to preserve verbatim even when the surrounding prose is summarized. Each carries an analogy + summary + refs into the graph for on-demand rehydration.
+
+**Schema:**
+```sql
+-- waypoints use existing nodes table with type='conversation-waypoint'
+-- data field carries the JSON shape below
+
+CREATE TABLE sessions (
+  id TEXT PRIMARY KEY,
+  started_at INTEGER NOT NULL,
+  last_seen INTEGER NOT NULL,
+  title TEXT,
+  context_model TEXT
+);
+```
+
+Waypoint data shape:
+```json
+{
+  "session_id": "...",
+  "type": "decision | observation | constraint | open-question | principle",
+  "title": "Lock TS + Bun as primary stack",
+  "analogy": "The Sovereign move",
+  "summary": "Bun runtime with bun:sqlite primary, better-sqlite3 fallback for Node ≥20",
+  "constellation_refs": ["node:phase3_plan#0.1", "node:build_brief#3.2"],
+  "predecessors": ["wp_039"],
+  "key_terms": ["bun", "sqlite", "native-deps"],
+  "compactable": false
+}
+```
+
+**New edges.**
+- `waypoint_succeeds` — waypoint → predecessor waypoint
+- `waypoint_references` — waypoint → any graph node
+
+**New tools.**
+- `rig_drop_waypoint(title, type, summary, analogy, refs[])` — AI marks a decision
+- `rig_recall_waypoint(id_or_analogy)` — retrieve full context
+- `rig_waypoints(session_id?, type?, limit?)` — list waypoints
+- `rig_chain(waypoint_id, depth=10)` — walk predecessor chain
+- `rig_relevant_waypoints(query, k=5)` — vector similarity over intent vectors
+
+**CLAUDE.md addition.** Install template gains a section: "drop a waypoint when you make a decision, when the user states a constraint, when an observation recurs, or when an open question emerges. Never compact past waypoints."
+
+**Acceptance.**
+- [ ] AI drops waypoints during a real Claude Code session
+- [ ] `rig_chain` reconstructs the reasoning thread of a multi-turn session
+- [ ] Opening a new chat tomorrow: `rig_waypoints session:last limit:20` lets the agent pick up oriented
+
+**Dependencies.** Phase 3 write tools and mutation log.
+
+**Risk surface.** Waypoint spam if the AI drops one per turn. Mitigate via a CLAUDE.md instruction with explicit threshold guidance plus a rate-limit at the tool layer (max 1 per N turns).
+
+---
+
+#### B2. Polymorphic waypoint payloads
+
+**One-liner.** Waypoints carry not just text but mermaid diagrams, image refs, doc fragments, code snippets, and dataset pointers.
+
+**Why.** Some decisions are best preserved visually (a UI mockup, an architecture diagram). The waypoint becomes a multi-modal memory cell, not a text-only summary.
+
+**Schema addition.** The waypoint's `data` field gains a `payloads[]` array:
+```json
+{
+  "payloads": [
+    { "type": "text-summary", "content": "..." },
+    { "type": "mermaid-diagram", "content": "graph TD; A-->B" },
+    { "type": "image-ref", "path": ".rig/media/wp_042-mockup.svg" },
+    { "type": "doc-fragment", "content": "## Decision: ..." },
+    { "type": "code-snippet", "lang": "ts", "content": "..." },
+    { "type": "dataset-pointer", "query": "{ filter: ..., limit: 200 }" }
+  ]
+}
+```
+
+**Storage.** Heavy payloads (images, large diagrams) go in `.rig/media/` as separate files; the waypoint holds a path. Keeps the SQLite row size reasonable.
+
+**Acceptance.**
+- [ ] A waypoint can be dropped with a mermaid diagram and render in the UI
+- [ ] Image payloads display inline in the side-panel chat
+- [ ] `rig_recall_waypoint` returns all payloads; agent decides which to render
+
+**Dependencies.** B1.
+
+---
+
+#### B3. Doc generation from waypoints
+
+**One-liner.** `rig export --docs` generates a markdown site assembled from all waypoints in the project, organized by hub.
+
+**Why.** Engineering documentation is usually written separately, falls out of date, and becomes a chore. If waypoints already record every decision with rationale and refs, the documentation is *already there* — `export` just renders it.
+
+**Output structure:**
+```
+docs/
+├── index.md                 # auto-generated TOC, grouped by hub
+├── decisions/
+│   ├── 2026-05-22-ts-bun-stack.md      # one file per waypoint of type=decision
+│   └── ...
+├── principles/              # waypoints of type=principle
+├── open-questions/          # waypoints of type=open-question
+└── architecture/            # waypoints with mermaid-diagram payloads, rendered
+```
+
+**Acceptance.**
+- [ ] Run on Rig's own waypoint chain, produce a navigable docs site
+- [ ] Re-running after new waypoints updates only the changed files
+- [ ] CI can regenerate and publish to a docs site (GitHub Pages, Cloudflare Pages)
+
+**Dependencies.** B1, B2, A1 (for hub grouping).
+
+---
+
+#### B4. Cross-session waypoint retrieval
+
+**One-liner.** `rig_waypoints session:last` lets a new session pick up where the previous one ended without re-reading the full prior conversation.
+
+**Why.** This is the durability story. Open a new chat tomorrow, the agent reorients via the last 20 waypoints — their analogies + summaries.
+
+**Mechanism.** Already supported by B1's `sessions` table + `rig_waypoints(session_id?)` tool. What B4 adds is the *install-time CLAUDE.md instruction*: on session start, before the first user turn, the agent calls `rig_waypoints session:last limit:20` and ingests it as context.
+
+**Acceptance.**
+- [ ] Fresh Claude Code session in a Rig-installed project automatically loads the last session's waypoints
+- [ ] Agent's first response references prior decisions without the user needing to repeat them
+
+**Dependencies.** B1.
+
+---
+
+### C. Observability layer
+
+#### C1. Hot-node tracking + heat scoring
+
+**One-liner.** Expand the activations table; compute a `heat_score` per node from exponentially-decayed recent activity; use it in magnetic pull and UI.
+
+**Why.** At any scale beyond a toy project, knowing which anchors are touched most lets us cache them, prioritize them in UI, and identify cold/dead-weight nodes for pruning.
+
+**Schema:**
+```sql
+-- expanded activations
+ALTER TABLE activations ADD COLUMN session_id TEXT;
+ALTER TABLE activations ADD COLUMN query_hash TEXT;
+ALTER TABLE activations ADD COLUMN rank INTEGER;
+ALTER TABLE activations ADD COLUMN context TEXT;
+CREATE INDEX idx_act_query ON activations(query_hash);
+
+-- materialized heat view (refreshed every 60s)
+CREATE VIEW node_heat AS
+SELECT
+  node_id,
+  COUNT(*)                              AS lifetime_touches,
+  COUNT(DISTINCT session_id)            AS unique_sessions,
+  COUNT(DISTINCT query_hash)            AS unique_queries,
+  MAX(ts)                               AS last_touched_ts,
+  SUM(EXP(-(strftime('%s','now')*1000 - ts) / 259200000.0)) AS heat_score
+FROM activations
+GROUP BY node_id;
+```
+
+**Magnetic pull integration.** The `recency` term in the formula becomes `heat_score`, normalized 0..1.
+
+**Hot-node cache.** Bounded in-memory LRU keyed by `node_id`, holds precomputed `PullResult`. Populated when `heat_score` crosses threshold. Invalidated on any 2-hop structural change.
+
+**New tools.**
+- `rig_hotspots(window='7d', limit=20)` — top heat
+- `rig_cold(days=90)` — candidates for pruning
+
+**Acceptance.**
+- [ ] Heat view refreshes on a 60s timer without query-time impact
+- [ ] Hot-node cache hits show in tool-call elapsed_ms (<5ms cache hit vs ~50ms cold)
+
+**Dependencies.** None directly; benefits A1, A4, D1.
+
+---
+
+#### C2. First-class queries + query log
+
+**One-liner.** Promote queries themselves to graph nodes; track which queries are common, which return nothing useful (gaps), which results were clicked.
+
+**Why.** A graph that knows what's been asked of it is qualitatively different from one that doesn't. Pre-warm hot queries; surface gaps where the graph needs more anchors; build per-user personalization.
+
+**Schema:**
+```sql
+CREATE TABLE queries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  query_hash TEXT UNIQUE,
+  raw_text TEXT,
+  first_seen INTEGER,
+  last_seen INTEGER,
+  count INTEGER DEFAULT 1
+);
+
+CREATE TABLE query_results (
+  query_id INTEGER NOT NULL,
+  node_id TEXT NOT NULL,
+  rank INTEGER NOT NULL,
+  was_useful BOOLEAN,
+  ts INTEGER NOT NULL
+);
+```
+
+**New tools.**
+- `rig_query_log(limit=50)` — recent queries with hit counts
+- `rig_gaps(window='30d')` — queries that returned nothing useful
+- `rig_query_warm(query_hash)` — pre-compute and cache a hot query's results
+
+**Acceptance.**
+- [ ] After 100 queries, `rig_query_log` shows the most common ones
+- [ ] `rig_gaps` surfaces queries the user has run multiple times with no useful return
+
+**Dependencies.** C1.
+
+---
+
+#### C3. Pulse events + WebSocket animations
+
+**One-liner.** Every MCP tool call emits a `pulse` WS event; the UI animates the path of activation across the graph in real time.
+
+**Why.** Watch the AI reason live. The map becomes the trace. Builds trust through transparency.
+
+**Schema.**
+```sql
+CREATE TABLE pulse_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT NOT NULL,
+  ts INTEGER NOT NULL,
+  skill TEXT NOT NULL,
+  model TEXT NOT NULL,
+  input_node_ids TEXT,
+  output_node_ids TEXT,
+  elapsed_ms INTEGER,
+  payload_summary TEXT
+);
+CREATE INDEX idx_pulse_session_ts ON pulse_log(session_id, ts);
+```
+
+**WS event:**
+```json
+{
+  "type": "pulse",
+  "skill": "rig_pull",
+  "model": "claude-opus-4.7",
+  "input_anchors": ["authStore"],
+  "output_anchors": ["login", "logout", "refresh"],
+  "elapsed_ms": 67
+}
+```
+
+**UI animation.** Input anchors glow at full saturation; traveling pulse moves along each edge to outputs; fades over ~2 seconds. Skill name flashes in an "active skills" side panel.
+
+**Acceptance.**
+- [ ] During a live Claude Code session, the UI shows pulses moving across the graph in real time
+- [ ] Pulse log captures every tool call with input/output anchor IDs
+- [ ] Replay mode walks through a session's pulses at 1× / 4× / 16× speed
+
+**Dependencies.** Phase 2 WebSocket layer.
+
+---
+
+#### C4. Skill/model nodes — self-mapping
+
+**One-liner.** Model the AI's own skill surface in the graph: `model`, `skill`, `agent-session` as node types; magnetic pull works on skills the same way it works on knowledge.
+
+**Why.** Closes the loop — the actor is inside the constellation, not outside. The agent can ask `rig_pull(anchor)` and get back relevant *skills*, not just relevant knowledge. Skill discovery via the same mechanism as everything else.
+
+**New anchor types.**
+- `model` (e.g. `claude-opus-4.7`)
+- `skill` (e.g. `rig_pull`, `browser_fetch`, `web_search`)
+- `agent-session`
+
+**New edges.**
+- `model_has_skill`
+- `skill_uses_tool`
+- `invoked_in_session`
+
+**Provenance enrichment.** The `provenance` field on `edges_semantic` can now hold not just `ai:claude-opus-4.7` but `ai:claude-opus-4.7|skills:pull→explore→infer`. Audit trail at thought-granularity.
+
+**Acceptance.**
+- [ ] `rig_pull("how do I structure auth?")` returns relevant knowledge anchors AND relevant skills
+- [ ] Switching from Claude to GPT in chat panel shows different skills lit up
+
+**Dependencies.** B1 (sessions table reused), C3 (pulse log).
+
+---
+
+#### C5. Pulse replay + session timeline
+
+**One-liner.** Scrub through a past session's pulse log to see how the AI arrived at its conclusions.
+
+**Why.** Debug "why did the AI propose this edge?" by replaying the sequence of skill invocations that led to it.
+
+**UI.** A timeline at the bottom of the map view showing the session's pulses as a scrubbable timeline. Click any point → graph state and active skills at that moment.
+
+**Acceptance.**
+- [ ] Open the timeline for the last session, see all pulses in chronological order
+- [ ] Scrub to any pulse, see which nodes were touched and which skill fired
+- [ ] Click a proposed edge → jump to the pulse that produced it
+
+**Dependencies.** C3, C4.
+
+---
+
+### D. Retrieval intelligence
+
+#### D1. LightRAG dual-level retrieval
+
+**One-liner.** Two retrieval modes — concept-level (hubs, manifests, principles) and entity-level (specific code symbols, examples) — and the agent picks based on question shape.
+
+**Why.** Concept-level questions ("what version of pandas") get 1-hop answers from hubs. Entity-level ("where is pandas used") drill from the concept hub. The agent chooses; the system serves both.
+
+**Mechanism.** `rig_pull` gains a `level` parameter:
+- `level='concept'` — returns only hubs and manifests
+- `level='entity'` — returns only non-hub nodes
+- `level='auto'` — system picks based on query shape (default)
+
+**Acceptance.**
+- [ ] "what version of X" auto-routes to concept-level
+- [ ] "where is X used" auto-routes to entity-level
+- [ ] Manual override works in either direction
+
+**Dependencies.** A1, A2.
+
+---
+
+#### D2. Hub-aware `rig_pull` reranking
+
+**One-liner.** When the calling tier is light/main-session, surface hubs first; sub-nodes appear via drill.
+
+**Why.** Main-session token budget is precious. Returning 5 hubs lets the agent pick one and drill, instead of dumping 50 sub-nodes.
+
+**Mechanism.** Light-tier `rig_pull` adds a `hub_bias` parameter (default 0.3). Hubs get a +0.3 boost on their score. Drill happens via explicit `rig_drill(hub_id)`.
+
+**Acceptance.**
+- [ ] Main-session `rig_pull` returns hubs in the top half of results
+- [ ] Heavy-tier `rig_explore` does not apply hub bias (it wants full context)
+
+**Dependencies.** A1.
+
+---
+
+#### D3. Community-aware pull
+
+**One-liner.** Add a community-membership term to the magnetic pull formula.
+
+**Why.** Candidates in the same community as the anchor are usually more relevant than equally-scored candidates from other communities.
+
+**Formula:**
+```
+score += w_community * sameCommunity(anchor, candidate)
+```
+With `w_community=0.15` starting; rebalance other weights to keep sum=1.
+
+**Dependencies.** A4.
+
+---
+
+#### D4. Skill-relevance selection
+
+**One-liner.** `rig_relevant_skills(query, k=5)` — agent asks the graph which of its own skills are most relevant to a query.
+
+**Why.** Once skills are graph nodes (C4), the agent can use the same retrieval mechanism to pick its own tools. Reduces wasted tool calls.
+
+**Acceptance.**
+- [ ] Query "I need to validate this externally" returns `browser_fetch`, `web_search` near top
+- [ ] Query "what's connected to X" returns `rig_pull`, `rig_neighbors`
+
+**Dependencies.** C4.
+
+---
+
+### E. Composition
+
+#### E1. Browser MCP install integration + `source_url` on edges
+
+**One-liner.** During `rig install`, offer to install Playwright MCP alongside Rig. Add a `source_url[]` field to AI-proposed edges so web-validated proposals carry their evidence.
+
+**Why.** Don't build a browser into Rig — compose with one. The AI co-cartographer can validate proposed edges via web research; the source URLs become the evidence trail in the accept/reject popover.
+
+**Schema:**
+```sql
+ALTER TABLE edges_semantic ADD COLUMN source_urls TEXT;  -- JSON array
+ALTER TABLE pending_edges ADD COLUMN source_urls TEXT;
+```
+
+**Installer addition.** A prompt in the `rig install` interactive flow: *"Also install Playwright MCP for web validation? (recommended)"*. If yes, write both MCP entries to the user's `.claude.json` in one step.
+
+**UI addition.** The pending-edge popover shows `source_urls` as clickable links.
+
+**Acceptance.**
+- [ ] AI proposes an edge with a rationale citing 2 URLs → URLs appear in the accept popover
+- [ ] Clicking a URL opens it in the user's browser
+
+**Dependencies.** Phase 3 write tools.
+
+---
+
+#### E2. OpenClaw ↔ Rig MCP composition
+
+**One-liner.** Spec the composition pattern: OpenClaw researches and writes findings as Rig waypoints + proposed edges; Rig persists across OpenClaw sessions.
+
+**Why.** Two of your products doing complementary work instead of overlapping. OpenClaw is the active research agent; Rig is the durable graph. They compose via MCP — no special integration code.
+
+**Pattern.**
+1. User asks OpenClaw: "research X across these sources"
+2. OpenClaw runs (it has its own browser/research stack)
+3. OpenClaw writes findings to Rig via `rig_propose_edge` and `rig_drop_waypoint`
+4. User accepts/rejects in Rig's UI; findings become canonical
+
+**Acceptance.**
+- [ ] OpenClaw can call Rig MCP tools when both are installed in the same agent session
+- [ ] A research task in OpenClaw produces visible pending edges in Rig's map
+- [ ] User accept/reject feeds back to OpenClaw's session via `rig_subscribe`
+
+**Dependencies.** Phase 3, E1.
+
+---
+
+#### E3. Direct chat mode
+
+**One-liner.** Chat panel in the map UI can speak to any OpenAI-compatible endpoint (BYO API key) instead of only proxying to Claude Code.
+
+**Why.** Phase 2 chat is MCP-proxy only (locked to whatever agent runs MCP). Direct mode opens it up to Anthropic API, OpenAI, OpenRouter, Groq, etc. Same UI, model-agnostic.
+
+**Config:**
+```json
+{
+  "chat_mode": "mcp" | "direct",
+  "direct_endpoint": "https://api.openai.com/v1",
+  "direct_model": "gpt-5",
+  "direct_api_key_env": "OPENAI_API_KEY"
+}
+```
+
+**Acceptance.**
+- [ ] User toggles to Direct mode in settings, pastes an API key
+- [ ] Chat works with any of OpenAI/Anthropic/OpenRouter/Groq endpoints
+- [ ] Direct mode can still call Rig MCP tools when configured to do so
+
+**Dependencies.** Phase 2 chat panel.
+
+---
+
+### F. Scale
+
+#### F1. sqlite-vec HNSW for vector search
+
+**One-liner.** Replace linear cosine search with `sqlite-vec`'s HNSW index when node count crosses ~20k.
+
+**Why.** Linear cosine over 100k embeddings is ~50ms+. HNSW drops it to ~5ms.
+
+**Acceptance.**
+- [ ] HNSW index built automatically when embeddings table crosses threshold
+- [ ] Magnetic pull's semantic component runs in <5ms on 100k-node graphs
+
+**Dependencies.** None.
+
+---
+
+#### F2. Activations rollup
+
+**One-liner.** Nightly job rolls up old activations into `activations_summary` keeping last-N per node + aggregate decay term.
+
+**Why.** At 100k nodes with 1k touches/day, raw activations hit a million rows in 10 days. Rollup keeps the table from growing unbounded without losing the signal that matters.
+
+**Dependencies.** C1.
+
+---
+
+#### F3. Incremental Leiden
+
+**One-liner.** Re-run community detection only on the changed subgraph plus its boundary, not the whole graph.
+
+**Why.** Full Leiden on 100k+ nodes is slow. Streaming variants converge orders of magnitude faster on incremental updates.
+
+**Dependencies.** A4.
+
+---
+
+#### F4. UI hub-default rendering
+
+**One-liner.** When node count > 5k, the map renders only hubs by default; sub-nodes expand on hub-click.
+
+**Why.** Force-graph hits its limit around 5–10k visible nodes. Hub-default keeps the UI legible at any scale.
+
+**Dependencies.** A1.
+
+---
+
+### G. Vision / long-term
+
+#### G1. Multi-modal anchors
+
+**One-liner.** Image, audio, and video files as first-class anchors with their own embedders (CLIP for images, Whisper-derived for audio).
+
+**Why.** Constellation already speaks the language of "anchor + embedding + edges." Adding non-text anchors unlocks ML-researcher use cases and design workflows.
+
+**Schema additions.** `embeddings.modality` (text|image|audio|video). Per-modality embedders pluggable via the contracts layer.
+
+---
+
+#### G2. Datasets-as-graph
+
+**One-liner.** Examples are nodes; labels/splits/source/lineage are edges; "dataset" becomes a saved query.
+
+**Why.** Filesystem-era ML curation (bucketed folders) is obsolete the moment you have a real graph. Replaces DVC/Pachyderm for new projects.
+
+**Killer queries.**
+- "Get the training set" → nodes with `in_split → train` edge
+- "Hard examples" → nodes with `was_misclassified_by` edges
+- "Reproduce the training set from commit X" → walk mutation_log to that timestamp
+
+**Dependencies.** G1 (multi-modal anchors for image/audio datasets).
+
+---
+
+#### G3. GraphRAG community summaries (with LLM)
+
+**One-liner.** Generate LLM summaries per community for fast "global" retrieval (zooming out).
+
+**Why.** A1/A4 give you community membership; LLM summaries make each community queryable as a single unit.
+
+**Cost.** Expensive at index time (LLM calls per community). Optional feature.
+
+**Dependencies.** A4.
+
+---
+
+#### G4. Cross-project federation
+
+**One-liner.** One Rig instance can query another's graph via a federation MCP tool.
+
+**Why.** Multi-project teams need cross-project search and reasoning. The substrate becomes networked.
+
+**Mechanism.** Each Rig exposes a `rig_remote_search(query, project_id)` tool when federation is enabled; auth via mutual API key.
+
+**Dependencies.** Everything above. This is the v2.0 capstone.
+
+---
+
+## 3. Recommended sequencing
+
+After fixing the extractor diagnostic (0.1):
+
+### Phase 3.5 — Cement the foundation
+1. **A1** Hub-and-spoke topology — makes UI legible, falls out of existing schema
+2. **A3** Aliases — cheap, big UX win, unblocks duplicate-anchor pain
+3. **A2** Package manifests as hubs — concrete value for vibecoded apps; first non-code-symbol anchor type
+4. **C1** Hot-node tracking — feeds A1's hubness formula and D3's pull formula
+5. **D2** Hub-aware pull reranking — completes the hub story
+
+Acceptance for Phase 3.5: rendering 5k-node graphs is legible; manifest queries work; aliases collapse duplicates.
+
+### Phase 4 — Memory + observability
+6. **B1** Conversation waypoints (basic)
+7. **B4** Cross-session retrieval — closes the durability loop
+8. **C3** Pulse events + WS animations — peek-under-the-hood ships
+9. **E1** Browser MCP integration + source_url on edges
+10. **A4** Community detection (no LLM) + **D3** community-aware pull
+
+Acceptance for Phase 4: AI can pick up a project from prior session; pulses animate live; communities visible in UI.
+
+### Phase 5 — Multi-modal + self-mapping
+11. **B2** Polymorphic waypoint payloads
+12. **C4** Skill/model nodes + **D4** skill-relevance selection
+13. **C5** Pulse replay timeline
+14. **E3** Direct chat mode
+15. **B3** Doc generation from waypoints
+
+Acceptance for Phase 5: Rig generates its own architecture docs from its waypoint chain; agent picks its own toolchain via the graph.
+
+### Phase 6 — Scale
+16. **F1** sqlite-vec HNSW
+17. **F4** UI hub-default rendering
+18. **F2** Activations rollup
+19. **A5** Consolidation job
+
+Acceptance for Phase 6: 100k-node projects feel as snappy as 1k-node ones.
+
+### Phase 7+ — Vision
+20. **E2** OpenClaw ↔ Rig composition
+21. **G1** Multi-modal anchors
+22. **G2** Datasets-as-graph
+23. **G3** LLM community summaries
+24. **G4** Cross-project federation
+
+---
+
+## 4. Open decisions to lock before any of this is built
+
+Don't start any backlog item until these are answered:
+
+| Decision | Why it matters | Default |
+|---|---|---|
+| Final product name — Rig, Constellation, Pyxis? | Affects CLI binary, npm package, install paths | **Rig** (per recent screenshot) |
+| MCP tool prefix — `rig_*` or `constellation_*`? | Locks the agent install configs | `rig_*` to match product |
+| Embedding model upgrade path | bge-small fine through ~50k nodes; beyond that consider bge-base or hosted | Stay on bge-small until F1 ships |
+| When to commit to `sqlite-vec` | Adds a native dep; defer until it's necessary | When real project crosses 20k nodes |
+| Whether to keep "Constellation" terminology internally | Concepts (anchor, magnetic pull, waypoint) vs product name | Keep concepts; product = Rig |
+| Browser MCP default-on or default-off in installer | Privacy vs convenience | Default-off, prompt during install |
+| Waypoint rate-limit per session | Prevent spam | 1 per 5 turns soft, 3 per turn hard |
+
+---
+
+## 5. Anti-goals — what this backlog deliberately does NOT include
+
+- **Multi-user / multi-tenant.** Rig is local-first per project. Sharing happens via MCP composition or federation (G4), not via a hosted service.
+- **A separate "Rig Cloud" SaaS.** Tempting; not the bet. Local-first is the differentiation.
+- **Replacing the IDE.** Rig is a graph + UI; it's not an editor. Editors integrate via MCP.
+- **Becoming an agent framework.** Rig is the substrate agents use; it doesn't orchestrate them (LangGraph/CrewAI/etc. compose on top).
+- **A general vector DB.** Rig's embeddings serve magnetic pull. If a use case needs a real vector DB, use one alongside.
+
+---
+
+*End of iteration backlog. Update Section 0.2 with what's shipped after each phase. When promoting a backlog item to a full addendum, copy the item's section verbatim as the starting point and expand from there — the body of each item is intentionally enough to remember the design without re-deriving it.*
