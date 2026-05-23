@@ -14,6 +14,7 @@ import type {
 import { walkProject } from './extract/walker.ts';
 import { resolveReferences } from './resolve/resolver.ts';
 import { recomputeHubness } from './graph/hubness.ts';
+import { inferTestsEdges } from './graph/tests-edges.ts';
 import type { IndexResult } from './rig-types.ts';
 
 export async function runIndexAll(
@@ -47,6 +48,7 @@ export async function runIndexAll(
   if (embedder) {
     await embedAndStore(embedder, database.adapter, allNodes);
   }
+  inferTestsEdges(database.adapter);
   recomputeHubness(database.adapter);
   return {
     files: fileCount,
