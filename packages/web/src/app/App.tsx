@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Chat } from './Chat.tsx';
 import { Map, type Snapshot } from './Map.tsx';
 import { NodeDetail } from './NodeDetail.tsx';
+import { NodePopover } from './NodePopover.tsx';
 import { SearchPalette } from './SearchPalette.tsx';
 
 interface Status {
@@ -18,6 +19,8 @@ export function App(): JSX.Element {
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [focusToken, setFocusToken] = useState<{ id: string; ts: number } | null>(null);
+  const [popover, setPopover] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const selectedName = useMemo(
     () => snap?.nodes.find((n) => n.id === selected)?.name ?? null,
@@ -134,7 +137,11 @@ export function App(): JSX.Element {
       {snap && snap.nodes.length > 0 && (
         <Map
           snapshot={snap}
-          onSelect={setSelected}
+          onSelect={(id, pos) => {
+            setSelected(id);
+            if (pos) setPopover({ id, x: pos.x, y: pos.y });
+            else setPopover(null);
+          }}
           focusToken={focusToken}
           selectedId={selected}
           onAccept={async (id) => {
@@ -144,6 +151,23 @@ export function App(): JSX.Element {
           onReject={async (id) => {
             await fetch(`/api/pending-edges/${id}/reject`, { method: 'POST' });
             await refresh();
+          }}
+        />
+      )}
+      {popover && (
+        <NodePopover
+          nodeId={popover.id}
+          x={popover.x}
+          y={popover.y}
+          onClose={() => setPopover(null)}
+          onJump={(id) => {
+            setSelected(id);
+            setFocusToken({ id, ts: Date.now() });
+            setPopover(null);
+          }}
+          onOpenDetail={() => {
+            setShowDetail(true);
+            setPopover(null);
           }}
         />
       )}
@@ -169,10 +193,10 @@ export function App(): JSX.Element {
       >
         ⌘K to search
       </kbd>
-      {selected && (
+      {selected && showDetail && (
         <NodeDetail
           id={selected}
-          onClose={() => setSelected(null)}
+          onClose={() => setShowDetail(false)}
           onJump={(id) => {
             setSelected(id);
             setFocusToken({ id, ts: Date.now() });

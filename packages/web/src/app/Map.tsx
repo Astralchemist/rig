@@ -65,7 +65,7 @@ const radiusFor = (n: SnapshotNode): number => {
 
 export interface MapProps {
   snapshot: Snapshot;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, clickPos?: { x: number; y: number }) => void;
   onAccept: (pendingId: number) => void;
   onReject: (pendingId: number) => void;
   // Bump the token to programmatically zoom-to-node (e.g. from the Cmd-K palette).
@@ -248,7 +248,13 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
             ctx.fillText(n.name, x + r + 2, y + 3);
           }
         }}
-        onNodeClick={(n) => onSelect((n as GraphNode).id)}
+        onNodeClick={(n, ev) => {
+          const clickEv = ev as MouseEvent | undefined;
+          onSelect(
+            (n as GraphNode).id,
+            clickEv ? { x: clickEv.clientX, y: clickEv.clientY } : undefined,
+          );
+        }}
         onLinkHover={(l) => {
           const link = l as GraphLink | null;
           setHovered(link?.pending ?? null);
