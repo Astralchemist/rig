@@ -1,6 +1,22 @@
-import { existsSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Rig, RIG_DIR_NAME } from '@rig/core';
+
+// Auto-append .rig/ to a project .gitignore so the local graph + runtime token
+// don't end up in version control. Idempotent — checks for an existing entry.
+const ensureGitignored = (root: string): boolean => {
+  const path = join(root, '.gitignore');
+  const entry = '.rig/';
+  if (!existsSync(path)) {
+    writeFileSync(path, `${entry}\n`);
+    return true;
+  }
+  const lines = readFileSync(path, 'utf-8').split(/\r?\n/);
+  if (lines.some((l) => l.trim() === entry || l.trim() === '.rig')) return false;
+  const sep = lines.at(-1) === '' ? '' : '\n';
+  appendFileSync(path, `${sep}${entry}\n`);
+  return true;
+};
 
 const DEFAULT_CONFIG = {
   version: 1,
@@ -22,7 +38,8 @@ export const runInit = async (cwd: string): Promise<void> => {
     writeFileSync(cfgPath, JSON.stringify(DEFAULT_CONFIG, null, 2) + '\n');
   }
   rig.close();
+  const gitignoreUpdated = ensureGitignored(root);
   console.log(`rig: initialized at ${rigDir}`);
-  console.log('  schema:           v1');
+  if (gitignoreUpdated) console.log('  .gitignore:       appended .rig/');
   console.log('  next:             `rig index`');
 };
