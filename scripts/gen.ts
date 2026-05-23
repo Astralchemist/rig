@@ -48,7 +48,7 @@ export async function buildFiles(): Promise<{
   return { files, elapsedMs: Date.now() - start };
 }
 
-const assertUniqueByName = <K extends 'tools' | 'anchors' | 'targets'>(
+export const assertUniqueByName = <K extends 'tools' | 'anchors' | 'targets'>(
   items: LoadedContract<K>[],
   label: string,
   keyOf: (c: LoadedContract<K>) => string,
@@ -62,7 +62,9 @@ const assertUniqueByName = <K extends 'tools' | 'anchors' | 'targets'>(
   }
 };
 
-const assertContiguousMigrations = (migrations: LoadedContract<'migrations'>[]): void => {
+export const assertContiguousMigrations = (
+  migrations: LoadedContract<'migrations'>[],
+): void => {
   const versions = migrations.map((m) => m.data.version).toSorted((a, b) => a - b);
   for (let i = 0; i < versions.length; i++) {
     if (versions[i] !== i + 1) {
