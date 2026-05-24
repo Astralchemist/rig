@@ -813,7 +813,7 @@ After fixing the extractor diagnostic (0.1):
 ### Phase 3.5 — Cement the foundation ✅ shipped 2026-05-24
 1. **A1** Hub-and-spoke topology ✅
 2. **A3** Aliases ✅
-3. **A2** Package manifests as hubs ✅ (package.json + requirements.txt + `rig_dep_conflicts`; pyproject.toml + lockfile resolution + `rig_unused_deps` deferred)
+3. **A2** Package manifests as hubs ✅ — full dependency-analysis quartet: package.json + requirements.txt + pyproject.toml (PEP 621 + Poetry) extractors; `rig_deps` + `rig_dep_conflicts` + `rig_unused_deps` + `rig_phantom_imports`. Lockfile resolution (`resolves_to`) still deferred.
 4. **C1** Hot-node tracking ✅ (`rig_hotspots` + `rig_cold` + heat feeds A1 hubness)
 5. **D2** Hub-aware pull reranking ✅
 
