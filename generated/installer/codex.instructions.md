@@ -88,6 +88,17 @@ relevance use rig_pull.
 Use to discover the parts of the graph you have been working in lately,
 or to seed a cache-warming pass. Default window is 7 days, limit 20.
 
+### `rig_relevant_skills`
+
+Rank the agent's own MCP tools (seeded as 'skill' anchors at startup) by
+relevance to a free-text intent. Useful when the agent itself wants to
+discover which of its tools to call — "I need to validate this externally"
+ranks browser/web tools high; "what is connected to X" ranks
+rig_pull/rig_neighbors high.
+
+Same retrieval substrate as rig_search; this just narrows to skill anchors
+and returns the tier+description so the agent has enough to pick.
+
 ### `rig_node`
 
 Return metadata for a single anchor: id, name, kind, file_path, qualified

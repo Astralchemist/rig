@@ -16,6 +16,7 @@
       "mcp__rig__rig_subscribe",
       "mcp__rig__rig_cluster",
       "mcp__rig__rig_focus",
+      "mcp__rig__rig_relevant_skills",
       "mcp__rig__rig_node",
       "mcp__rig__rig_undo",
       "mcp__rig__rig_deps",

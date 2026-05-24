@@ -239,6 +239,52 @@ export class Rig {
 
   // C4 — register the AI's tool surface as skill anchors. Caller supplies the
   // tools-manifest (MCP layer owns it); core stays manifest-format-agnostic.
+  // D4 — return top-k skills most relevant to a free-text query. Mirrors
+  // rig_search but joins through to the skill payload so the caller gets the
+  // tier + description without a second roundtrip. Falls back to a name-prefix
+  // scan if FTS yields nothing (FTS quirks with short queries / underscores).
+  getRelevantSkills(
+    query: string,
+    k = 5,
+  ): Array<{ id: string; name: string; tier: string; summary: string | null; description: string }> {
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+    const adapter = this.database.adapter;
+    const fts = trimmed
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((t) => `"${t.replace(/"/g, '""')}"*`)
+      .join(' ');
+    let rows = adapter
+      .prepare(
+        `SELECT n.id, n.name, n.data, bm25(nodes_fts) AS rank
+         FROM nodes_fts JOIN nodes n ON n.id = nodes_fts.node_id
+         WHERE nodes_fts MATCH ? AND n.type = 'skill'
+         ORDER BY rank
+         LIMIT ?`,
+      )
+      .all(fts, k) as { id: string; name: string; data: string; rank: number }[];
+    if (rows.length === 0) {
+      rows = adapter
+        .prepare(
+          `SELECT id, name, data, 0 AS rank FROM nodes
+           WHERE type = 'skill' AND name LIKE ?
+           ORDER BY name LIMIT ?`,
+        )
+        .all(`%${trimmed}%`, k) as { id: string; name: string; data: string; rank: number }[];
+    }
+    return rows.map((r) => {
+      const d = JSON.parse(r.data) as { tier?: string; summary?: string; description?: string };
+      return {
+        id: r.id,
+        name: r.name,
+        tier: d.tier ?? 'light',
+        summary: d.summary ?? null,
+        description: d.description ?? '',
+      };
+    });
+  }
+
   seedSkills(
     tools: ReadonlyArray<{ name: string; description: string; tier: string; summary?: string; records_activation?: boolean }>,
   ): number {
