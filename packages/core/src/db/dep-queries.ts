@@ -82,6 +82,68 @@ export const listDependencyConflicts = (db: SqliteAdapter): DepConflictRow[] => 
   return out.sort((a, b) => a.name.localeCompare(b.name));
 };
 
+export interface UnusedDepRow {
+  id: string;
+  name: string;
+  spec: string;
+  source: string;
+  manifest_path: string;
+  is_dev: boolean;
+}
+
+// Heuristic: a declared dep is "unused" when its name (or scoped prefix) never
+// appears as a target_name in unresolved_refs — that's where bare-specifier
+// imports land after the resolver fails to map them to a file. Handles scoped
+// packages (@types/node) and subpath imports (lodash/get). False positives
+// possible for indirect runtime usage (JSX runtimes, bundler magic) — flag as
+// "likely unused, verify before removing", not as authoritative.
+export const listUnusedDependencies = (db: SqliteAdapter): UnusedDepRow[] => {
+  const targetRows = db
+    .prepare(`SELECT DISTINCT target_name FROM unresolved_refs`)
+    .all() as { target_name: string }[];
+  const used = new Set<string>();
+  for (const r of targetRows) {
+    const t = r.target_name;
+    used.add(t);
+    // 'pandas/io' → 'pandas'; '@types/node/path' → '@types/node'
+    if (t.startsWith('@')) {
+      const parts = t.split('/');
+      if (parts.length >= 2) used.add(`${parts[0]}/${parts[1]}`);
+    } else {
+      const top = t.split('/')[0];
+      if (top) used.add(top);
+    }
+  }
+
+  const declared = db
+    .prepare(
+      `SELECT id, name, data FROM nodes
+       WHERE type = 'declared-dependency'
+       ORDER BY name ASC`,
+    )
+    .all() as { id: string; name: string; data: string }[];
+
+  const out: UnusedDepRow[] = [];
+  for (const d of declared) {
+    if (used.has(d.name)) continue;
+    const parsed = JSON.parse(d.data) as {
+      depSpec?: string;
+      depSource?: string;
+      filePath?: string;
+      isDevDep?: boolean;
+    };
+    out.push({
+      id: d.id,
+      name: d.name,
+      spec: parsed.depSpec ?? '',
+      source: parsed.depSource ?? 'unknown',
+      manifest_path: parsed.filePath ?? '',
+      is_dev: parsed.isDevDep === true,
+    });
+  }
+  return out;
+};
+
 export const listDependencies = (
   db: SqliteAdapter,
   manifestPath?: string,

@@ -25,6 +25,17 @@ explicitly promoted via rig_promote.
 Use as the entry point when navigating a large graph — pick a hub, then call
 rig_drill to explore its sub-tree.
 
+### `rig_unused_deps`
+
+Heuristic: a declared dependency is flagged when its package name never
+appears as the target of a bare-specifier import anywhere in the indexed
+source. Handles scoped packages (`@types/node`) and subpath imports
+(`lodash/get` counts as a use of `lodash`).
+
+Possible false positives: JSX runtimes, bundler-only deps, runtime configs.
+Treat the result as "likely removable, verify before deleting", not as an
+authoritative dead-code report.
+
 ### `rig_chain`
 
 Starting at a given waypoint, walk the waypoint_succeeds edges backward

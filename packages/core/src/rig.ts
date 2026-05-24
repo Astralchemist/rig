@@ -17,8 +17,10 @@ import {
 import {
   listDependencies as dqListDependencies,
   listDependencyConflicts as dqListConflicts,
+  listUnusedDependencies as dqListUnused,
   type DepConflictRow,
   type DepRow,
+  type UnusedDepRow,
 } from './db/dep-queries.ts';
 import {
   getWaypointChain as wqChain,
@@ -61,7 +63,7 @@ export type { HubRef } from './graph/hubness.ts';
 export type { DrillResult } from './graph/hub-drill.ts';
 export type { CriticalStep } from './graph/critical-path.ts';
 export type { AliasRow } from './db/alias-queries.ts';
-export type { DepRow, DepConflictRow } from './db/dep-queries.ts';
+export type { DepRow, DepConflictRow, UnusedDepRow } from './db/dep-queries.ts';
 export type { HotspotRow, ColdRow } from './db/activation-queries.ts';
 export type {
   WaypointRow,
@@ -218,6 +220,10 @@ export class Rig {
 
   getDependencyConflicts(): DepConflictRow[] {
     return dqListConflicts(this.database.adapter);
+  }
+
+  getUnusedDependencies(): UnusedDepRow[] {
+    return dqListUnused(this.database.adapter);
   }
 
   getHotspots(opts: { windowMs?: number; limit?: number } = {}): HotspotRow[] {

@@ -365,6 +365,69 @@
       ]
     },
     {
+      "name": "rig_unused_deps",
+      "description": "Declared dependencies with no matching imports in source",
+      "tier": "light",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "unused": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "spec": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "manifest_path": {
+                  "type": "string"
+                },
+                "is_dev": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "spec",
+                "source",
+                "manifest_path",
+                "is_dev"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "unused",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED"
+      ]
+    },
+    {
       "name": "rig_chain",
       "description": "Walk the predecessor chain of a waypoint",
       "tier": "light",
