@@ -89,6 +89,9 @@ export interface Node {
   isDevDep?: boolean;
   isOptionalDep?: boolean;
   isPeerDep?: boolean;
+  // A2 lockfile resolution — concrete installed version, populated post-extract
+  // by enrichDependenciesFromLockfiles when a sibling lockfile is present.
+  resolvedVersion?: string;
   updatedAt: number;
 }
 

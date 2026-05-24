@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import type { Database } from './db/database.ts';
+import { enrichDependenciesFromLockfiles } from './db/dep-resolution.ts';
 import { purgeFileNodes, upsertFile, upsertNode } from './db/node-queries.ts';
 import { embedAndStore } from './embed/index-embeddings.ts';
 import type { Embedder } from './embed/types.ts';
@@ -83,6 +84,9 @@ export async function runSync(
   } else if (filesChanged > 0) {
     recomputeHubnessForFiles(database.adapter, changedPaths);
     inferTestsEdges(database.adapter);
+  }
+  if (filesChanged > 0 || filesPurged > 0) {
+    enrichDependenciesFromLockfiles(database.adapter, projectRoot);
   }
   return { filesChanged, filesPurged, durationMs: Date.now() - start };
 }

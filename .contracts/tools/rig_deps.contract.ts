@@ -10,6 +10,7 @@ const declaredDep = z.object({
   is_dev: z.boolean(),
   is_optional: z.boolean(),
   is_peer: z.boolean(),
+  resolved_version: z.string().nullable(),
 });
 
 export default defineToolContract({

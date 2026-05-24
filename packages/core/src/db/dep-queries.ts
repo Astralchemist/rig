@@ -9,6 +9,7 @@ export interface DepRow {
   is_dev: boolean;
   is_optional: boolean;
   is_peer: boolean;
+  resolved_version: string | null;
 }
 
 interface NodeRow {
@@ -24,6 +25,7 @@ interface DepData {
   isDevDep?: boolean;
   isOptionalDep?: boolean;
   isPeerDep?: boolean;
+  resolvedVersion?: string;
 }
 
 export interface DepConflictRow {
@@ -226,6 +228,7 @@ export const listDependencies = (
       is_dev: d.isDevDep === true,
       is_optional: d.isOptionalDep === true,
       is_peer: d.isPeerDep === true,
+      resolved_version: d.resolvedVersion ?? null,
     };
   });
 };

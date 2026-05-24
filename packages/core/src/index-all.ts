@@ -12,6 +12,7 @@ import type {
   UnresolvedReference,
 } from './extract/upstream-types.ts';
 import { walkProject, type WalkOptions } from './extract/walker.ts';
+import { enrichDependenciesFromLockfiles } from './db/dep-resolution.ts';
 import { resolveReferences } from './resolve/resolver.ts';
 import { detectCommunities } from './graph/communities.ts';
 import { recomputeHubness } from './graph/hubness.ts';
@@ -65,6 +66,8 @@ export async function runIndexAll(
   inferTestsEdges(database.adapter);
   onProgress?.({ phase: 'hubness' });
   recomputeHubness(database.adapter);
+  // A2 — pull resolved versions out of lockfiles and attach to declared-deps.
+  enrichDependenciesFromLockfiles(database.adapter, projectRoot);
   onProgress?.({ phase: 'communities' });
   const communityCount = detectCommunities(database.adapter);
   onProgress?.({ phase: 'communities', total: communityCount });

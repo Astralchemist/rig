@@ -1481,6 +1481,12 @@
                 },
                 "is_peer": {
                   "type": "boolean"
+                },
+                "resolved_version": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 }
               },
               "required": [
@@ -1491,7 +1497,8 @@
                 "manifest_path",
                 "is_dev",
                 "is_optional",
-                "is_peer"
+                "is_peer",
+                "resolved_version"
               ],
               "additionalProperties": false
             }

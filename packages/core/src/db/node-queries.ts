@@ -24,6 +24,7 @@ const NODE_DATA_KEYS = [
   'isDevDep',
   'isOptionalDep',
   'isPeerDep',
+  'resolvedVersion',
 ] as const;
 
 const pickData = (n: Node): Record<string, unknown> => {
