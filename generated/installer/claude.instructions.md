@@ -168,12 +168,13 @@ registered it.
 
 ### `rig_waypoints`
 
-List waypoints in newest-first order. Optional filters: session_id (use
-session:last to mean the most recently active session), kind (decision /
+List waypoints in newest-first order. Optional filters: session_id (pass
+"last" to auto-resolve to the most-recently-active session — useful at
+session start to rehydrate the previous thread), kind (decision /
 observation / constraint / open-question / principle).
 
-Use at session start to rehydrate prior reasoning ("what was decided last
-time") and when picking up a thread.
+Call this on session start, before the first user turn, with
+session_id="last" limit=20 to pick up where the previous session ended.
 
 ### `rig_session_token`
 
@@ -294,3 +295,9 @@ next agent turn without the user typing.
 ## Two-tier gate
 
 NEVER call `rig_explore` or `rig_context` directly in the main session — spawn a sub-agent for these.
+
+## Session bootstrap
+
+At the start of a new conversation, before responding to the user, call `rig_waypoints` with `session_id="last"` and `limit=20`. The returned waypoints are the prior session's structured decision/observation markers — read them to reorient on what was decided, what constraints are in play, and what open questions remain. Do not re-derive context the prior session already settled.
+
+Drop a waypoint via `rig_drop_waypoint` when: a real decision is locked, the user states a hard constraint, an observation recurs across turns, or an open question emerges that should outlive context compaction. Aim for at most one waypoint per ~5 turns — they are not a running summary.

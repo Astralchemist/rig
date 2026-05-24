@@ -57,20 +57,39 @@ const parse = (r: RawNode): WaypointRow => {
 };
 
 export interface ListWaypointsOpts {
+  // Pass 'last' to resolve to the most-recently-active session via sessions.last_seen.
   sessionId?: string;
   kind?: WaypointKind;
   limit?: number;
 }
 
+// Returns the id of the most-recently-active session, or null if no waypoints
+// have ever been dropped. Drives B4 (cross-session retrieval) so a fresh agent
+// session can call rig_waypoints session_id=last and pick up where the last
+// one ended.
+export const getLastSessionId = (db: SqliteAdapter): string | null => {
+  const row = db
+    .prepare(`SELECT id FROM sessions ORDER BY last_seen DESC LIMIT 1`)
+    .get() as { id: string } | null;
+  return row ? row.id : null;
+};
+
 // Return waypoints ordered newest-first. `sessionId` filters to a single
-// session; `kind` filters to a single waypoint type. Default limit is 50.
+// session; `kind` filters to a single waypoint type. Pass sessionId='last' to
+// auto-resolve to the most-recently-active session. Default limit is 50.
 export const listWaypoints = (db: SqliteAdapter, opts: ListWaypointsOpts = {}): WaypointRow[] => {
   const limit = opts.limit ?? 50;
   const params: unknown[] = [];
   const filters: string[] = [`type = 'conversation-waypoint'`];
-  if (opts.sessionId) {
+  const requestedSession =
+    opts.sessionId === 'last' ? getLastSessionId(db) : (opts.sessionId ?? null);
+  if (opts.sessionId === 'last' && requestedSession === null) {
+    // No prior session — return empty rather than fall back to "all sessions".
+    return [];
+  }
+  if (requestedSession !== null) {
     filters.push(`json_extract(data, '$.session_id') = ?`);
-    params.push(opts.sessionId);
+    params.push(requestedSession);
   }
   if (opts.kind) {
     filters.push(`json_extract(data, '$.type') = ?`);

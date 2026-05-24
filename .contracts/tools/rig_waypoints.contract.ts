@@ -20,12 +20,13 @@ export default defineToolContract({
   tier: 'light',
   summary: 'List conversation waypoints by session or kind',
   description: `
-List waypoints in newest-first order. Optional filters: session_id (use
-session:last to mean the most recently active session), kind (decision /
+List waypoints in newest-first order. Optional filters: session_id (pass
+"last" to auto-resolve to the most-recently-active session — useful at
+session start to rehydrate the previous thread), kind (decision /
 observation / constraint / open-question / principle).
 
-Use at session start to rehydrate prior reasoning ("what was decided last
-time") and when picking up a thread.
+Call this on session start, before the first user turn, with
+session_id="last" limit=20 to pick up where the previous session ended.
   `.trim(),
   input: z
     .object({

@@ -123,6 +123,28 @@ describe('B1 conversation waypoints', () => {
     expect(chain.map((w) => w.id)).toEqual([c, b, a]);
   });
 
+  test('session_id="last" resolves to the most-recently-active session', async () => {
+    rig.writes.dropWaypoint(
+      { kind: 'decision', title: 'first-session-decision', summary: 'in older session' },
+      { sessionId: 'older', actor: 'ai:test' },
+    );
+    // Force a measurable time gap so last_seen for 'newer' is strictly later.
+    await new Promise((r) => setTimeout(r, 5));
+    rig.writes.dropWaypoint(
+      { kind: 'decision', title: 'second-session-decision', summary: 'in newer session' },
+      { sessionId: 'newer', actor: 'ai:test' },
+    );
+    const last = rig.getWaypoints({ sessionId: 'last', limit: 20 });
+    expect(last.length).toBe(1);
+    expect(last[0]!.session_id).toBe('newer');
+    expect(last[0]!.title).toBe('second-session-decision');
+  });
+
+  test('session_id="last" returns empty when no sessions exist', () => {
+    const result = rig.getWaypoints({ sessionId: 'last' });
+    expect(result).toEqual([]);
+  });
+
   test('undo reverses the waypoint drop', () => {
     const id = rig.writes.dropWaypoint(
       { kind: 'decision', title: 'will be undone', summary: 'oops' },

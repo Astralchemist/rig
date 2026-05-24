@@ -47,7 +47,15 @@ const buildInstructions = (
     }
   }
   lines.push('## Two-tier gate', '');
-  lines.push('NEVER call `rig_explore` or `rig_context` directly in the main session — spawn a sub-agent for these.');
+  lines.push('NEVER call `rig_explore` or `rig_context` directly in the main session — spawn a sub-agent for these.', '');
+  lines.push('## Session bootstrap', '');
+  lines.push(
+    'At the start of a new conversation, before responding to the user, call `rig_waypoints` with `session_id="last"` and `limit=20`. The returned waypoints are the prior session\'s structured decision/observation markers — read them to reorient on what was decided, what constraints are in play, and what open questions remain. Do not re-derive context the prior session already settled.',
+    '',
+  );
+  lines.push(
+    'Drop a waypoint via `rig_drop_waypoint` when: a real decision is locked, the user states a hard constraint, an observation recurs across turns, or an open question emerges that should outlive context compaction. Aim for at most one waypoint per ~5 turns — they are not a running summary.',
+  );
   return {
     path: `installer/${target.data.name}.instructions.md`,
     content: mdHeader([target.file]) + lines.join('\n') + '\n',
