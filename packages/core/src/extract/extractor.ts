@@ -3,6 +3,7 @@ import { visit } from './ast-visitor.ts';
 import { detectLanguage, getParser } from './grammars.ts';
 import { EXTRACTORS } from './languages/index.ts';
 import { extractPackageJson } from './manifests/package-json.ts';
+import { extractPyprojectToml } from './manifests/pyproject-toml.ts';
 import { extractRequirementsTxt } from './manifests/requirements-txt.ts';
 import { extractMarkdown } from './markdown.ts';
 import { fileIdOf, makeFileNode } from './node-builders.ts';
@@ -40,6 +41,9 @@ export async function extractFromSource(
     }
     if (base.endsWith('requirements.txt') || base.endsWith('requirements-dev.txt') || base.endsWith('dev-requirements.txt') || base.endsWith('requirements-test.txt')) {
       return { ...extractRequirementsTxt(filePath, source), durationMs: Date.now() - start };
+    }
+    if (base === 'pyproject.toml') {
+      return { ...extractPyprojectToml(filePath, source), durationMs: Date.now() - start };
     }
   }
 

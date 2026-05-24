@@ -11,6 +11,7 @@ const MANIFEST_BASENAMES: Record<string, Language> = {
   'requirements-dev.txt': 'json',
   'dev-requirements.txt': 'json',
   'requirements-test.txt': 'json',
+  'pyproject.toml': 'json',
 };
 
 const WASM_BY_LANGUAGE: Partial<Record<Language, Uint8Array>> = {
