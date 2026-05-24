@@ -1,5 +1,5 @@
 // GENERATED FILE — DO NOT EDIT.
-// Source: .contracts/anchors/markdown-section.contract.ts, .contracts/anchors/code-symbol.contract.ts, .contracts/anchors/declared-dependency.contract.ts, .contracts/anchors/cluster.contract.ts
+// Source: .contracts/anchors/markdown-section.contract.ts, .contracts/anchors/code-symbol.contract.ts, .contracts/anchors/declared-dependency.contract.ts, .contracts/anchors/cluster.contract.ts, .contracts/anchors/conversation-waypoint.contract.ts
 // Edit the .contract.ts file(s), then run `bun run gen`.
 
 export interface AnchorTypeMeta {
@@ -48,5 +48,14 @@ export const ANCHOR_REGISTRY: Record<string, AnchorTypeMeta> = {
     allowed_edges: {"outgoing":["contains"],"incoming":["references"]},
     embeddable: true,
     embedding_text: ["name","rationale"],
+  },
+  'conversation-waypoint': {
+    type: 'conversation-waypoint',
+    description: "A discrete decision/observation/constraint/open-question/principle marker dropped by the AI during a session. Carries an analogy + summary + refs into the graph so future sessions can rehydrate the reasoning thread.",
+    extractor: 'manual',
+    ui: {"icon":"flag","color":"c-cyan","label_field":"title","detail_fields":["type","summary","analogy","key_terms"]},
+    allowed_edges: {"outgoing":["waypoint_succeeds","waypoint_references"],"incoming":["waypoint_succeeds"]},
+    embeddable: true,
+    embedding_text: ["title","summary","analogy","key_terms"],
   },
 };

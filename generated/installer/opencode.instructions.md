@@ -25,6 +25,13 @@ explicitly promoted via rig_promote.
 Use as the entry point when navigating a large graph — pick a hub, then call
 rig_drill to explore its sub-tree.
 
+### `rig_chain`
+
+Starting at a given waypoint, walk the waypoint_succeeds edges backward
+through history up to maxDepth hops. Returns the seed at index 0 followed
+by its predecessors in order. Use to reconstruct the reasoning thread
+that led to a decision.
+
 ### `rig_files`
 
 List files known to the rig index, optionally filtered by a substring of
@@ -159,6 +166,15 @@ alternate names (e.g. `pd` for `pandas`, `useState` for `React.useState`)
 that resolve to the same node via FTS5 search. Each carries the actor that
 registered it.
 
+### `rig_waypoints`
+
+List waypoints in newest-first order. Optional filters: session_id (use
+session:last to mean the most recently active session), kind (decision /
+observation / constraint / open-question / principle).
+
+Use at session start to rehydrate prior reasoning ("what was decided last
+time") and when picking up a thread.
+
 ### `rig_session_token`
 
 Read the per-server bearer token from .rig/.runtime and return both the raw
@@ -250,6 +266,18 @@ the AI to leave a breadcrumb on a node ("this is the auth boundary",
 Create a new anchor immediately (nodes are cheaper to add than edges).
 Use only when the user has explicitly named a new concept in
 conversation; do not invent anchors from inference alone.
+
+### `rig_drop_waypoint`
+
+Record a discrete marker the AI considers worth preserving across context
+compaction or session boundaries — a decision, a constraint stated by the
+user, a recurring observation, an open question, or a principle. The
+waypoint becomes a graph anchor with structured payload; predecessor ids
+form a `waypoint_succeeds` chain; constellation refs form
+`waypoint_references` edges to other anchors.
+
+Use sparingly. Typical floor: at most one per ~5 turns. Drop one when a
+real decision is locked, not as a running summary.
 
 ## live tools
 

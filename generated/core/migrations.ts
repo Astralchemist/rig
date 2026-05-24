@@ -1,5 +1,5 @@
 // GENERATED FILE — DO NOT EDIT.
-// Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts, .contracts/migrations/v5.contract.ts, .contracts/migrations/v6.contract.ts, .contracts/migrations/v7.contract.ts, .contracts/migrations/v8.contract.ts
+// Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts, .contracts/migrations/v5.contract.ts, .contracts/migrations/v6.contract.ts, .contracts/migrations/v7.contract.ts, .contracts/migrations/v8.contract.ts, .contracts/migrations/v9.contract.ts
 // Edit the .contract.ts file(s), then run `bun run gen`.
 
 export interface Migration {
@@ -57,5 +57,11 @@ export const MIGRATIONS: readonly Migration[] = [
     description: "C1: session_id + query_hash columns on activations",
     forward: "ALTER TABLE activations ADD COLUMN session_id TEXT;\nALTER TABLE activations ADD COLUMN query_hash TEXT;\nCREATE INDEX IF NOT EXISTS idx_activations_query_hash ON activations(query_hash);\nCREATE INDEX IF NOT EXISTS idx_activations_session ON activations(session_id);",
     rollback: "DROP INDEX IF EXISTS idx_activations_session;\nDROP INDEX IF EXISTS idx_activations_query_hash;\n-- SQLite cannot DROP COLUMN before 3.35; intentional no-op for older runtimes.",
+  },
+  {
+    version: 9,
+    description: "B1: sessions table for waypoint provenance",
+    forward: "CREATE TABLE IF NOT EXISTS sessions (\n  id TEXT PRIMARY KEY,\n  started_at INTEGER NOT NULL,\n  last_seen INTEGER NOT NULL,\n  title TEXT,\n  context_model TEXT\n);\nCREATE INDEX IF NOT EXISTS idx_sessions_last_seen ON sessions(last_seen DESC);",
+    rollback: "DROP INDEX IF EXISTS idx_sessions_last_seen;\nDROP TABLE IF EXISTS sessions;",
   },
 ];

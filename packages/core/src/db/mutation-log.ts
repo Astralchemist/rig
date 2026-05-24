@@ -9,6 +9,7 @@ export type MutationKind =
   | 'cluster'
   | 'focus'
   | 'selection'
+  | 'drop_waypoint'
   | 'undo';
 
 export interface MutationRow {

@@ -5,6 +5,7 @@
       "mcp__rig__rig_cold",
       "mcp__rig__rig_hubs",
       "mcp__rig__rig_add_alias",
+      "mcp__rig__rig_chain",
       "mcp__rig__rig_files",
       "mcp__rig__rig_drill",
       "mcp__rig__rig_impact",
@@ -27,7 +28,9 @@
       "mcp__rig__rig_status",
       "mcp__rig__rig_hub_of",
       "mcp__rig__rig_aliases",
-      "mcp__rig__rig_session_token"
+      "mcp__rig__rig_waypoints",
+      "mcp__rig__rig_session_token",
+      "mcp__rig__rig_drop_waypoint"
     ],
     "ask": [
       "mcp__rig__rig_explore",

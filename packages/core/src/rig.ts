@@ -15,6 +15,12 @@ import {
   type HotspotRow,
 } from './db/activation-queries.ts';
 import { listDependencies as dqListDependencies, type DepRow } from './db/dep-queries.ts';
+import {
+  getWaypointChain as wqChain,
+  listWaypoints as wqList,
+  type ListWaypointsOpts,
+  type WaypointRow,
+} from './db/waypoint-queries.ts';
 import { getFiles as fqGetFiles, type FileRow } from './db/file-queries.ts';
 import {
   getGraphSnapshot as gsGetGraphSnapshot,
@@ -52,6 +58,7 @@ export type { CriticalStep } from './graph/critical-path.ts';
 export type { AliasRow } from './db/alias-queries.ts';
 export type { DepRow } from './db/dep-queries.ts';
 export type { HotspotRow, ColdRow } from './db/activation-queries.ts';
+export type { WaypointRow, WaypointKind, ListWaypointsOpts } from './db/waypoint-queries.ts';
 export type { SyncResult } from './sync.ts';
 export type { TaggedEdge, NeighborsOptions } from './db/edge-queries.ts';
 export type { SearchOptions } from './db/search-queries.ts';
@@ -205,6 +212,14 @@ export class Rig {
 
   getCold(opts: { staleAfterMs?: number; limit?: number } = {}): ColdRow[] {
     return aqListCold(this.database.adapter, opts.staleAfterMs, opts.limit);
+  }
+
+  getWaypoints(opts: ListWaypointsOpts = {}): WaypointRow[] {
+    return wqList(this.database.adapter, opts);
+  }
+
+  getWaypointChain(id: string, maxDepth = 10): WaypointRow[] {
+    return wqChain(this.database.adapter, id, maxDepth);
   }
 
   getCriticalPath(id: NodeId, maxSteps = 16): CriticalStep[] {

@@ -27,6 +27,7 @@ export const NODE_KINDS = [
   'route',
   'component',
   'declared-dependency',
+  'conversation-waypoint',
 ] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 
@@ -44,7 +45,9 @@ export type EdgeKind =
   | 'overrides'
   | 'decorates'
   | 'tests'
-  | 'manifest_declares';
+  | 'manifest_declares'
+  | 'waypoint_succeeds'
+  | 'waypoint_references';
 
 export const LANGUAGES = [
   'typescript',

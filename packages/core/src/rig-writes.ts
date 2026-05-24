@@ -16,6 +16,7 @@ import {
   restorePendingToPending,
   type PendingEdgeRow,
 } from './db/pending-edges.ts';
+import { touchSession, type WaypointKind } from './db/waypoint-queries.ts';
 
 export interface WriteCtx {
   sessionId: string;
@@ -47,6 +48,17 @@ export interface ClusterArgs {
   memberIds: string[];
   label: string;
   rationale: string;
+}
+
+export interface DropWaypointArgs {
+  kind: WaypointKind;
+  title: string;
+  summary: string;
+  analogy?: string;
+  constellationRefs?: readonly string[];
+  predecessors?: readonly string[];
+  keyTerms?: readonly string[];
+  compactable?: boolean;
 }
 
 export class RigWrites {
@@ -203,6 +215,50 @@ export class RigWrites {
     return true;
   }
 
+  // Drop a conversation waypoint — node + predecessor edges + constellation
+  // refs + session-row upsert, all inside one transaction so the mutation log
+  // entry is consistent with the visible state.
+  dropWaypoint(args: DropWaypointArgs, ctx: WriteCtx): string {
+    const adapter = this.db.adapter;
+    const id = `waypoint:${crypto.randomUUID()}`;
+    const now = Date.now();
+    const data = {
+      session_id: ctx.sessionId,
+      type: args.kind,
+      summary: args.summary,
+      ...(args.analogy ? { analogy: args.analogy } : {}),
+      constellation_refs: args.constellationRefs ?? [],
+      predecessors: args.predecessors ?? [],
+      key_terms: args.keyTerms ?? [],
+      compactable: args.compactable === true,
+    };
+    adapter.transaction(() => {
+      adapter
+        .prepare(
+          `INSERT INTO nodes (id, type, name, data, created_at, updated_at)
+           VALUES (?, 'conversation-waypoint', ?, ?, ?, ?)`,
+        )
+        .run(id, args.title, JSON.stringify(data), now, now);
+      const ins = adapter.prepare(
+        `INSERT INTO edges (src, dst, kind, provenance, created_at) VALUES (?, ?, ?, ?, ?)`,
+      );
+      for (const pid of args.predecessors ?? []) {
+        ins.run(id, pid, 'waypoint_succeeds', ctx.actor, now);
+      }
+      for (const rid of args.constellationRefs ?? []) {
+        ins.run(id, rid, 'waypoint_references', ctx.actor, now);
+      }
+      touchSession(adapter, ctx.sessionId);
+    })();
+    recordMutation(adapter, {
+      sessionId: ctx.sessionId,
+      kind: 'drop_waypoint',
+      payload: { id, kind: args.kind, title: args.title },
+      actor: ctx.actor,
+    });
+    return id;
+  }
+
   recordFocus(nodeIds: string[], ctx: WriteCtx): void {
     recordMutation(this.db.adapter, {
       sessionId: ctx.sessionId,
@@ -257,6 +313,11 @@ export class RigWrites {
         break;
       case 'add_alias':
         aqRemove(adapter, p.nodeId as string, p.alias as string);
+        break;
+      case 'drop_waypoint':
+        // Edges cascade via ON DELETE; the sessions row is intentionally left
+        // alone so its last_seen stays accurate across an undo.
+        adapter.prepare(`DELETE FROM nodes WHERE id = ?`).run(p.id as string);
         break;
       default:
         // annotate/cluster are not yet undoable; log nothing.

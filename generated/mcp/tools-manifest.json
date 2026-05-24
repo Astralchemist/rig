@@ -365,6 +365,123 @@
       ]
     },
     {
+      "name": "rig_chain",
+      "description": "Walk the predecessor chain of a waypoint",
+      "tier": "light",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Waypoint id to start the chain at"
+          },
+          "max_depth": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 10
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "chain": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "ts": {
+                  "type": "integer"
+                },
+                "session_id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "decision",
+                    "observation",
+                    "constraint",
+                    "open-question",
+                    "principle"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "analogy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "constellation_refs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "predecessors": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "key_terms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "compactable": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "ts",
+                "session_id",
+                "kind",
+                "title",
+                "summary",
+                "analogy",
+                "constellation_refs",
+                "predecessors",
+                "key_terms",
+                "compactable"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "chain",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND"
+      ]
+    },
+    {
       "name": "rig_files",
       "description": "List indexed files",
       "tier": "light",
@@ -1882,6 +1999,128 @@
       ]
     },
     {
+      "name": "rig_waypoints",
+      "description": "List conversation waypoints by session or kind",
+      "tier": "light",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "decision",
+              "observation",
+              "constraint",
+              "open-question",
+              "principle"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 50
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "waypoints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "ts": {
+                  "type": "integer"
+                },
+                "session_id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "decision",
+                    "observation",
+                    "constraint",
+                    "open-question",
+                    "principle"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "analogy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "constellation_refs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "predecessors": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "key_terms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "compactable": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "ts",
+                "session_id",
+                "kind",
+                "title",
+                "summary",
+                "analogy",
+                "constellation_refs",
+                "predecessors",
+                "key_terms",
+                "compactable"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "waypoints",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED"
+      ]
+    },
+    {
       "name": "rig_session_token",
       "description": "Hand the user a one-click login URL for the local map",
       "tier": "light",
@@ -1926,6 +2165,98 @@
       "errors": [
         "NOT_INITIALIZED",
         "NO_RUNTIME_TOKEN"
+      ]
+    },
+    {
+      "name": "rig_drop_waypoint",
+      "description": "Drop a conversation waypoint at a decision point",
+      "tier": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "decision",
+              "observation",
+              "constraint",
+              "open-question",
+              "principle"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 120
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 2000
+          },
+          "analogy": {
+            "type": "string"
+          },
+          "constellation_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "predecessors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "key_terms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "compactable": {
+            "type": "boolean",
+            "default": false
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 10
+          }
+        },
+        "required": [
+          "kind",
+          "title",
+          "summary",
+          "rationale"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "PROVENANCE_REQUIRED",
+        "RATIONALE_REQUIRED"
       ]
     }
   ]
