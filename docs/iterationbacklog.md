@@ -708,18 +708,20 @@ ALTER TABLE pending_edges ADD COLUMN source_urls TEXT;
 
 #### F1. sqlite-vec HNSW for vector search
 
-**One-liner.** Replace linear cosine search with `sqlite-vec`'s HNSW index. **Now triggered empirically** — measured 235ms p50 at 4.5k nodes (2026-05-24 bench run).
+**One-liner.** Replace linear cosine search with `sqlite-vec`'s HNSW index when loading the full embedding set into memory becomes the dominant cost (~20k+ nodes).
 
-**Why.** Linear cosine grows ~linearly with node count. Measured: 47ms @ 1k, 235ms @ 4.5k. Projects to ~520ms @ 10k, ~5s @ 100k. The Phase 1 budget for `rig_pull` is **100ms** and the entire two-tier gate assumes `rig_pull` is a light-tier tool callable freely in the main session — the budget broke around 2k nodes. HNSW drops the semantic component from O(n) to O(log n): ~5–10ms at 4.5k, holds <20ms through 100k.
+**Why.** At 100k nodes / dim=384, the embeddings table is ~150 MB. Even with a single `SELECT *` batch (already the implementation post-`cefc1ea`), loading and scanning the full set will eventually exceed the 100 ms light-tier budget. HNSW lets the semantic component traverse `O(log n)` neighbors instead of touching every vector. Empirically not needed yet — see the demotion note below.
 
 **Acceptance.**
-- [ ] HNSW index built automatically when embeddings table crosses threshold (~5k nodes)
-- [ ] Magnetic pull's semantic component runs in <10ms on 5k-node graphs, <20ms on 100k
-- [ ] `rig_pull` p50 stays under the 100ms light-tier budget at all measured scales
+- [ ] HNSW index built automatically when embeddings table crosses threshold (~20k nodes)
+- [ ] Magnetic pull's semantic component runs in <20 ms on 100k-node graphs
+- [ ] `rig_pull` p50 stays under the 100 ms light-tier budget at all measured scales
 
-**Dependencies.** None.
+**Dependencies.** None. Optional native dep — fall back to the batched-cosine path when the extension isn't loadable.
 
-**Promoted to Phase 3.5 slot 3 (after A3) on 2026-05-24** based on measured 4.5k-node bench. Originally Phase 6.
+**History.**
+- **2026-05-24 (promote):** moved to Phase 3.5 slot 3 after measuring 235 ms p50 at 4.5k nodes.
+- **2026-05-24 (demote):** moved back to Phase 6 after profiling revealed the 235 ms was **4499 SQLite prepare/get roundtrips, not linear cosine**. Batching the embedding + activation fetches in `pull.ts` (commit `cefc1ea`) dropped p50 to 45.7 ms at 4.5k. Cosine math itself is only ~17 ms over 4500 × 384 vectors. The empirical trigger for HNSW is now "real codebase crosses ~20k nodes where the 150 MB+ vector load becomes the bottleneck," not "cosine is linear." Lesson: verify which layer of an `O(n)` claim is dominant before adding a native dep.
 
 ---
 
@@ -811,12 +813,13 @@ After fixing the extractor diagnostic (0.1):
 ### Phase 3.5 — Cement the foundation
 1. **A1** Hub-and-spoke topology — makes UI legible, falls out of existing schema
 2. **A3** Aliases — cheap, big UX win, unblocks duplicate-anchor pain
-3. **F1** sqlite-vec HNSW — **promoted from Phase 6 on 2026-05-24.** Measured 235ms p50 @ 4.5k nodes; busts the 100ms light-tier budget for `rig_pull`. Must ship before the two-tier gate's empirical guarantee leaks at larger scales.
-4. **A2** Package manifests as hubs — concrete value for vibecoded apps; first non-code-symbol anchor type
-5. **C1** Hot-node tracking — feeds A1's hubness formula and D3's pull formula
-6. **D2** Hub-aware pull reranking — completes the hub story
+3. **A2** Package manifests as hubs — concrete value for vibecoded apps; first non-code-symbol anchor type
+4. **C1** Hot-node tracking — feeds A1's hubness formula and D3's pull formula
+5. **D2** Hub-aware pull reranking — completes the hub story
 
-Acceptance for Phase 3.5: rendering 5k-node graphs is legible; manifest queries work; aliases collapse duplicates; `rig_pull` p50 stays sub-100ms through 100k nodes.
+Acceptance for Phase 3.5: rendering 5k-node graphs is legible; manifest queries work; aliases collapse duplicates.
+
+> **F1 (sqlite-vec HNSW) was briefly inserted at slot 3 on 2026-05-24 after a 235 ms p50 measurement, then demoted back to Phase 6** when profiling revealed the cost was per-candidate DB roundtrips, not linear cosine. Batching the fetches (commit `cefc1ea`) brought `rig_pull` p50 to 45.7 ms at 4.5k nodes. HNSW remains the right fix above ~20k nodes; the empirical trigger has not been hit.
 
 ### Phase 4 — Memory + observability
 6. **B1** Conversation waypoints (basic)
@@ -837,11 +840,12 @@ Acceptance for Phase 4: AI can pick up a project from prior session; pulses anim
 Acceptance for Phase 5: Rig generates its own architecture docs from its waypoint chain; agent picks its own toolchain via the graph.
 
 ### Phase 6 — Scale
-16. **F4** UI hub-default rendering
-17. **F2** Activations rollup
-18. **A5** Consolidation job
+16. **F1** sqlite-vec HNSW — trigger: real codebase crosses ~20k nodes
+17. **F4** UI hub-default rendering
+18. **F2** Activations rollup
+19. **A5** Consolidation job
 
-Acceptance for Phase 6: 100k-node projects feel as snappy as 1k-node ones. (F1 already shipped in Phase 3.5.)
+Acceptance for Phase 6: 100k-node projects feel as snappy as 1k-node ones.
 
 ### Phase 7+ — Vision
 20. **E2** OpenClaw ↔ Rig composition
@@ -861,7 +865,7 @@ Don't start any backlog item until these are answered:
 | Final product name — Rig, Constellation, Pyxis? | Affects CLI binary, npm package, install paths | **Rig** (per recent screenshot) |
 | MCP tool prefix — `rig_*` or `constellation_*`? | Locks the agent install configs | `rig_*` to match product |
 | Embedding model upgrade path | bge-small fine through ~50k nodes; beyond that consider bge-base or hosted | Stay on bge-small until F1 ships |
-| When to commit to `sqlite-vec` | Adds a native dep; defer until it's necessary | **Now** — empirical 4.5k-node bench (2026-05-24) shows the linear-cosine cost crossed the 100ms light-tier budget. See F1. |
+| When to commit to `sqlite-vec` | Adds a native dep; defer until it's necessary | When real project crosses ~20k nodes. Briefly thought to be "now" on 2026-05-24 after a 235 ms bench measurement, but profiling traced the cost to per-candidate DB roundtrips (fixed in `cefc1ea`), not linear cosine. HNSW remains correct above the point where the full embedding load (~150 MB at 100k×dim=384) becomes the bottleneck. See F1. |
 | Whether to keep "Constellation" terminology internally | Concepts (anchor, magnetic pull, waypoint) vs product name | Keep concepts; product = Rig |
 | Browser MCP default-on or default-off in installer | Privacy vs convenience | Default-off, prompt during install |
 | Waypoint rate-limit per session | Prevent spam | 1 per 5 turns soft, 3 per turn hard |
