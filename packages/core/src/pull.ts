@@ -1,11 +1,13 @@
 import { decayedActivationScores } from './db/activation-queries.ts';
 import type { SqliteAdapter } from './db/adapter.ts';
 import { getEmbeddingsMap } from './db/embed-queries.ts';
+import { getHubFlags } from './db/node-queries.ts';
 
 export interface PullComponents {
   structural: number;
   semantic: number;
   recency: number;
+  hub: number;
 }
 
 export interface PullResult {
@@ -30,6 +32,13 @@ export interface PullContext {
   db: SqliteAdapter;
   now?: number;
   maxHops?: number;
+  // D2: additive boost applied to a candidate's score when it is a hub. The
+  // weighted (structural/semantic/recency) sum stays in [0,1]; the boost is
+  // added post-weighting and then clamped, so the term is comparable to other
+  // sub-component contributions without re-balancing weights. Default 0 keeps
+  // legacy callers (hub-drill, internal traversal) unbiased. Rig.getMagneticPull
+  // defaults to 0.3 so light-tier rig_pull surfaces hubs first.
+  hubBias?: number;
 }
 
 export function computeMagneticPull(
@@ -45,6 +54,11 @@ export function computeMagneticPull(
   const vectors = getEmbeddingsMap(ctx.db, [anchorId, ...candidateIds]);
   const anchorVec = vectors.get(anchorId) ?? null;
   const recencies = decayedActivationScores(ctx.db, now);
+  const hubBias = ctx.hubBias ?? 0;
+  // Always compute hub membership so the `hub` component reflects the node's
+  // structural status, not whether the caller asked for a boost. Only the
+  // score uses hubBias as a multiplier.
+  const hubs = getHubFlags(ctx.db, candidateIds);
 
   const results: PullResult[] = candidateIds.map((id) => {
     const d = distances.get(id);
@@ -57,11 +71,15 @@ export function computeMagneticPull(
     }
 
     const recency = recencies.get(id) ?? 0;
+    const hub = hubs.has(id) ? 1 : 0;
 
     const score = clamp01(
-      weights.structural * structural + weights.semantic * semantic + weights.recency * recency,
+      weights.structural * structural +
+        weights.semantic * semantic +
+        weights.recency * recency +
+        hub * hubBias,
     );
-    return { nodeId: id, score, components: { structural, semantic, recency } };
+    return { nodeId: id, score, components: { structural, semantic, recency, hub } };
   });
 
   return results.toSorted((a, b) => b.score - a.score);

@@ -11,7 +11,11 @@ export async function run(args: Args, ctx: ToolContext): Promise<Result> {
     throw new ToolError('NODE_NOT_FOUND', args.id);
   }
   ctx.recordActivation(args.id);
-  const results = ctx.rig.getMagneticPull(args.id, args.k);
+  const results = ctx.rig.getMagneticPull(
+    args.id,
+    args.k,
+    args.hub_bias !== undefined ? { hubBias: args.hub_bias } : {},
+  );
   return {
     results,
     elapsed_ms: Date.now() - start,

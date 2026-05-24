@@ -211,13 +211,18 @@ export class Rig {
     return computeCriticalPath(this.database.adapter, id, maxSteps);
   }
 
-  getMagneticPull(id: NodeId, k = 10): PullResult[] {
+  getMagneticPull(id: NodeId, k = 10, opts: { hubBias?: number } = {}): PullResult[] {
     const candidates = (
       this.database.adapter
         .prepare('SELECT id FROM nodes WHERE id != ?')
         .all(id) as { id: string }[]
     ).map((r) => r.id);
-    return computeMagneticPull(id, candidates, { db: this.database.adapter }).slice(0, k);
+    // Default hubBias=0.3 so light-tier callers (rig_pull) surface hubs first.
+    // Callers wanting unbiased ranking pass hubBias=0 (e.g. hub-drill).
+    return computeMagneticPull(id, candidates, {
+      db: this.database.adapter,
+      hubBias: opts.hubBias ?? 0.3,
+    }).slice(0, k);
   }
 
   watch(): boolean {

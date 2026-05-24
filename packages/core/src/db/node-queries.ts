@@ -65,3 +65,23 @@ export const upsertFile = (
      ON CONFLICT(path) DO UPDATE SET mtime=excluded.mtime, hash=excluded.hash`,
   ).run(path, mtime, hash);
 };
+
+// Batch is_hub lookup. One SQL roundtrip; used by D2's hub-aware pull bias.
+// Chunked to stay under SQLite's 32766-parameter ceiling.
+export const getHubFlags = (
+  db: SqliteAdapter,
+  ids: readonly string[],
+): Set<string> => {
+  const out = new Set<string>();
+  if (ids.length === 0) return out;
+  const CHUNK = 5000;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const slice = ids.slice(i, i + CHUNK);
+    const placeholders = slice.map(() => '?').join(',');
+    const rows = db
+      .prepare(`SELECT id FROM nodes WHERE is_hub = 1 AND id IN (${placeholders})`)
+      .all(...slice) as { id: string }[];
+    for (const r of rows) out.add(r.id);
+  }
+  return out;
+};

@@ -92,12 +92,14 @@ rig_pull.
 
 Rank the top-k anchors most "magnetically attracted" to the given node.
 Score combines graph distance (structural), embedding cosine similarity
-(semantic), and recent activation decay (recency). Returns PullResult[]
-with {nodeId, score, components: {structural, semantic, recency}}.
+(semantic), recent activation decay (recency), and a hub-bias boost so
+high-fanout anchors surface first by default. Returns PullResult[] with
+{nodeId, score, components: {structural, semantic, recency, hub}}.
 
 Use this for "what's related to X" or "what else should I look at" —
 it is strictly better than rig_neighbors when you want a ranked list.
-Use rig_neighbors only when you need the raw edge view.
+Use rig_neighbors only when you need the raw edge view. To disable the
+hub bias (raw neighborhood ranking), pass hub_bias=0.
 
 ### `rig_neighbors`
 

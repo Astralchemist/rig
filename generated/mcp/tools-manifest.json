@@ -1197,6 +1197,12 @@
             "minimum": 1,
             "maximum": 100,
             "default": 10
+          },
+          "hub_bias": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Additive boost for hub candidates (default 0.3). Pass 0 to disable."
           }
         },
         "required": [
@@ -1230,12 +1236,16 @@
                     },
                     "recency": {
                       "type": "number"
+                    },
+                    "hub": {
+                      "type": "number"
                     }
                   },
                   "required": [
                     "structural",
                     "semantic",
-                    "recency"
+                    "recency",
+                    "hub"
                   ],
                   "additionalProperties": false
                 }
