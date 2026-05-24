@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { runBenchCmd } from './bench-cmd.ts';
 import { runDoctor } from './doctor.ts';
+import { runExportDocs } from './export-docs-cmd.ts';
 import { runFiles } from './files-cmd.ts';
 import { runIndex } from './index-cmd.ts';
 import { runInit } from './init.ts';
@@ -21,6 +22,7 @@ const COMMANDS: Record<string, (cwd: string) => void | Promise<void>> = {
   serve: runServe,
   doctor: runDoctor,
   bench: runBenchCmd,
+  'export-docs': runExportDocs,
 };
 
 const HELP = `rig — local-first semantic knowledge graph
@@ -38,6 +40,7 @@ commands:
   serve       start MCP and/or web server (--mcp / --web / --all [--auth])
   doctor      diagnose environment, db, model cache, agent configs
   bench       benchmark SQL + analytical surfaces (--fixture <N> for synthetic stress test, --json for raw)
+  export-docs render waypoints as a markdown doc tree (--out <dir>, default ./docs)
 `;
 
 const [, , cmd] = process.argv;
