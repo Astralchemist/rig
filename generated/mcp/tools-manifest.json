@@ -447,6 +447,122 @@
                 },
                 "compactable": {
                   "type": "boolean"
+                },
+                "payloads": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "text-summary"
+                          },
+                          "content": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "content"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "mermaid-diagram"
+                          },
+                          "content": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "content"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "code-snippet"
+                          },
+                          "lang": {
+                            "type": "string"
+                          },
+                          "content": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "lang",
+                          "content"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "doc-fragment"
+                          },
+                          "content": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "content"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "image-ref"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "alt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "path"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "dataset-pointer"
+                          },
+                          "query": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "query"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
                 }
               },
               "required": [
@@ -460,7 +576,8 @@
                 "constellation_refs",
                 "predecessors",
                 "key_terms",
-                "compactable"
+                "compactable",
+                "payloads"
               ],
               "additionalProperties": false
             }
@@ -2158,6 +2275,122 @@
                 },
                 "compactable": {
                   "type": "boolean"
+                },
+                "payloads": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "text-summary"
+                          },
+                          "content": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "content"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "mermaid-diagram"
+                          },
+                          "content": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "content"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "code-snippet"
+                          },
+                          "lang": {
+                            "type": "string"
+                          },
+                          "content": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "lang",
+                          "content"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "doc-fragment"
+                          },
+                          "content": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "content"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "image-ref"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "alt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "path"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "dataset-pointer"
+                          },
+                          "query": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "query"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
                 }
               },
               "required": [
@@ -2171,7 +2404,8 @@
                 "constellation_refs",
                 "predecessors",
                 "key_terms",
-                "compactable"
+                "compactable",
+                "payloads"
               ],
               "additionalProperties": false
             }
@@ -2292,6 +2526,130 @@
           "compactable": {
             "type": "boolean",
             "default": false
+          },
+          "payloads": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "text-summary"
+                    },
+                    "content": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "content"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "mermaid-diagram"
+                    },
+                    "content": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "content"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "code-snippet"
+                    },
+                    "lang": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "content": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "lang",
+                    "content"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "doc-fragment"
+                    },
+                    "content": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "content"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "image-ref"
+                    },
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "alt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "path"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "dataset-pointer"
+                    },
+                    "query": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "query"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "default": []
           },
           "rationale": {
             "type": "string",

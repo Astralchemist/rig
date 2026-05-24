@@ -1,6 +1,15 @@
 import { z } from 'zod';
 import { defineToolContract } from '@rig/contracts';
 
+const payload = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('text-summary'), content: z.string().min(1) }),
+  z.object({ type: z.literal('mermaid-diagram'), content: z.string().min(1) }),
+  z.object({ type: z.literal('code-snippet'), lang: z.string().min(1), content: z.string().min(1) }),
+  z.object({ type: z.literal('doc-fragment'), content: z.string().min(1) }),
+  z.object({ type: z.literal('image-ref'), path: z.string().min(1), alt: z.string().optional() }),
+  z.object({ type: z.literal('dataset-pointer'), query: z.string().min(1) }),
+]);
+
 export default defineToolContract({
   name: 'rig_drop_waypoint',
   tier: 'write',
@@ -26,6 +35,7 @@ real decision is locked, not as a running summary.
       predecessors: z.array(z.string()).default([]),
       key_terms: z.array(z.string()).default([]),
       compactable: z.boolean().default(false),
+      payloads: z.array(payload).default([]),
       rationale: z.string().min(10, 'rationale must be at least 10 characters'),
     })
     .strict(),

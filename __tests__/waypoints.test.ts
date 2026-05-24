@@ -145,6 +145,45 @@ describe('B1 conversation waypoints', () => {
     expect(result).toEqual([]);
   });
 
+  test('B2 — payloads round-trip through drop + list', () => {
+    const id = rig.writes.dropWaypoint(
+      {
+        kind: 'decision',
+        title: 'with payloads',
+        summary: 'multimodal carrier',
+        payloads: [
+          { type: 'text-summary', content: 'short prose' },
+          {
+            type: 'mermaid-diagram',
+            content: 'graph TD; A-->B',
+          },
+          { type: 'code-snippet', lang: 'ts', content: 'const x: number = 1;' },
+          { type: 'doc-fragment', content: '## Decision\n...' },
+          { type: 'image-ref', path: '.rig/media/diagram.svg', alt: 'arch' },
+        ],
+      },
+      { sessionId: 'pay-test', actor: 'ai:test' },
+    );
+    const wp = rig.getWaypoints({ sessionId: 'pay-test' })[0]!;
+    expect(wp.id).toBe(id);
+    expect(wp.payloads.length).toBe(5);
+    expect(wp.payloads[0]).toEqual({ type: 'text-summary', content: 'short prose' });
+    const code = wp.payloads.find((p) => p.type === 'code-snippet');
+    expect(code).toMatchObject({ lang: 'ts', content: 'const x: number = 1;' });
+    const img = wp.payloads.find((p) => p.type === 'image-ref');
+    expect(img).toMatchObject({ path: '.rig/media/diagram.svg', alt: 'arch' });
+  });
+
+  test('B2 — waypoints without payloads carry an empty array', () => {
+    const id = rig.writes.dropWaypoint(
+      { kind: 'observation', title: 'plain', summary: 'no payloads here' },
+      ctx,
+    );
+    const wp = rig.getWaypoints({ limit: 1 }).find((w) => w.id === id);
+    expect(wp).toBeDefined();
+    expect(wp!.payloads).toEqual([]);
+  });
+
   test('undo reverses the waypoint drop', () => {
     const id = rig.writes.dropWaypoint(
       { kind: 'decision', title: 'will be undone', summary: 'oops' },

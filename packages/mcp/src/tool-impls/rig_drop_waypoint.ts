@@ -17,6 +17,7 @@ export async function run(args: Args, ctx: ToolContext): Promise<Result> {
       predecessors: args.predecessors,
       keyTerms: args.key_terms,
       compactable: args.compactable,
+      payloads: args.payloads,
     },
     { sessionId: ctx.sessionId, actor: ctx.provenance ?? 'ai:unknown' },
   );

@@ -63,7 +63,12 @@ export type { CriticalStep } from './graph/critical-path.ts';
 export type { AliasRow } from './db/alias-queries.ts';
 export type { DepRow, DepConflictRow } from './db/dep-queries.ts';
 export type { HotspotRow, ColdRow } from './db/activation-queries.ts';
-export type { WaypointRow, WaypointKind, ListWaypointsOpts } from './db/waypoint-queries.ts';
+export type {
+  WaypointRow,
+  WaypointKind,
+  WaypointPayload,
+  ListWaypointsOpts,
+} from './db/waypoint-queries.ts';
 export type { SyncResult } from './sync.ts';
 export type { TaggedEdge, NeighborsOptions } from './db/edge-queries.ts';
 export type { SearchOptions } from './db/search-queries.ts';

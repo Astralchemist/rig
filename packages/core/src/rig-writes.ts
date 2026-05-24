@@ -16,7 +16,7 @@ import {
   restorePendingToPending,
   type PendingEdgeRow,
 } from './db/pending-edges.ts';
-import { touchSession, type WaypointKind } from './db/waypoint-queries.ts';
+import { touchSession, type WaypointKind, type WaypointPayload } from './db/waypoint-queries.ts';
 
 export interface WriteCtx {
   sessionId: string;
@@ -59,6 +59,7 @@ export interface DropWaypointArgs {
   predecessors?: readonly string[];
   keyTerms?: readonly string[];
   compactable?: boolean;
+  payloads?: readonly WaypointPayload[];
 }
 
 export class RigWrites {
@@ -231,6 +232,7 @@ export class RigWrites {
       predecessors: args.predecessors ?? [],
       key_terms: args.keyTerms ?? [],
       compactable: args.compactable === true,
+      payloads: args.payloads ?? [],
     };
     adapter.transaction(() => {
       adapter

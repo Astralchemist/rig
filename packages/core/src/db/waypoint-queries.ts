@@ -7,6 +7,18 @@ export type WaypointKind =
   | 'open-question'
   | 'principle';
 
+// B2 — payloads carried inline on a waypoint. Each shape is a self-contained
+// chunk re-renderable in a UI / re-injectable into a future prompt. The union
+// is open-ended through `Record<string, unknown>` so future payload types ship
+// without core changes; the contract layer enforces strictness at MCP boundary.
+export type WaypointPayload =
+  | { type: 'text-summary'; content: string }
+  | { type: 'mermaid-diagram'; content: string }
+  | { type: 'code-snippet'; lang: string; content: string }
+  | { type: 'doc-fragment'; content: string }
+  | { type: 'image-ref'; path: string; alt?: string }
+  | { type: 'dataset-pointer'; query: string };
+
 export interface WaypointRow {
   id: string;
   ts: number;
@@ -19,6 +31,7 @@ export interface WaypointRow {
   predecessors: readonly string[];
   key_terms: readonly string[];
   compactable: boolean;
+  payloads: readonly WaypointPayload[];
 }
 
 interface RawNode {
@@ -37,6 +50,7 @@ interface RawData {
   predecessors?: string[];
   key_terms?: string[];
   compactable?: boolean;
+  payloads?: WaypointPayload[];
 }
 
 const parse = (r: RawNode): WaypointRow => {
@@ -53,6 +67,7 @@ const parse = (r: RawNode): WaypointRow => {
     predecessors: d.predecessors ?? [],
     key_terms: d.key_terms ?? [],
     compactable: d.compactable === true,
+    payloads: d.payloads ?? [],
   };
 };
 

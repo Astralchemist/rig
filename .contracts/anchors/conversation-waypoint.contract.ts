@@ -19,6 +19,22 @@ export default defineAnchorContract({
     predecessors: z.array(z.string()).default([]),
     key_terms: z.array(z.string()).default([]),
     compactable: z.boolean().default(false),
+    // B2 — multi-modal payloads. Each payload is a self-contained chunk the
+    // agent can re-render later (a diagram, a snippet, a doc fragment). Heavy
+    // binary payloads (images, large datasets) ride out-of-band via paths;
+    // text-shaped payloads live inline.
+    payloads: z
+      .array(
+        z.discriminatedUnion('type', [
+          z.object({ type: z.literal('text-summary'), content: z.string() }),
+          z.object({ type: z.literal('mermaid-diagram'), content: z.string() }),
+          z.object({ type: z.literal('code-snippet'), lang: z.string(), content: z.string() }),
+          z.object({ type: z.literal('doc-fragment'), content: z.string() }),
+          z.object({ type: z.literal('image-ref'), path: z.string(), alt: z.string().optional() }),
+          z.object({ type: z.literal('dataset-pointer'), query: z.string() }),
+        ]),
+      )
+      .default([]),
   }),
   ui: {
     icon: 'flag',

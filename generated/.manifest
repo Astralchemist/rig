@@ -48,7 +48,7 @@
     "mcp/handlers/rig_subscribe.handler.ts": "92746a3928399606",
     "mcp/handlers/rig_undo.handler.ts": "2addb3a0315adb0d",
     "mcp/handlers/rig_waypoints.handler.ts": "29f87f767a3b27e2",
-    "mcp/tools-manifest.json": "942abddbc3b1bc4e",
+    "mcp/tools-manifest.json": "2cc2f0f1bc90bad3",
     "web/ws-events.ts": "29bb12f24073f424"
   }
 }
