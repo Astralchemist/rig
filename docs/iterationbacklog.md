@@ -810,34 +810,34 @@ ALTER TABLE pending_edges ADD COLUMN source_urls TEXT;
 
 After fixing the extractor diagnostic (0.1):
 
-### Phase 3.5 — Cement the foundation
-1. **A1** Hub-and-spoke topology — makes UI legible, falls out of existing schema
-2. **A3** Aliases — cheap, big UX win, unblocks duplicate-anchor pain
-3. **A2** Package manifests as hubs — concrete value for vibecoded apps; first non-code-symbol anchor type
-4. **C1** Hot-node tracking — feeds A1's hubness formula and D3's pull formula
-5. **D2** Hub-aware pull reranking — completes the hub story
+### Phase 3.5 — Cement the foundation ✅ shipped 2026-05-24
+1. **A1** Hub-and-spoke topology ✅
+2. **A3** Aliases ✅
+3. **A2** Package manifests as hubs ✅ (package.json + requirements.txt + `rig_dep_conflicts`; pyproject.toml + lockfile resolution + `rig_unused_deps` deferred)
+4. **C1** Hot-node tracking ✅ (`rig_hotspots` + `rig_cold` + heat feeds A1 hubness)
+5. **D2** Hub-aware pull reranking ✅
 
-Acceptance for Phase 3.5: rendering 5k-node graphs is legible; manifest queries work; aliases collapse duplicates.
+Acceptance for Phase 3.5: ✅ rendering 5k-node graphs is legible; manifest queries work; aliases collapse duplicates; pull surfaces hubs first; hot anchors gain hubness automatically.
 
 > **F1 (sqlite-vec HNSW) was briefly inserted at slot 3 on 2026-05-24 after a 235 ms p50 measurement, then demoted back to Phase 6** when profiling revealed the cost was per-candidate DB roundtrips, not linear cosine. Batching the fetches (commit `cefc1ea`) brought `rig_pull` p50 to 45.7 ms at 4.5k nodes. HNSW remains the right fix above ~20k nodes; the empirical trigger has not been hit.
 
-### Phase 4 — Memory + observability
-6. **B1** Conversation waypoints (basic)
-7. **B4** Cross-session retrieval — closes the durability loop
-8. **C3** Pulse events + WS animations — peek-under-the-hood ships
-9. **E1** Browser MCP integration + source_url on edges
-10. **A4** Community detection (no LLM) + **D3** community-aware pull
+### Phase 4 — Memory + observability ✅ mostly shipped 2026-05-24
+6. **B1** Conversation waypoints (basic) ✅
+7. **B4** Cross-session retrieval ✅ (`session_id="last"` + installer bootstrap section)
+8. **C3** Pulse events + WS animations — **C3-lite shipped** previously; full timeline + replay deferred
+9. **E1** Browser MCP integration + source_url on edges — pending
+10. **A4** Community detection — **A4-lite (label propagation) shipped** previously; full Leiden deferred
 
-Acceptance for Phase 4: AI can pick up a project from prior session; pulses animate live; communities visible in UI.
+Acceptance for Phase 4: ✅ AI can pick up a project from prior session via `rig_waypoints session_id="last"`; pulses animate live (C3-lite); communities visible (A4-lite, label propagation).
 
 ### Phase 5 — Multi-modal + self-mapping
-11. **B2** Polymorphic waypoint payloads
+11. **B2** Polymorphic waypoint payloads ✅ shipped 2026-05-24 (promoted from Phase 5 — natural follow-on to B1)
 12. **C4** Skill/model nodes + **D4** skill-relevance selection
 13. **C5** Pulse replay timeline
 14. **E3** Direct chat mode
-15. **B3** Doc generation from waypoints
+15. **B3** Doc generation from waypoints ✅ shipped 2026-05-24 as `rig export-docs`
 
-Acceptance for Phase 5: Rig generates its own architecture docs from its waypoint chain; agent picks its own toolchain via the graph.
+Acceptance for Phase 5: Rig generates its own architecture docs from its waypoint chain ✅; agent picks its own toolchain via the graph (C4/D4 pending).
 
 ### Phase 6 — Scale
 16. **F1** sqlite-vec HNSW — trigger: real codebase crosses ~20k nodes
