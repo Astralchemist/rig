@@ -46,6 +46,11 @@ export class Database {
   }
 
   close(): void {
+    try {
+      this.adapter.pragma('optimize');
+    } catch {
+      // optimize is best-effort; do not block close on a stats-update failure
+    }
     this.adapter.close();
   }
 }

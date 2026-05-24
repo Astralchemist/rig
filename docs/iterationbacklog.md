@@ -708,15 +708,18 @@ ALTER TABLE pending_edges ADD COLUMN source_urls TEXT;
 
 #### F1. sqlite-vec HNSW for vector search
 
-**One-liner.** Replace linear cosine search with `sqlite-vec`'s HNSW index when node count crosses ~20k.
+**One-liner.** Replace linear cosine search with `sqlite-vec`'s HNSW index. **Now triggered empirically** — measured 235ms p50 at 4.5k nodes (2026-05-24 bench run).
 
-**Why.** Linear cosine over 100k embeddings is ~50ms+. HNSW drops it to ~5ms.
+**Why.** Linear cosine grows ~linearly with node count. Measured: 47ms @ 1k, 235ms @ 4.5k. Projects to ~520ms @ 10k, ~5s @ 100k. The Phase 1 budget for `rig_pull` is **100ms** and the entire two-tier gate assumes `rig_pull` is a light-tier tool callable freely in the main session — the budget broke around 2k nodes. HNSW drops the semantic component from O(n) to O(log n): ~5–10ms at 4.5k, holds <20ms through 100k.
 
 **Acceptance.**
-- [ ] HNSW index built automatically when embeddings table crosses threshold
-- [ ] Magnetic pull's semantic component runs in <5ms on 100k-node graphs
+- [ ] HNSW index built automatically when embeddings table crosses threshold (~5k nodes)
+- [ ] Magnetic pull's semantic component runs in <10ms on 5k-node graphs, <20ms on 100k
+- [ ] `rig_pull` p50 stays under the 100ms light-tier budget at all measured scales
 
 **Dependencies.** None.
+
+**Promoted to Phase 3.5 slot 3 (after A3) on 2026-05-24** based on measured 4.5k-node bench. Originally Phase 6.
 
 ---
 
@@ -808,11 +811,12 @@ After fixing the extractor diagnostic (0.1):
 ### Phase 3.5 — Cement the foundation
 1. **A1** Hub-and-spoke topology — makes UI legible, falls out of existing schema
 2. **A3** Aliases — cheap, big UX win, unblocks duplicate-anchor pain
-3. **A2** Package manifests as hubs — concrete value for vibecoded apps; first non-code-symbol anchor type
-4. **C1** Hot-node tracking — feeds A1's hubness formula and D3's pull formula
-5. **D2** Hub-aware pull reranking — completes the hub story
+3. **F1** sqlite-vec HNSW — **promoted from Phase 6 on 2026-05-24.** Measured 235ms p50 @ 4.5k nodes; busts the 100ms light-tier budget for `rig_pull`. Must ship before the two-tier gate's empirical guarantee leaks at larger scales.
+4. **A2** Package manifests as hubs — concrete value for vibecoded apps; first non-code-symbol anchor type
+5. **C1** Hot-node tracking — feeds A1's hubness formula and D3's pull formula
+6. **D2** Hub-aware pull reranking — completes the hub story
 
-Acceptance for Phase 3.5: rendering 5k-node graphs is legible; manifest queries work; aliases collapse duplicates.
+Acceptance for Phase 3.5: rendering 5k-node graphs is legible; manifest queries work; aliases collapse duplicates; `rig_pull` p50 stays sub-100ms through 100k nodes.
 
 ### Phase 4 — Memory + observability
 6. **B1** Conversation waypoints (basic)
@@ -833,12 +837,11 @@ Acceptance for Phase 4: AI can pick up a project from prior session; pulses anim
 Acceptance for Phase 5: Rig generates its own architecture docs from its waypoint chain; agent picks its own toolchain via the graph.
 
 ### Phase 6 — Scale
-16. **F1** sqlite-vec HNSW
-17. **F4** UI hub-default rendering
-18. **F2** Activations rollup
-19. **A5** Consolidation job
+16. **F4** UI hub-default rendering
+17. **F2** Activations rollup
+18. **A5** Consolidation job
 
-Acceptance for Phase 6: 100k-node projects feel as snappy as 1k-node ones.
+Acceptance for Phase 6: 100k-node projects feel as snappy as 1k-node ones. (F1 already shipped in Phase 3.5.)
 
 ### Phase 7+ — Vision
 20. **E2** OpenClaw ↔ Rig composition
@@ -858,7 +861,7 @@ Don't start any backlog item until these are answered:
 | Final product name — Rig, Constellation, Pyxis? | Affects CLI binary, npm package, install paths | **Rig** (per recent screenshot) |
 | MCP tool prefix — `rig_*` or `constellation_*`? | Locks the agent install configs | `rig_*` to match product |
 | Embedding model upgrade path | bge-small fine through ~50k nodes; beyond that consider bge-base or hosted | Stay on bge-small until F1 ships |
-| When to commit to `sqlite-vec` | Adds a native dep; defer until it's necessary | When real project crosses 20k nodes |
+| When to commit to `sqlite-vec` | Adds a native dep; defer until it's necessary | **Now** — empirical 4.5k-node bench (2026-05-24) shows the linear-cosine cost crossed the 100ms light-tier budget. See F1. |
 | Whether to keep "Constellation" terminology internally | Concepts (anchor, magnetic pull, waypoint) vs product name | Keep concepts; product = Rig |
 | Browser MCP default-on or default-off in installer | Privacy vs convenience | Default-off, prompt during install |
 | Waypoint rate-limit per session | Prevent spam | 1 per 5 turns soft, 3 per turn hard |
