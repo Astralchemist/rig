@@ -2184,6 +2184,61 @@
       ]
     },
     {
+      "name": "rig_phantom_imports",
+      "description": "Bare imports with no matching declared dependency",
+      "tier": "light",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "phantoms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "target_name": {
+                  "type": "string"
+                },
+                "occurrences": {
+                  "type": "integer"
+                },
+                "sample_file": {
+                  "type": "string"
+                },
+                "sample_line": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "target_name",
+                "occurrences",
+                "sample_file",
+                "sample_line"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "phantoms",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED"
+      ]
+    },
+    {
       "name": "rig_aliases",
       "description": "List the aliases registered for an anchor",
       "tier": "light",

@@ -180,6 +180,16 @@ Walk outward from an anchor via structural edges, return the first hub layer
 reached (up to maxDepth hops). Use to answer "what part of the system does
 this belong to" without traversing the full graph.
 
+### `rig_phantom_imports`
+
+Mirror of rig_unused_deps: returns import sites whose target package name
+has no matching declared dependency in any manifest. Common causes are a
+missing entry in package.json / requirements.txt, a typo, or reliance on a
+transitive dep that should be declared directly.
+
+Subpath imports normalize to the parent package (`lodash/get` → `lodash`);
+relative + absolute paths are not counted as phantoms.
+
 ### `rig_aliases`
 
 Return every alias name pointing at a given canonical anchor. Aliases are

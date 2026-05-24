@@ -29,6 +29,7 @@
       "mcp__rig__rig_callees",
       "mcp__rig__rig_status",
       "mcp__rig__rig_hub_of",
+      "mcp__rig__rig_phantom_imports",
       "mcp__rig__rig_aliases",
       "mcp__rig__rig_waypoints",
       "mcp__rig__rig_session_token",

@@ -43,7 +43,7 @@ export const resolveReferences = (
     'INSERT OR IGNORE INTO edges (src, dst, kind, provenance, created_at) VALUES (?, ?, ?, ?, ?)',
   );
   const insertUnresolved = db.prepare(
-    'INSERT INTO unresolved_refs (src, target_name, file_path, line) VALUES (?, ?, ?, ?)',
+    'INSERT INTO unresolved_refs (src, target_name, file_path, line, kind) VALUES (?, ?, ?, ?, ?)',
   );
 
   let edges = 0;
@@ -71,7 +71,7 @@ export const resolveReferences = (
         insertEdge.run(ref.fromNodeId, fileId, 'imports', 'ast', now);
         edges++;
       } else {
-        insertUnresolved.run(ref.fromNodeId, ref.referenceName, ref.filePath ?? '', ref.line);
+        insertUnresolved.run(ref.fromNodeId, ref.referenceName, ref.filePath ?? '', ref.line, ref.referenceKind);
         unresolved++;
       }
       continue;
@@ -81,7 +81,7 @@ export const resolveReferences = (
       insertEdge.run(ref.fromNodeId, cands[0]!, ref.referenceKind, 'ast', now);
       edges++;
     } else {
-      insertUnresolved.run(ref.fromNodeId, ref.referenceName, ref.filePath ?? '', ref.line);
+      insertUnresolved.run(ref.fromNodeId, ref.referenceName, ref.filePath ?? '', ref.line, ref.referenceKind);
       unresolved++;
     }
   }

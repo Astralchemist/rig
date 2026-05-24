@@ -144,6 +144,57 @@ export const listUnusedDependencies = (db: SqliteAdapter): UnusedDepRow[] => {
   return out;
 };
 
+export interface PhantomImportRow {
+  target_name: string;
+  occurrences: number;
+  sample_file: string;
+  sample_line: number;
+}
+
+// The mirror of unused-deps: import sites whose target_name has no matching
+// declared dependency. Often a missing-dependency bug or a typo. Scoped +
+// subpath normalization mirrors listUnusedDependencies so the two views agree.
+export const listPhantomImports = (db: SqliteAdapter): PhantomImportRow[] => {
+  const declared = db
+    .prepare(`SELECT name FROM nodes WHERE type = 'declared-dependency'`)
+    .all() as { name: string }[];
+  const declaredNames = new Set(declared.map((d) => d.name));
+
+  const rows = db
+    .prepare(
+      `SELECT target_name, COUNT(*) AS occurrences,
+              MIN(file_path) AS sample_file, MIN(line) AS sample_line
+       FROM unresolved_refs
+       WHERE kind = 'imports'
+       GROUP BY target_name
+       ORDER BY occurrences DESC, target_name ASC`,
+    )
+    .all() as {
+    target_name: string;
+    occurrences: number;
+    sample_file: string;
+    sample_line: number;
+  }[];
+
+  // Normalize subpath / scoped imports the same way listUnusedDependencies does
+  // — '@types/node/path' resolves to '@types/node', 'lodash/get' to 'lodash'.
+  const normalize = (t: string): string => {
+    if (t.startsWith('@')) {
+      const parts = t.split('/');
+      return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : t;
+    }
+    return t.split('/')[0] ?? t;
+  };
+
+  return rows.filter((r) => {
+    const pkg = normalize(r.target_name);
+    // Relative + absolute imports never resolve to a declared dep; they're
+    // file-resolution failures, not phantoms.
+    if (pkg.startsWith('.') || pkg.startsWith('/')) return false;
+    return !declaredNames.has(pkg);
+  });
+};
+
 export const listDependencies = (
   db: SqliteAdapter,
   manifestPath?: string,

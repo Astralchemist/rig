@@ -1,5 +1,5 @@
 // GENERATED FILE — DO NOT EDIT.
-// Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts, .contracts/migrations/v5.contract.ts, .contracts/migrations/v6.contract.ts, .contracts/migrations/v7.contract.ts, .contracts/migrations/v8.contract.ts, .contracts/migrations/v9.contract.ts
+// Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts, .contracts/migrations/v5.contract.ts, .contracts/migrations/v6.contract.ts, .contracts/migrations/v7.contract.ts, .contracts/migrations/v8.contract.ts, .contracts/migrations/v9.contract.ts, .contracts/migrations/v10.contract.ts
 // Edit the .contract.ts file(s), then run `bun run gen`.
 
 export interface Migration {
@@ -63,5 +63,11 @@ export const MIGRATIONS: readonly Migration[] = [
     description: "B1: sessions table for waypoint provenance",
     forward: "CREATE TABLE IF NOT EXISTS sessions (\n  id TEXT PRIMARY KEY,\n  started_at INTEGER NOT NULL,\n  last_seen INTEGER NOT NULL,\n  title TEXT,\n  context_model TEXT\n);\nCREATE INDEX IF NOT EXISTS idx_sessions_last_seen ON sessions(last_seen DESC);",
     rollback: "DROP INDEX IF EXISTS idx_sessions_last_seen;\nDROP TABLE IF EXISTS sessions;",
+  },
+  {
+    version: 10,
+    description: "A2 follow-up: kind column on unresolved_refs for phantom-import detection",
+    forward: "ALTER TABLE unresolved_refs ADD COLUMN kind TEXT;\nCREATE INDEX IF NOT EXISTS idx_unresolved_kind_target ON unresolved_refs(kind, target_name);",
+    rollback: "DROP INDEX IF EXISTS idx_unresolved_kind_target;\n-- SQLite cannot DROP COLUMN before 3.35; intentional no-op.",
   },
 ];
