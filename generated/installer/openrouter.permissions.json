@@ -13,6 +13,7 @@
       "mcp__rig__rig_focus",
       "mcp__rig__rig_node",
       "mcp__rig__rig_undo",
+      "mcp__rig__rig_deps",
       "mcp__rig__rig_callers",
       "mcp__rig__rig_annotate",
       "mcp__rig__rig_pull",

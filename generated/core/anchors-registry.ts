@@ -1,5 +1,5 @@
 // GENERATED FILE — DO NOT EDIT.
-// Source: .contracts/anchors/markdown-section.contract.ts, .contracts/anchors/code-symbol.contract.ts, .contracts/anchors/cluster.contract.ts
+// Source: .contracts/anchors/markdown-section.contract.ts, .contracts/anchors/code-symbol.contract.ts, .contracts/anchors/declared-dependency.contract.ts, .contracts/anchors/cluster.contract.ts
 // Edit the .contract.ts file(s), then run `bun run gen`.
 
 export interface AnchorTypeMeta {
@@ -30,6 +30,15 @@ export const ANCHOR_REGISTRY: Record<string, AnchorTypeMeta> = {
     allowed_edges: {"outgoing":["calls","imports","extends","implements","contains","references"],"incoming":["calls","extends","implements","contains","references"]},
     embeddable: true,
     embedding_text: ["name","qualified_name","docstring","signature"],
+  },
+  'declared-dependency': {
+    type: 'declared-dependency',
+    description: "A dependency declared in a package-manifest file (package.json, requirements.txt, pyproject.toml, etc.). Carries its version spec + dev/runtime classification on the node.",
+    extractor: 'custom',
+    ui: {"icon":"package","color":"c-violet","label_field":"name","detail_fields":["spec","manifest_path","source"]},
+    allowed_edges: {"outgoing":["resolves_to"],"incoming":["manifest_declares","imports_package"]},
+    embeddable: false,
+    embedding_text: [],
   },
   'cluster': {
     type: 'cluster',

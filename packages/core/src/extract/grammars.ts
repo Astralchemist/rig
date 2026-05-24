@@ -1,7 +1,13 @@
-import { extname } from 'node:path';
+import { basename, extname } from 'node:path';
 import { Language as WasmLanguage, Parser } from 'web-tree-sitter';
 import type { Language } from './upstream-types.ts';
 import * as wasm from './wasm-embedded.ts';
+
+// File basenames (case-insensitive) routed to a non-tree-sitter manifest
+// extractor. Used by detectLanguage to short-circuit before extension lookup.
+const MANIFEST_BASENAMES: Record<string, Language> = {
+  'package.json': 'json',
+};
 
 const WASM_BY_LANGUAGE: Partial<Record<Language, Uint8Array>> = {
   typescript: wasm.typescript,
@@ -29,6 +35,9 @@ let parserReady: Promise<void> | null = null;
 const languageCache = new Map<Language, WasmLanguage>();
 
 export const detectLanguage = (filePath: string): Language => {
+  const base = basename(filePath).toLowerCase();
+  const manifest = MANIFEST_BASENAMES[base];
+  if (manifest) return manifest;
   const ext = extname(filePath).toLowerCase();
   return EXTENSION_LANGUAGE[ext] ?? 'unknown';
 };

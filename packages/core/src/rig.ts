@@ -8,6 +8,7 @@ import {
   type NeighborsOptions,
   type TaggedEdge,
 } from './db/edge-queries.ts';
+import { listDependencies as dqListDependencies, type DepRow } from './db/dep-queries.ts';
 import { getFiles as fqGetFiles, type FileRow } from './db/file-queries.ts';
 import {
   getGraphSnapshot as gsGetGraphSnapshot,
@@ -43,6 +44,7 @@ export type { HubRef } from './graph/hubness.ts';
 export type { DrillResult } from './graph/hub-drill.ts';
 export type { CriticalStep } from './graph/critical-path.ts';
 export type { AliasRow } from './db/alias-queries.ts';
+export type { DepRow } from './db/dep-queries.ts';
 export type { SyncResult } from './sync.ts';
 export type { TaggedEdge, NeighborsOptions } from './db/edge-queries.ts';
 export type { SearchOptions } from './db/search-queries.ts';
@@ -184,6 +186,10 @@ export class Rig {
 
   getAliases(id: NodeId): AliasRow[] {
     return listAliases(this.database.adapter, id);
+  }
+
+  getDependencies(manifestPath?: string): DepRow[] {
+    return dqListDependencies(this.database.adapter, manifestPath);
   }
 
   getCriticalPath(id: NodeId, maxSteps = 16): CriticalStep[] {

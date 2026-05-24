@@ -52,6 +52,16 @@ return the source body — use rig_explore (heavy tier) for full source.
 Use as a cheap inspection step after rig_search to decide whether a node
 is worth pulling neighbors or callers for.
 
+### `rig_deps`
+
+List the dependencies a project declares in its package manifests (currently
+package.json; more formats coming). Each entry has {name, spec, source,
+manifest_path, is_dev, is_optional, is_peer}.
+
+Use for "what does this project depend on" and "what version of X does it
+declare" questions. For symbol-level lookup of how a package is imported
+in code, use rig_search with the package name.
+
 ### `rig_callers`
 
 Return the set of anchors that directly call the given function/method.

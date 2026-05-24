@@ -843,6 +843,82 @@
       ]
     },
     {
+      "name": "rig_deps",
+      "description": "List declared dependencies from package manifests",
+      "tier": "light",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "manifest_path": {
+            "type": "string",
+            "description": "Restrict to deps declared in this manifest path (relative)"
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "deps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "spec": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "manifest_path": {
+                  "type": "string"
+                },
+                "is_dev": {
+                  "type": "boolean"
+                },
+                "is_optional": {
+                  "type": "boolean"
+                },
+                "is_peer": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "spec",
+                "source",
+                "manifest_path",
+                "is_dev",
+                "is_optional",
+                "is_peer"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "deps",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED"
+      ]
+    },
+    {
       "name": "rig_callers",
       "description": "List direct callers of an anchor",
       "tier": "light",

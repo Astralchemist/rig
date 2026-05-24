@@ -5,6 +5,7 @@
 export const NODE_KINDS = [
   'file',
   'module',
+  'markdown-section',
   'class',
   'struct',
   'interface',
@@ -25,6 +26,7 @@ export const NODE_KINDS = [
   'export',
   'route',
   'component',
+  'declared-dependency',
 ] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 
@@ -41,7 +43,8 @@ export type EdgeKind =
   | 'instantiates'
   | 'overrides'
   | 'decorates'
-  | 'tests';
+  | 'tests'
+  | 'manifest_declares';
 
 export const LANGUAGES = [
   'typescript',
@@ -50,6 +53,7 @@ export const LANGUAGES = [
   'jsx',
   'python',
   'markdown',
+  'json',
   'unknown',
 ] as const;
 export type Language = (typeof LANGUAGES)[number];
@@ -74,6 +78,13 @@ export interface Node {
   isAbstract?: boolean;
   decorators?: string[];
   typeParameters?: string[];
+  // declared-dependency fields (A2). Populated only when kind = 'declared-dependency'.
+  depName?: string;
+  depSpec?: string;
+  depSource?: string;
+  isDevDep?: boolean;
+  isOptionalDep?: boolean;
+  isPeerDep?: boolean;
   updatedAt: number;
 }
 

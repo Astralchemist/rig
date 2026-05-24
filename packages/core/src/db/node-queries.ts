@@ -18,6 +18,12 @@ const NODE_DATA_KEYS = [
   'isAbstract',
   'decorators',
   'typeParameters',
+  'depName',
+  'depSpec',
+  'depSource',
+  'isDevDep',
+  'isOptionalDep',
+  'isPeerDep',
 ] as const;
 
 const pickData = (n: Node): Record<string, unknown> => {
