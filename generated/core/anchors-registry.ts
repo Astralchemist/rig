@@ -1,5 +1,5 @@
 // GENERATED FILE — DO NOT EDIT.
-// Source: .contracts/anchors/markdown-section.contract.ts, .contracts/anchors/code-symbol.contract.ts, .contracts/anchors/declared-dependency.contract.ts, .contracts/anchors/cluster.contract.ts, .contracts/anchors/conversation-waypoint.contract.ts
+// Source: .contracts/anchors/skill.contract.ts, .contracts/anchors/markdown-section.contract.ts, .contracts/anchors/code-symbol.contract.ts, .contracts/anchors/declared-dependency.contract.ts, .contracts/anchors/cluster.contract.ts, .contracts/anchors/conversation-waypoint.contract.ts
 // Edit the .contract.ts file(s), then run `bun run gen`.
 
 export interface AnchorTypeMeta {
@@ -13,6 +13,15 @@ export interface AnchorTypeMeta {
 }
 
 export const ANCHOR_REGISTRY: Record<string, AnchorTypeMeta> = {
+  'skill': {
+    type: 'skill',
+    description: "An AI-callable tool exposed by the MCP server (e.g. rig_pull, rig_search). Seeded from the tools-manifest at session startup.",
+    extractor: 'manual',
+    ui: {"icon":"wrench","color":"c-fuchsia","label_field":"name","detail_fields":["tier","summary"]},
+    allowed_edges: {"outgoing":["references"],"incoming":["references","invoked_in_session"]},
+    embeddable: true,
+    embedding_text: ["name","description","summary"],
+  },
   'markdown-section': {
     type: 'markdown-section',
     description: "A heading inside a markdown document; nests by ATX heading level",

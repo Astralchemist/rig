@@ -237,6 +237,25 @@ export class Rig {
     return dqListPhantom(this.database.adapter);
   }
 
+  // C4 — register the AI's tool surface as skill anchors. Caller supplies the
+  // tools-manifest (MCP layer owns it); core stays manifest-format-agnostic.
+  seedSkills(
+    tools: ReadonlyArray<{ name: string; description: string; tier: string; summary?: string; records_activation?: boolean }>,
+  ): number {
+    let n = 0;
+    for (const t of tools) {
+      this.writes.upsertSkill({
+        name: t.name,
+        description: t.description,
+        tier: t.tier,
+        summary: t.summary,
+        recordsActivation: t.records_activation === true,
+      });
+      n++;
+    }
+    return n;
+  }
+
   getHotspots(opts: { windowMs?: number; limit?: number } = {}): HotspotRow[] {
     return aqListHotspots(this.database.adapter, opts.windowMs, opts.limit);
   }

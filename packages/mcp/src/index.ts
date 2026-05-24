@@ -40,6 +40,10 @@ export async function serveMcp(opts: ServeMcpOptions = {}): Promise<void> {
   const manifest = loadManifest();
   const handlers = loadHandlers();
 
+  // C4 — surface the AI's own skills as graph anchors. Idempotent on each
+  // startup; descriptions stay in sync if contracts change between runs.
+  rig.seedSkills(manifest.tools);
+
   const sessionId = crypto.randomUUID();
   const ctx: ToolContext = {
     rig,

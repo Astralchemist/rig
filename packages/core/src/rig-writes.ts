@@ -261,6 +261,30 @@ export class RigWrites {
     return id;
   }
 
+  // Idempotently register one of the AI's own skills as a graph anchor.
+  // Deterministic id `skill:<name>` so re-seeding on every startup is a no-op
+  // after the first run; data stays in sync with the contract if descriptions
+  // change. C4 — closes the loop so rig_pull can rank skills alongside code.
+  upsertSkill(args: { name: string; description: string; tier: string; summary?: string; recordsActivation?: boolean }): string {
+    const adapter = this.db.adapter;
+    const id = `skill:${args.name}`;
+    const now = Date.now();
+    const data = {
+      tier: args.tier,
+      description: args.description,
+      ...(args.summary ? { summary: args.summary } : {}),
+      records_activation: args.recordsActivation === true,
+    };
+    adapter
+      .prepare(
+        `INSERT INTO nodes (id, type, name, data, created_at, updated_at)
+         VALUES (?, 'skill', ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET name=excluded.name, data=excluded.data, updated_at=excluded.updated_at`,
+      )
+      .run(id, args.name, JSON.stringify(data), now, now);
+    return id;
+  }
+
   recordFocus(nodeIds: string[], ctx: WriteCtx): void {
     recordMutation(this.db.adapter, {
       sessionId: ctx.sessionId,

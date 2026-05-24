@@ -1,4 +1,15 @@
 import { Rig } from '@rig/core';
+// Static JSON import so bun --compile bundles the manifest into the binary.
+// Matches the pattern used by serveMcp for handler+manifest loading.
+import toolsManifest from '../../../generated/mcp/tools-manifest.json' with { type: 'json' };
+
+interface ManifestTool {
+  name: string;
+  description: string;
+  tier: string;
+  summary?: string;
+  records_activation?: boolean;
+}
 
 const isTty = process.stderr.isTTY === true;
 
@@ -53,7 +64,10 @@ export const runIndex = async (cwd: string): Promise<void> => {
       exclude,
     });
     if (isTty) process.stderr.write('\r\x1b[K');
+    // C4 — seed skill anchors after indexing so search hits them too.
+    const skillCount = rig.seedSkills((toolsManifest as { tools: ManifestTool[] }).tools);
     console.log(`rig: done`);
+    console.log(`  skills:           ${skillCount}`);
     console.log(`  files:            ${r.files}`);
     console.log(`  nodes:            ${r.nodes}`);
     console.log(`  edges:            ${r.edges}`);

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "files": {
-    "core/anchors-registry.ts": "a113e2eb9b55c794",
+    "core/anchors-registry.ts": "ae560f08a06bbce7",
     "core/migrations.ts": "3f1f9d4285242ddc",
     "core/schema.sql": "42cad4af06a4ddba",
     "installer/claude.instructions.md": "d40c120255aa2911",

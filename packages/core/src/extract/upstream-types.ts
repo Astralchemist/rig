@@ -28,6 +28,7 @@ export const NODE_KINDS = [
   'component',
   'declared-dependency',
   'conversation-waypoint',
+  'skill',
 ] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 
