@@ -1,5 +1,5 @@
 // GENERATED FILE — DO NOT EDIT.
-// Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts, .contracts/migrations/v5.contract.ts, .contracts/migrations/v6.contract.ts
+// Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts, .contracts/migrations/v5.contract.ts, .contracts/migrations/v6.contract.ts, .contracts/migrations/v7.contract.ts
 // Edit the .contract.ts file(s), then run `bun run gen`.
 
 export interface Migration {
@@ -45,5 +45,11 @@ export const MIGRATIONS: readonly Migration[] = [
     description: "A4-lite: community_id column on nodes for label-propagation clustering",
     forward: "ALTER TABLE nodes ADD COLUMN community_id INTEGER NOT NULL DEFAULT 0;\nCREATE INDEX IF NOT EXISTS idx_nodes_community ON nodes(community_id);",
     rollback: "DROP INDEX IF EXISTS idx_nodes_community;\n-- SQLite cannot DROP COLUMN before 3.35; intentional no-op.",
+  },
+  {
+    version: 7,
+    description: "Scope nodes_after_update FTS trigger to name + data columns",
+    forward: "DROP TRIGGER IF EXISTS nodes_after_update;\nCREATE TRIGGER nodes_after_update AFTER UPDATE OF name, data ON nodes BEGIN\n  DELETE FROM nodes_fts WHERE node_id = OLD.id;\n  INSERT INTO nodes_fts(name, qualified_name, node_id)\n  VALUES (\n    NEW.name,\n    COALESCE(json_extract(NEW.data, '$.qualifiedName'), NEW.name),\n    NEW.id\n  );\nEND;",
+    rollback: "DROP TRIGGER IF EXISTS nodes_after_update;\nCREATE TRIGGER nodes_after_update AFTER UPDATE ON nodes BEGIN\n  DELETE FROM nodes_fts WHERE node_id = OLD.id;\n  INSERT INTO nodes_fts(name, qualified_name, node_id)\n  VALUES (\n    NEW.name,\n    COALESCE(json_extract(NEW.data, '$.qualifiedName'), NEW.name),\n    NEW.id\n  );\nEND;",
   },
 ];

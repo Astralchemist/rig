@@ -1,5 +1,5 @@
 -- GENERATED FILE — DO NOT EDIT.
--- Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts, .contracts/migrations/v5.contract.ts, .contracts/migrations/v6.contract.ts
+-- Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts, .contracts/migrations/v5.contract.ts, .contracts/migrations/v6.contract.ts, .contracts/migrations/v7.contract.ts
 -- Edit the .contract.ts file(s), then run `bun run gen`.
 
 -- v1: Initial Rig schema: nodes, structural + semantic edges, embeddings, activations, FTS5
@@ -204,3 +204,15 @@ ALTER TABLE embeddings ADD COLUMN text_hash TEXT NOT NULL DEFAULT '';
 -- v6: A4-lite: community_id column on nodes for label-propagation clustering
 ALTER TABLE nodes ADD COLUMN community_id INTEGER NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS idx_nodes_community ON nodes(community_id);
+
+-- v7: Scope nodes_after_update FTS trigger to name + data columns
+DROP TRIGGER IF EXISTS nodes_after_update;
+CREATE TRIGGER nodes_after_update AFTER UPDATE OF name, data ON nodes BEGIN
+  DELETE FROM nodes_fts WHERE node_id = OLD.id;
+  INSERT INTO nodes_fts(name, qualified_name, node_id)
+  VALUES (
+    NEW.name,
+    COALESCE(json_extract(NEW.data, '$.qualifiedName'), NEW.name),
+    NEW.id
+  );
+END;
