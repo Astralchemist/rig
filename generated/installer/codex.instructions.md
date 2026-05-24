@@ -32,6 +32,16 @@ through history up to maxDepth hops. Returns the seed at index 0 followed
 by its predecessors in order. Use to reconstruct the reasoning thread
 that led to a decision.
 
+### `rig_dep_conflicts`
+
+Return every dependency name (scoped per ecosystem source) that appears in
+two or more manifests with different version specs. Same-name-different-source
+(e.g. an npm package and a PyPI package that happen to share a name) is not a
+conflict — only intra-ecosystem disagreement is flagged.
+
+Use to spot drift before it bites: pandas at 2.1.4 in requirements.txt and
+2.2.0 in pyproject.toml is the classic case.
+
 ### `rig_files`
 
 List files known to the rig index, optionally filtered by a substring of

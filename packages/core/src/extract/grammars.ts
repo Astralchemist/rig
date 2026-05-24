@@ -7,6 +7,10 @@ import * as wasm from './wasm-embedded.ts';
 // extractor. Used by detectLanguage to short-circuit before extension lookup.
 const MANIFEST_BASENAMES: Record<string, Language> = {
   'package.json': 'json',
+  'requirements.txt': 'json',
+  'requirements-dev.txt': 'json',
+  'dev-requirements.txt': 'json',
+  'requirements-test.txt': 'json',
 };
 
 const WASM_BY_LANGUAGE: Partial<Record<Language, Uint8Array>> = {
