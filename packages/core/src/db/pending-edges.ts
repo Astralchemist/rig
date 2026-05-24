@@ -11,6 +11,7 @@ export interface PendingEdgeRow {
   proposed_at: number;
   session_id: string;
   status: 'pending' | 'accepted' | 'rejected';
+  source_urls: string[];
 }
 
 export interface ProposeInput {
@@ -21,13 +22,43 @@ export interface ProposeInput {
   provenance: string;
   rationale: string;
   sessionId: string;
+  // E1 — URLs the agent cited while validating the proposal (browser/web tools).
+  sourceUrls?: readonly string[];
 }
 
+interface RawPendingRow {
+  id: number;
+  src: string;
+  dst: string;
+  kind: string;
+  weight: number;
+  provenance: string;
+  rationale: string;
+  proposed_at: number;
+  session_id: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  source_urls: string | null;
+}
+
+const parsePending = (r: RawPendingRow): PendingEdgeRow => {
+  let urls: string[] = [];
+  if (r.source_urls) {
+    try {
+      const parsed = JSON.parse(r.source_urls) as unknown;
+      if (Array.isArray(parsed)) urls = parsed.filter((u): u is string => typeof u === 'string');
+    } catch {
+      // legacy / corrupt row — surface as empty, do not throw
+    }
+  }
+  return { ...r, source_urls: urls };
+};
+
 export const proposeEdge = (db: SqliteAdapter, input: ProposeInput): number => {
+  const urls = input.sourceUrls && input.sourceUrls.length ? JSON.stringify(input.sourceUrls) : null;
   const r = db
     .prepare(
-      `INSERT INTO pending_edges (src, dst, kind, weight, provenance, rationale, proposed_at, session_id, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      `INSERT INTO pending_edges (src, dst, kind, weight, provenance, rationale, proposed_at, session_id, status, source_urls)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
     )
     .run(
       input.src,
@@ -38,6 +69,7 @@ export const proposeEdge = (db: SqliteAdapter, input: ProposeInput): number => {
       input.rationale,
       Date.now(),
       input.sessionId,
+      urls,
     );
   return Number(r.lastInsertRowid);
 };
@@ -45,12 +77,19 @@ export const proposeEdge = (db: SqliteAdapter, input: ProposeInput): number => {
 export const getPendingEdge = (
   db: SqliteAdapter,
   pendingId: number,
-): PendingEdgeRow | null =>
-  (db.prepare(`SELECT * FROM pending_edges WHERE id = ?`).get(pendingId) ??
-    null) as PendingEdgeRow | null;
+): PendingEdgeRow | null => {
+  const row = db.prepare(`SELECT * FROM pending_edges WHERE id = ?`).get(pendingId) as
+    | RawPendingRow
+    | null;
+  return row ? parsePending(row) : null;
+};
 
-export const listPendingEdges = (db: SqliteAdapter): PendingEdgeRow[] =>
-  db.prepare(`SELECT * FROM pending_edges WHERE status = 'pending' ORDER BY id`).all() as PendingEdgeRow[];
+export const listPendingEdges = (db: SqliteAdapter): PendingEdgeRow[] => {
+  const rows = db
+    .prepare(`SELECT * FROM pending_edges WHERE status = 'pending' ORDER BY id`)
+    .all() as RawPendingRow[];
+  return rows.map(parsePending);
+};
 
 // Promotes a pending edge into edges_semantic. Returns the promoted row or
 // null if the pending id is missing or not in 'pending' state.

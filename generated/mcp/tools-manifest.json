@@ -134,6 +134,15 @@
           "rationale": {
             "type": "string",
             "minLength": 10
+          },
+          "source_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "maxItems": 10,
+            "default": []
           }
         },
         "required": [

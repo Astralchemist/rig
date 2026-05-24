@@ -2,8 +2,8 @@
   "version": 1,
   "files": {
     "core/anchors-registry.ts": "ae560f08a06bbce7",
-    "core/migrations.ts": "3f1f9d4285242ddc",
-    "core/schema.sql": "42cad4af06a4ddba",
+    "core/migrations.ts": "314120cca2471a13",
+    "core/schema.sql": "52ebe9156c8a633a",
     "installer/claude.instructions.md": "7f88dc3c8c742377",
     "installer/claude.permissions.json": "0d3de69536085751",
     "installer/codex.instructions.md": "eb165ada2be4087c",
@@ -51,7 +51,7 @@
     "mcp/handlers/rig_undo.handler.ts": "2addb3a0315adb0d",
     "mcp/handlers/rig_unused_deps.handler.ts": "79d099728b1a2de6",
     "mcp/handlers/rig_waypoints.handler.ts": "29f87f767a3b27e2",
-    "mcp/tools-manifest.json": "a25fce621665ce3d",
+    "mcp/tools-manifest.json": "78756ffe06cf5e25",
     "web/ws-events.ts": "29bb12f24073f424"
   }
 }

@@ -29,6 +29,7 @@ export interface ProposeArgs {
   kind?: string;
   weight?: number;
   rationale: string;
+  sourceUrls?: readonly string[];
 }
 
 export interface AddNodeArgs {
@@ -75,7 +76,13 @@ export class RigWrites {
     recordMutation(adapter, {
       sessionId: ctx.sessionId,
       kind: 'propose_edge',
-      payload: { pendingId, src: args.src, dst: args.dst, kind: args.kind ?? 'related' },
+      payload: {
+        pendingId,
+        src: args.src,
+        dst: args.dst,
+        kind: args.kind ?? 'related',
+        ...(args.sourceUrls && args.sourceUrls.length ? { source_urls: args.sourceUrls } : {}),
+      },
       actor: ctx.actor,
     });
     return pendingId;

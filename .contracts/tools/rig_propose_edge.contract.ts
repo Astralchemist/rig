@@ -20,6 +20,9 @@ the connection before it solidifies.
       kind: z.string().default('related'),
       weight: z.number().min(0).max(1).default(0.5),
       rationale: z.string().min(10, 'rationale must be at least 10 characters'),
+      // E1 — URLs the agent visited / cited while validating this proposal.
+      // Surfaced in the accept popover so the human reviewer sees the evidence.
+      source_urls: z.array(z.string().url()).max(10).default([]),
     })
     .strict(),
   output: z.object({

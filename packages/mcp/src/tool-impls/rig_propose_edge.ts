@@ -9,9 +9,9 @@ export async function run(args: Args, ctx: ToolContext): Promise<Result> {
   const start = Date.now();
   if (!ctx.rig.getNode(args.src)) throw new ToolError('NODE_NOT_FOUND', args.src);
   if (!ctx.rig.getNode(args.dst)) throw new ToolError('NODE_NOT_FOUND', args.dst);
-  const pendingId = ctx.rig.writes.proposeEdge(args, {
-    sessionId: ctx.sessionId,
-    actor: ctx.provenance ?? 'ai:unknown',
-  });
+  const pendingId = ctx.rig.writes.proposeEdge(
+    { ...args, sourceUrls: args.source_urls },
+    { sessionId: ctx.sessionId, actor: ctx.provenance ?? 'ai:unknown' },
+  );
   return { pending_id: pendingId, elapsed_ms: Date.now() - start };
 }
