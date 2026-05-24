@@ -1,0 +1,65 @@
+{
+  "target_hint": "nextauthjs/next-auth (Auth.js v5) — clone it locally and run `rig init && rig index` once before benchmarking.",
+  "queries": [
+    {
+      "id": "dep-version",
+      "ask": "What version of @auth/core does this project declare?",
+      "judge_hint": "answer should name a concrete version spec from package.json",
+      "expected_winner_hypothesis": "rig — single rig_deps call vs grep-then-cat-package.json"
+    },
+    {
+      "id": "where-handled",
+      "ask": "Where is the GitHub OAuth provider implemented? Name the file.",
+      "judge_hint": "expect packages/core/src/providers/github.ts or equivalent",
+      "expected_winner_hypothesis": "rig — rig_search 'github' filtered to file kind"
+    },
+    {
+      "id": "callers-of",
+      "ask": "What functions call the `encode` function from the JWT module? List up to 5 callsites.",
+      "judge_hint": "callers should be other functions inside @auth/core",
+      "expected_winner_hypothesis": "rig — rig_callers is one tool call"
+    },
+    {
+      "id": "routes",
+      "ask": "List the HTTP route handlers exported by the core package. Just the route paths.",
+      "judge_hint": "looking for /api/auth/* or equivalent route definitions",
+      "expected_winner_hypothesis": "rig — rig_search filtered to route kind, if those anchors exist"
+    },
+    {
+      "id": "file-summary",
+      "ask": "Summarize what the file `packages/core/src/index.ts` does in 3 sentences.",
+      "judge_hint": "rig might lose this — summaries want file content, not just symbols",
+      "expected_winner_hypothesis": "baseline — Rig has no summary primitive"
+    },
+    {
+      "id": "db-init",
+      "ask": "Where is the database adapter interface defined?",
+      "judge_hint": "expect Adapter or DatabaseAdapter interface",
+      "expected_winner_hypothesis": "rig — rig_search 'Adapter' with kind=interface"
+    },
+    {
+      "id": "tests-for",
+      "ask": "Which test files cover the JWT encode/decode flow?",
+      "judge_hint": "expect *.test.ts files that import the JWT module",
+      "expected_winner_hypothesis": "rig — tests edges exist; rig_neighbors on the encode function gives them"
+    },
+    {
+      "id": "unused-deps",
+      "ask": "Are there any dependencies declared in package.json that aren't imported anywhere in source?",
+      "judge_hint": "tools-only-tools like @types/* are valid hits; runtime deps might be transitive",
+      "expected_winner_hypothesis": "rig — rig_unused_deps is one call"
+    },
+    {
+      "id": "entry-point",
+      "ask": "What's the main entry point of the @auth/core package?",
+      "judge_hint": "package.json main/exports field, or the file path it points to",
+      "expected_winner_hypothesis": "tie — both can answer this cheaply"
+    },
+    {
+      "id": "type-def",
+      "ask": "Where is the `Session` type defined? Show me the file and signature.",
+      "judge_hint": "expect a type alias or interface named Session",
+      "expected_winner_hypothesis": "rig — rig_search 'Session' with kind=type_alias"
+    }
+  ]
+}
