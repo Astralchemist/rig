@@ -1,6 +1,3 @@
-import { readFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { Rig } from '@rig/core';
 import { ToolError, makeActivationRecorder, type ToolContext, type ToolHandler } from './dispatch.ts';
 import {
@@ -9,32 +6,28 @@ import {
   type ToolsManifest,
 } from './server-handlers.ts';
 import { StdioTransport } from './transport.ts';
+// Static imports so bun --compile bundles the generated artifacts into the binary.
+// Dynamic file reads against import.meta.url break under $bunfs at runtime.
+import manifestJson from '../../../generated/mcp/tools-manifest.json' with { type: 'json' };
+import * as handlersModule from '../../../generated/mcp/handlers-index.ts';
 
 export { ToolError, dispatchToolCall } from './dispatch.ts';
 export type { ToolContext, ToolHandler } from './dispatch.ts';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-// packages/mcp/src → repo root → generated/mcp/{handlers-index.ts,tools-manifest.json}
-const HANDLERS_INDEX_PATH = resolve(HERE, '../../../generated/mcp/handlers-index.ts');
-const MANIFEST_PATH = resolve(HERE, '../../../generated/mcp/tools-manifest.json');
-
-const loadManifest = async (): Promise<ToolsManifest> => {
-  const raw = await readFile(MANIFEST_PATH, 'utf8');
-  const parsed = JSON.parse(raw) as unknown;
+const loadManifest = (): ToolsManifest => {
+  const parsed = manifestJson as unknown;
   if (
     typeof parsed !== 'object' ||
     parsed === null ||
     !Array.isArray((parsed as { tools?: unknown }).tools)
   ) {
-    throw new Error(`Invalid tools-manifest at ${MANIFEST_PATH}`);
+    throw new Error('Invalid bundled tools-manifest');
   }
   return parsed as ToolsManifest;
 };
 
-const loadHandlers = async (): Promise<Map<string, ToolHandler>> => {
-  const mod = (await import(HANDLERS_INDEX_PATH)) as Record<string, unknown>;
-  return buildHandlersMap(mod);
-};
+const loadHandlers = (): Map<string, ToolHandler> =>
+  buildHandlersMap(handlersModule as unknown as Record<string, unknown>);
 
 export interface ServeMcpOptions {
   projectRoot?: string;
@@ -44,7 +37,8 @@ export async function serveMcp(opts: ServeMcpOptions = {}): Promise<void> {
   const projectRoot = opts.projectRoot ?? process.cwd();
   const rig = await Rig.open(projectRoot);
 
-  const [manifest, handlers] = await Promise.all([loadManifest(), loadHandlers()]);
+  const manifest = loadManifest();
+  const handlers = loadHandlers();
 
   const sessionId = crypto.randomUUID();
   const ctx: ToolContext = {
