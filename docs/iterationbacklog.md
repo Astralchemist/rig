@@ -813,7 +813,7 @@ After fixing the extractor diagnostic (0.1):
 ### Phase 3.5 — Cement the foundation ✅ shipped 2026-05-24
 1. **A1** Hub-and-spoke topology ✅
 2. **A3** Aliases ✅
-3. **A2** Package manifests as hubs ✅ — full dependency-analysis quartet: package.json + requirements.txt + pyproject.toml (PEP 621 + Poetry) extractors; `rig_deps` + `rig_dep_conflicts` + `rig_unused_deps` + `rig_phantom_imports`. Lockfile resolution (`resolves_to`) still deferred.
+3. **A2** Package manifests as hubs ✅ — **fully closed**. Extractors: package.json + requirements.txt + pyproject.toml (PEP 621 + Poetry). Tools: `rig_deps` + `rig_dep_conflicts` + `rig_unused_deps` + `rig_phantom_imports`. npm lockfile resolution attaches `resolved_version` to declared-deps. Python lockfile resolution (uv.lock / poetry.lock) still deferred.
 4. **C1** Hot-node tracking ✅ (`rig_hotspots` + `rig_cold` + heat feeds A1 hubness)
 5. **D2** Hub-aware pull reranking ✅
 
@@ -825,19 +825,19 @@ Acceptance for Phase 3.5: ✅ rendering 5k-node graphs is legible; manifest quer
 6. **B1** Conversation waypoints (basic) ✅
 7. **B4** Cross-session retrieval ✅ (`session_id="last"` + installer bootstrap section)
 8. **C3** Pulse events + WS animations — **C3-lite shipped** previously; full timeline + replay deferred
-9. **E1** Browser MCP integration + source_url on edges — pending
+9. **E1** Browser MCP integration + source_url on edges — **backend shipped** (v11 + `rig_propose_edge.source_urls`); installer prompt + UI popover deferred
 10. **A4** Community detection — **A4-lite (label propagation) shipped** previously; full Leiden deferred
 
 Acceptance for Phase 4: ✅ AI can pick up a project from prior session via `rig_waypoints session_id="last"`; pulses animate live (C3-lite); communities visible (A4-lite, label propagation).
 
 ### Phase 5 — Multi-modal + self-mapping
-11. **B2** Polymorphic waypoint payloads ✅ shipped 2026-05-24 (promoted from Phase 5 — natural follow-on to B1)
-12. **C4** Skill/model nodes + **D4** skill-relevance selection
-13. **C5** Pulse replay timeline
-14. **E3** Direct chat mode
+11. **B2** Polymorphic waypoint payloads ✅ shipped 2026-05-24
+12. **C4** Skill nodes ✅ + **D4** `rig_relevant_skills` ✅ shipped 2026-05-24 (model nodes + provenance enrichment still deferred — they require pulse-log integration)
+13. **C5** Pulse replay timeline — pending
+14. **E3** Direct chat mode — pending
 15. **B3** Doc generation from waypoints ✅ shipped 2026-05-24 as `rig export-docs`
 
-Acceptance for Phase 5: Rig generates its own architecture docs from its waypoint chain ✅; agent picks its own toolchain via the graph (C4/D4 pending).
+Acceptance for Phase 5: ✅ Rig generates its own architecture docs from its waypoint chain (B3); ✅ agent picks its own toolchain via the graph (C4 + D4).
 
 ### Phase 6 — Scale
 16. **F1** sqlite-vec HNSW — trigger: real codebase crosses ~20k nodes
