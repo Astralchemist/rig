@@ -1,6 +1,6 @@
-import { decayedActivationScore } from './db/activation-queries.ts';
+import { decayedActivationScores } from './db/activation-queries.ts';
 import type { SqliteAdapter } from './db/adapter.ts';
-import { getEmbedding } from './db/embed-queries.ts';
+import { getEmbeddingsMap } from './db/embed-queries.ts';
 
 export interface PullComponents {
   structural: number;
@@ -42,7 +42,9 @@ export function computeMagneticPull(
   const now = ctx.now ?? Date.now();
 
   const distances = bfsDistances(ctx.db, anchorId, maxHops);
-  const anchorVec = getEmbedding(ctx.db, anchorId);
+  const vectors = getEmbeddingsMap(ctx.db, [anchorId, ...candidateIds]);
+  const anchorVec = vectors.get(anchorId) ?? null;
+  const recencies = decayedActivationScores(ctx.db, now);
 
   const results: PullResult[] = candidateIds.map((id) => {
     const d = distances.get(id);
@@ -50,11 +52,11 @@ export function computeMagneticPull(
 
     let semantic = 0;
     if (anchorVec) {
-      const v = getEmbedding(ctx.db, id);
+      const v = vectors.get(id);
       if (v && v.length === anchorVec.length) semantic = clamp01((cosine(anchorVec, v) + 1) / 2);
     }
 
-    const recency = decayedActivationScore(ctx.db, id, now);
+    const recency = recencies.get(id) ?? 0;
 
     const score = clamp01(
       weights.structural * structural + weights.semantic * semantic + weights.recency * recency,
