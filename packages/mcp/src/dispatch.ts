@@ -11,12 +11,14 @@ export interface ToolContext {
   recordActivation: (nodeId: string, source?: string) => void;
 }
 
-// Build a recordActivation closure bound to a Rig instance.
+// Build a recordActivation closure bound to a Rig instance + the MCP session.
+// The sessionId rides on every recorded activation so rig_hotspots can later
+// distinguish broad reuse (many distinct sessions) from session-local hammering.
 export const makeActivationRecorder =
-  (rig: Rig) =>
+  (rig: Rig, sessionId: string) =>
   (nodeId: string, source = 'mcp'): void => {
     if (!nodeId) return;
-    recordActivation(rig.database.adapter, nodeId, source);
+    recordActivation(rig.database.adapter, nodeId, source, { sessionId });
   };
 
 export interface ToolHandler {

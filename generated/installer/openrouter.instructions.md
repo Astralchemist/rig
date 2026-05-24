@@ -8,6 +8,14 @@ Rig exposes these MCP tools. Always prefer them over file reads for graph questi
 
 ## light tools
 
+### `rig_cold`
+
+Return the anchors that have not been activated within the stale-after
+window. last_ts is null when the node has never been touched. Useful for
+pruning candidates and identifying dead-weight in the graph.
+
+Default stale-after is 90 days, limit 20.
+
 ### `rig_hubs`
 
 Return the most "hub-like" anchors in the graph, ranked by hubness. Hubs are
@@ -42,6 +50,15 @@ change this function, what tests/callers might break".
 
 Defaults to depth 3. Depth is capped at 6 to keep the result bounded.
 For one-hop callers use rig_callers.
+
+### `rig_hotspots`
+
+Return the anchors that have been activated (queried, expanded, AI-touched)
+most often within a sliding window. Count-based ranking — for decay-weighted
+relevance use rig_pull.
+
+Use to discover the parts of the graph you have been working in lately,
+or to seed a cache-warming pass. Default window is 7 days, limit 20.
 
 ### `rig_node`
 

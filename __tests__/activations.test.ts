@@ -37,7 +37,7 @@ describe('activation recording', () => {
     sessionId: 'test',
     isMainSession: false,
     provenance: null,
-    recordActivation: makeActivationRecorder(rig),
+    recordActivation: makeActivationRecorder(rig, 'test'),
   });
 
   test('recordActivation appends to the activations table', () => {

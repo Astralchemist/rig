@@ -2,11 +2,13 @@
   "permissions": {
     "allow": [
       "mcp__rig__rig_propose_edge",
+      "mcp__rig__rig_cold",
       "mcp__rig__rig_hubs",
       "mcp__rig__rig_add_alias",
       "mcp__rig__rig_files",
       "mcp__rig__rig_drill",
       "mcp__rig__rig_impact",
+      "mcp__rig__rig_hotspots",
       "mcp__rig__rig_promote",
       "mcp__rig__rig_subscribe",
       "mcp__rig__rig_cluster",

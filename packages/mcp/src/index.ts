@@ -46,14 +46,15 @@ export async function serveMcp(opts: ServeMcpOptions = {}): Promise<void> {
 
   const [manifest, handlers] = await Promise.all([loadManifest(), loadHandlers()]);
 
+  const sessionId = crypto.randomUUID();
   const ctx: ToolContext = {
     rig,
-    sessionId: crypto.randomUUID(),
+    sessionId,
     // Phase 1 default: every connection IS the main session; subscribe lands later.
     isMainSession: true,
     // No writes in Phase 1, so provenance is always absent.
     provenance: null,
-    recordActivation: makeActivationRecorder(rig),
+    recordActivation: makeActivationRecorder(rig, sessionId),
   };
 
   const transport = new StdioTransport();

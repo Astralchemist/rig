@@ -169,6 +169,80 @@
       ]
     },
     {
+      "name": "rig_cold",
+      "description": "Nodes not touched in a long time (or ever)",
+      "tier": "light",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "stale_after_ms": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "description": "A node is \"cold\" if its most recent touch is older than this. Default 90 days."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "cold": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "last_ts": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "kind",
+                "last_ts"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "cold",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED"
+      ]
+    },
+    {
       "name": "rig_hubs",
       "description": "List top hubs by hubness score",
       "tier": "light",
@@ -498,6 +572,81 @@
         "NOT_INITIALIZED",
         "NODE_NOT_FOUND",
         "DEPTH_OUT_OF_RANGE"
+      ]
+    },
+    {
+      "name": "rig_hotspots",
+      "description": "Top nodes by recent activation count",
+      "tier": "light",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "window_ms": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "description": "Lookback window in milliseconds. Default 7 days."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "hotspots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "touches": {
+                  "type": "integer"
+                },
+                "unique_sessions": {
+                  "type": "integer"
+                },
+                "last_ts": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "kind",
+                "touches",
+                "unique_sessions",
+                "last_ts"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "hotspots",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED"
       ]
     },
     {
