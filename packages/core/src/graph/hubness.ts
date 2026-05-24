@@ -1,8 +1,13 @@
+import { decayedActivationScores } from '../db/activation-queries.ts';
 import type { SqliteAdapter } from '../db/adapter.ts';
 
-// Phase 3.5 A1 — first cut. Heat (C1) and betweenness centrality are deferred.
-// Formula: hubness = w_fanout * fanout_normalized + w_explicit * is_marked.
-const W_FANOUT = 0.7;
+// Phase 3.5 A1 + C1 — fanout structure × explicit promote × heat (recent
+// activation decay). Betweenness centrality is still deferred.
+// Formula: hubness = w_fanout * fanout_normalized
+//                  + w_heat   * heat_normalized
+//                  + w_explicit * is_marked.
+const W_FANOUT = 0.55;
+const W_HEAT = 0.15;
 const W_EXPLICIT = 0.3;
 const TOP_PERCENT = 0.05;
 
@@ -28,17 +33,29 @@ export const recomputeHubness = (db: SqliteAdapter, scopeTypes?: Set<string>): v
     )
     .all(...(scopeTypes ? Array.from(scopeTypes) : [])) as FanoutRow[];
 
-  // Normalize fanout per anchor type so files don't dominate methods.
-  const maxByType = new Map<string, number>();
+  // Normalize fanout AND heat per anchor type so files don't dominate methods
+  // on either axis. heatScores comes from C1's decayed-activation aggregate
+  // (in [0,1] per node already); we further normalize within the type so the
+  // hottest node of each type maps to 1.0.
+  const heatScores = decayedActivationScores(db);
+  const maxFanoutByType = new Map<string, number>();
+  const maxHeatByType = new Map<string, number>();
   for (const r of rows) {
-    const cur = maxByType.get(r.type) ?? 0;
-    if (r.fanout > cur) maxByType.set(r.type, r.fanout);
+    const f = maxFanoutByType.get(r.type) ?? 0;
+    if (r.fanout > f) maxFanoutByType.set(r.type, r.fanout);
+    const h = heatScores.get(r.id) ?? 0;
+    const mh = maxHeatByType.get(r.type) ?? 0;
+    if (h > mh) maxHeatByType.set(r.type, h);
   }
 
   const scored = rows.map((r) => {
-    const max = maxByType.get(r.type) ?? 1;
-    const fanoutNorm = max > 0 ? r.fanout / max : 0;
-    const hubness = W_FANOUT * fanoutNorm + W_EXPLICIT * (r.hub_explicit ? 1 : 0);
+    const maxF = maxFanoutByType.get(r.type) ?? 1;
+    const maxH = maxHeatByType.get(r.type) ?? 0;
+    const fanoutNorm = maxF > 0 ? r.fanout / maxF : 0;
+    const rawHeat = heatScores.get(r.id) ?? 0;
+    const heatNorm = maxH > 0 ? rawHeat / maxH : 0;
+    const hubness =
+      W_FANOUT * fanoutNorm + W_HEAT * heatNorm + W_EXPLICIT * (r.hub_explicit ? 1 : 0);
     return { id: r.id, type: r.type, hubness, explicit: r.hub_explicit };
   });
 
