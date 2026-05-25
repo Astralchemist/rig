@@ -1,0 +1,15 @@
+Rig
+Copyright 2026 Astralchemist
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+------------------------------------------------------------------------------
+Third-party components
+------------------------------------------------------------------------------
+
+Portions of this software (the code extraction / tree-sitter layer, DB adapter,
+watcher, and transport) are derived from CodeGraph
+(https://github.com/colbymchenry/codegraph), Copyright (c) 2026 Colby Mchenry,
+licensed under the MIT License. Those portions remain under their original MIT
+terms; the full MIT license text is in LICENSE-CODEGRAPH.txt, and the derived
+files carry a "Derived from CodeGraph (MIT)" header.

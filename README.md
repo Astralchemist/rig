@@ -110,4 +110,4 @@ Adding a tool means touching one file in `.contracts/` and one implementation �
 
 ## License
 
-MIT. Rig's extraction layer is derived from [CodeGraph](https://github.com/colbymchenry/codegraph) (MIT, © Colby Mchenry) — see [`LICENSE-CODEGRAPH.txt`](LICENSE-CODEGRAPH.txt). With thanks.
+[Apache-2.0](LICENSE). Rig's extraction layer is derived from [CodeGraph](https://github.com/colbymchenry/codegraph) (MIT, © Colby Mchenry); those portions remain under their original MIT terms — see [`LICENSE-CODEGRAPH.txt`](LICENSE-CODEGRAPH.txt) and [`NOTICE`](NOTICE). With thanks.

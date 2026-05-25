@@ -23,4 +23,7 @@ All notable changes to Rig are documented here. The format follows
 ### Removed
 - Origin-story design docs (build brief, phase plans, extraction map). CodeGraph attribution is retained as accreditation.
 
+### Changed (licensing)
+- Relicensed from MIT to **Apache-2.0**. CodeGraph-derived portions remain under their original MIT terms (see `NOTICE` / `LICENSE-CODEGRAPH.txt`).
+
 [Unreleased]: https://github.com/Astralchemist/rig/commits/main
