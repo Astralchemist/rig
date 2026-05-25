@@ -20,6 +20,9 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
+      - name: Install git hooks
+        run: bun run install:hooks
+
       - name: generated/ is fresh
         run: bun run gen:check
 
