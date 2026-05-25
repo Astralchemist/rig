@@ -4,6 +4,7 @@ import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import { Rig } from '@rig/core';
 import { findAssetRoot } from '@rig/core/asset-root.ts';
+import pkg from '../../../package.json' with { type: 'json' };
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -74,7 +75,8 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
     app.get('/api/session/me', async () => ({ authed: true, auth_required: false }));
   }
 
-  app.get('/health', async () => ({ ok: true, name: 'rig-web', version: '0.0.1', auth: authOn }));
+  const version = (pkg as { version: string }).version;
+  app.get('/health', async () => ({ ok: true, name: 'rig-web', version, auth: authOn }));
   registerRoutes(app, rig);
   registerConfigRoutes(app, opts.projectRoot);
 
