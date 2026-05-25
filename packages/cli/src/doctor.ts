@@ -40,6 +40,15 @@ const checkPort = (port: number): Promise<boolean> =>
     s.listen(port, '127.0.0.1');
   });
 
+// When the port is occupied, find out whether it's rig's own map server (so we
+// don't alarm the user about a server they started). /health returns
+// { name: 'rig-web' } — see packages/web/src/server.ts.
+const isRigServer = (port: number): Promise<boolean> =>
+  fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(800) })
+    .then((r) => (r.ok ? (r.json() as Promise<{ name?: string }>) : null))
+    .then((b) => b?.name === 'rig-web')
+    .catch(() => false);
+
 const detectAgents = (): { name: string; configPath: string; present: boolean }[] => {
   const home = homedir();
   return [
@@ -112,9 +121,11 @@ export async function runDoctor(cwd: string): Promise<void> {
   const portFree = await checkPort(7474);
   if (portFree) {
     checks.push(ok('port 7474', 'available for `rig serve --web`'));
+  } else if (await isRigServer(7474)) {
+    checks.push(ok('port 7474', 'rig map server already running here'));
   } else {
     checks.push(
-      warn('port 7474', 'already in use', '`lsof -i :7474` to find the owner, or pass --port'),
+      warn('port 7474', 'in use by another process', '`lsof -i :7474` to find the owner, or pass --port'),
     );
   }
 
