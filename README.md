@@ -2,6 +2,14 @@
 
 **Watch your codebase become a constellation — and give your AI agent a map of it.**
 
+<p align="center">
+  <a href="https://github.com/Astralchemist/rig/releases/download/v0.1.0/demo.mp4">
+    <img src="docs/demo.gif" alt="Rig — the live map of a codebase, navigated in real time" width="820">
+  </a>
+  <br>
+  <em><a href="https://github.com/Astralchemist/rig/releases/download/v0.1.0/demo.mp4">▶ Watch the full demo with audio</a></em>
+</p>
+
 Rig builds a local-first semantic knowledge graph of your project, renders it as an interactive map you can fly through, and exposes it to coding agents (Claude Code, Cursor, Codex, …) over MCP. Your agent stops grepping blindly and starts navigating — by structure, by meaning, and by what it's touched before.
 
 Everything runs on your machine. No API key, no upload, nothing leaves your laptop.
