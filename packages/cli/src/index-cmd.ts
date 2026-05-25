@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { Rig } from '@rig/core';
 // Static JSON import so bun --compile bundles the manifest into the binary.
 // Matches the pattern used by serveMcp for handler+manifest loading.

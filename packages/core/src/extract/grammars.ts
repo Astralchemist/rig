@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { basename, extname } from 'node:path';
 import { Language as WasmLanguage, Parser } from 'web-tree-sitter';
 import type { Language } from './upstream-types.ts';

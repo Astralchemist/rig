@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { Rig } from '@rig/core';
 
 const flag = (name: string): boolean => process.argv.includes(name);

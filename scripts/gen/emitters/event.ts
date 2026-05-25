@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { LoadedContract, GeneratedFile } from '../types.ts';
 import { tsHeader } from '../header.ts';

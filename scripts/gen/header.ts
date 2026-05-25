@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 export const tsHeader = (sources: string[]): string =>
   `// GENERATED FILE — DO NOT EDIT.
 // Source: ${sources.join(', ')}

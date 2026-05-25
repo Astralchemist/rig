@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { Database } from './db/database.ts';
 import type { Embedder } from './embed/types.ts';
 

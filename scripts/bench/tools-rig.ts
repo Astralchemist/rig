@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { Rig } from '@rig/core';
 import type { ToolDef } from './tools-baseline.ts';
 

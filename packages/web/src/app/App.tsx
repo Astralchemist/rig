@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState } from 'react';
 import { Map as RigMap, type Snapshot } from './Map.tsx';
 import { NodeDetail } from './NodeDetail.tsx';

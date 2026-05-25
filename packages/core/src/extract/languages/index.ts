@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // Rig-native registry — Phase 1.2 ships only TS / JS / Python.
 // (Original CodeGraph index.ts pulled in 19 languages; we add the rest lazily.)
 

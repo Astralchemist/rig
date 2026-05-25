@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { Rig } from '@rig/core';
 
 export async function runSync(cwd: string): Promise<void> {

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

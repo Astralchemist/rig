@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 export interface SqliteStatement {
   all(...params: unknown[]): unknown[];
   get(...params: unknown[]): unknown | null;

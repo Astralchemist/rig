@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { createHash } from 'node:crypto';
 import { fileIdOf, makeFileNode } from '../node-builders.ts';
 import type { Edge, ExtractionResult, Node } from '../upstream-types.ts';

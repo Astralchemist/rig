@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { TargetContract } from '@rig/contracts';
 import claude from '../../../../.contracts/targets/claude.contract.ts';
 import codex from '../../../../.contracts/targets/codex.contract.ts';

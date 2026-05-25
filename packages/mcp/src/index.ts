@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { Rig } from '@rig/core';
 import { ToolError, makeActivationRecorder, type ToolContext, type ToolHandler } from './dispatch.ts';
 import {

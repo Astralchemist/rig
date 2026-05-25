@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+// SPDX-License-Identifier: Apache-2.0
 import { Rig } from '@rig/core';
 import pkg from '../../../package.json' with { type: 'json' };
 import { runBenchCmd } from './bench-cmd.ts';

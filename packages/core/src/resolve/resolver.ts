@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { SqliteAdapter } from '../db/adapter.ts';
 import type { Edge, Node, UnresolvedReference } from '../extract/upstream-types.ts';
 import { resolveModuleImport } from './import-resolver.ts';

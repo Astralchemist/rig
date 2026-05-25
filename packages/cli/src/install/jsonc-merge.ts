@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { applyEdits, modify } from 'jsonc-parser';
 
 type Path = (string | number)[];

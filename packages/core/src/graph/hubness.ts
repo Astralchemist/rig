@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { decayedActivationScores } from '../db/activation-queries.ts';
 import type { SqliteAdapter } from '../db/adapter.ts';
 

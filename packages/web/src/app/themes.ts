@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // Theme presets. Each theme is a set of design tokens (chrome + graph colors).
 // Tokens are pushed to CSS custom properties for the DOM (see theme.tsx); the
 // canvas map reads the resolved Theme object directly since canvas can't use

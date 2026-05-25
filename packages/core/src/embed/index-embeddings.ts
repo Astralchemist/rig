@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { createHash } from 'node:crypto';
 import type { SqliteAdapter } from '../db/adapter.ts';
 import { getEmbeddingFingerprint, upsertEmbedding } from '../db/embed-queries.ts';

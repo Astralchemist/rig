@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, expect, test } from 'bun:test';
 import { Database as BunSqlite } from 'bun:sqlite';
 import { MIGRATIONS } from '../generated/core/migrations.ts';

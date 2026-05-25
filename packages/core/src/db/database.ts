@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { MIGRATIONS } from '@rig/generated/core/migrations.ts';
 import type { SqliteAdapter, SqliteAdapterFactory } from './adapter.ts';
 import { selectSqliteFactorySync } from './factory.ts';

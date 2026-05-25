@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { chmod, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 

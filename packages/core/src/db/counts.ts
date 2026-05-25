@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { SqliteAdapter } from './adapter.ts';
 
 const countOf = (db: SqliteAdapter, table: string): number => {

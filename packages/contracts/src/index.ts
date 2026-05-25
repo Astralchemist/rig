@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 export { defineToolContract, toolContractSchema, TOOL_TIERS, TOOL_STABILITIES } from './kinds/tool.ts';
 export type { ToolContract, ToolTier, ToolStability } from './kinds/tool.ts';
 

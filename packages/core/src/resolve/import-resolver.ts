@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { dirname, join, normalize } from 'node:path';
 import { applyAliases, type AliasMap } from './path-aliases.ts';
 

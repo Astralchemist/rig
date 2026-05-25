@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { Node as SyntaxNode } from 'web-tree-sitter';
 import { calleeNameOf, declKindOf, nameFor } from './node-builders.ts';
 import { generateNodeId, getPrecedingDocstring } from './tree-sitter-helpers.ts';

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 type JsonObj = Record<string, unknown>;
 
 const isObj = (v: unknown): v is JsonObj =>

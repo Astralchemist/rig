@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { spawn } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { ToolContext } from '../dispatch.ts';
 
 export async function run(_args: unknown, ctx: ToolContext): Promise<{

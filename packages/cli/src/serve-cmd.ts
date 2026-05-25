@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { serveMcp } from '@rig/mcp';
 import { serveWeb } from '@rig/web';
 

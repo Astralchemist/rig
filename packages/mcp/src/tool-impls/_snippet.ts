@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { RigNode } from '@rig/core';

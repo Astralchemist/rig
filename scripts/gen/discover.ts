@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { resolve } from 'node:path';
 import { Glob } from 'bun';
 import {

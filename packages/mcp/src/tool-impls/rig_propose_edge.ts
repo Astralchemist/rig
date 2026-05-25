@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { z } from 'zod';
 import contract from '../../../../.contracts/tools/rig_propose_edge.contract.ts';
 import { ToolError, type ToolContext } from '../dispatch.ts';

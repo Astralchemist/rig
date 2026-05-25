@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { SqliteAdapter } from '../db/adapter.ts';
 import { computeMagneticPull } from '../pull.ts';
 

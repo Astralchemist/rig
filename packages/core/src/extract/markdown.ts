@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { createHash } from 'node:crypto';
 import type { ExtractionResult, Node } from './upstream-types.ts';
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 export { Rig, RIG_DIR_NAME, DB_FILE_NAME } from './rig.ts';
 export type {
   RigOptions,

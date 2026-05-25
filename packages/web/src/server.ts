@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import compress from '@fastify/compress';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';

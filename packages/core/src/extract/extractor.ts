@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { basename } from 'node:path';
 import { visit } from './ast-visitor.ts';
 import { detectLanguage, getParser } from './grammars.ts';

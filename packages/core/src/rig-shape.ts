@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { join, resolve } from 'node:path';
 import type { Node as ExtractNode } from './extract/upstream-types.ts';
 import { DB_FILE_NAME, RIG_DIR_NAME } from './rig-types.ts';

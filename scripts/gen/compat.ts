@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // Compatibility classifier for the MCP tool surface. Diffs a blessed snapshot
 // of tools-manifest.json against the freshly-built manifest and classifies each
 // change as additive (allowed) or breaking (fails the gate). Only `stable`

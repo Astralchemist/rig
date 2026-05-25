@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { Embedder } from './types.ts';

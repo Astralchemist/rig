@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { z } from 'zod';
 import contract from '../../../../.contracts/tools/rig_cold.contract.ts';
 import type { ToolContext } from '../dispatch.ts';

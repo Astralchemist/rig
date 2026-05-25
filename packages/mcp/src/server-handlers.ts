@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { ToolHandler, ToolContext } from './dispatch.ts';
 import { ToolError, dispatchToolCall } from './dispatch.ts';
 import {

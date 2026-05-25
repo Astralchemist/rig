@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 type Ctx = Record<string, unknown> | undefined;
 
 const emit = (level: 'debug' | 'warn', msg: string, ctx?: Ctx): void => {

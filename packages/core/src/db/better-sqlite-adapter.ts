@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { SqliteAdapter, SqliteAdapterFactory, SqliteStatement } from './adapter.ts';
 
 // Node fallback. Imported lazily so `bun:sqlite` users never pay the load cost,

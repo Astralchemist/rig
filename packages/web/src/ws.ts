@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { Rig } from '@rig/core';
 import { activationsSince } from '@rig/core/db/activation-queries.ts';
 import { watch, type FSWatcher } from 'node:fs';

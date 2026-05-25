@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Database } from './db/database.ts';

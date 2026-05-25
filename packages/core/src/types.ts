@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 export type NodeId = string;
 export type EdgeKind = string;
 export type Provenance =

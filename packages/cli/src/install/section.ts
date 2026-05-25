@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 const BEGIN = '<!-- rig:begin -->';
 const END = '<!-- rig:end -->';
 

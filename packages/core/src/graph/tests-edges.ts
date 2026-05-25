@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { SqliteAdapter } from '../db/adapter.ts';
 
 // Duplicate `imports` edges originating from test files as `tests` edges so
