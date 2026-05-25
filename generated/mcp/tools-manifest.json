@@ -2,332 +2,6 @@
   "version": 1,
   "tools": [
     {
-      "name": "rig_explore",
-      "description": "Full neighborhoods + source for a question",
-      "tier": "heavy",
-      "stability": "stable",
-      "since": "1.0",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "question": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Free-text question or topic"
-          },
-          "max_anchors": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 20,
-            "default": 5
-          }
-        },
-        "required": [
-          "question"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "anchors": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "name": {
-                  "type": "string"
-                },
-                "kind": {
-                  "type": "string"
-                },
-                "file_path": {
-                  "type": "string"
-                },
-                "start_line": {
-                  "type": "integer"
-                },
-                "end_line": {
-                  "type": "integer"
-                },
-                "source": {
-                  "type": "string"
-                },
-                "related": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string"
-                      },
-                      "name": {
-                        "type": "string"
-                      },
-                      "kind": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "id",
-                      "name",
-                      "kind"
-                    ],
-                    "additionalProperties": false
-                  }
-                }
-              },
-              "required": [
-                "id",
-                "name",
-                "kind",
-                "file_path",
-                "start_line",
-                "end_line",
-                "source",
-                "related"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "elapsed_ms": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "anchors",
-          "elapsed_ms"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "errors": [
-        "NOT_INITIALIZED",
-        "MAIN_SESSION_FORBIDDEN"
-      ]
-    },
-    {
-      "name": "rig_propose_edge",
-      "description": "Propose a semantic edge between two anchors",
-      "tier": "write",
-      "stability": "experimental",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "src": {
-            "type": "string"
-          },
-          "dst": {
-            "type": "string"
-          },
-          "kind": {
-            "type": "string",
-            "default": "related"
-          },
-          "weight": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1,
-            "default": 0.5
-          },
-          "rationale": {
-            "type": "string",
-            "minLength": 10
-          },
-          "source_urls": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uri"
-            },
-            "maxItems": 10,
-            "default": []
-          }
-        },
-        "required": [
-          "src",
-          "dst",
-          "rationale"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "pending_id": {
-            "type": "integer"
-          },
-          "elapsed_ms": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "pending_id",
-          "elapsed_ms"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "errors": [
-        "NOT_INITIALIZED",
-        "NODE_NOT_FOUND",
-        "PROVENANCE_REQUIRED",
-        "RATIONALE_REQUIRED"
-      ]
-    },
-    {
-      "name": "rig_cold",
-      "description": "Nodes not touched in a long time (or ever)",
-      "tier": "light",
-      "stability": "experimental",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "stale_after_ms": {
-            "type": "integer",
-            "exclusiveMinimum": 0,
-            "description": "A node is \"cold\" if its most recent touch is older than this. Default 90 days."
-          },
-          "limit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 100,
-            "default": 20
-          }
-        },
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "cold": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "name": {
-                  "type": "string"
-                },
-                "kind": {
-                  "type": "string"
-                },
-                "last_ts": {
-                  "anyOf": [
-                    {
-                      "type": "integer"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                }
-              },
-              "required": [
-                "id",
-                "name",
-                "kind",
-                "last_ts"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "elapsed_ms": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "cold",
-          "elapsed_ms"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "errors": [
-        "NOT_INITIALIZED"
-      ]
-    },
-    {
-      "name": "rig_hubs",
-      "description": "List top hubs by hubness score",
-      "tier": "light",
-      "stability": "stable",
-      "since": "1.0",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "scope": {
-            "type": "string",
-            "description": "Filter by anchor kind (e.g. file, module)"
-          },
-          "limit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 100,
-            "default": 20
-          }
-        },
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "hubs": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "name": {
-                  "type": "string"
-                },
-                "kind": {
-                  "type": "string"
-                },
-                "hubness": {
-                  "type": "number"
-                },
-                "explicit": {
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "id",
-                "name",
-                "kind",
-                "hubness",
-                "explicit"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "elapsed_ms": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "hubs",
-          "elapsed_ms"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "errors": [
-        "NOT_INITIALIZED"
-      ]
-    },
-    {
       "name": "rig_add_alias",
       "description": "Register an alias that resolves to a canonical anchor",
       "tier": "write",
@@ -381,21 +55,206 @@
       ]
     },
     {
-      "name": "rig_unused_deps",
-      "description": "Declared dependencies with no matching imports in source",
-      "tier": "light",
-      "stability": "stable",
-      "since": "1.0",
+      "name": "rig_add_node",
+      "description": "Add a new anchor extracted from conversation",
+      "tier": "write",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": {},
+            "default": {}
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 10
+          }
+        },
+        "required": [
+          "type",
+          "name",
+          "rationale"
+        ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "outputSchema": {
         "type": "object",
         "properties": {
-          "unused": {
+          "id": {
+            "type": "string"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "PROVENANCE_REQUIRED",
+        "RATIONALE_REQUIRED"
+      ]
+    },
+    {
+      "name": "rig_aliases",
+      "description": "List the aliases registered for an anchor",
+      "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "alias": {
+                  "type": "string"
+                },
+                "provenance": {
+                  "type": "string"
+                },
+                "rationale": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "created_at": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "alias",
+                "provenance",
+                "rationale",
+                "created_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "aliases",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND"
+      ]
+    },
+    {
+      "name": "rig_annotate",
+      "description": "Append a note to an anchor",
+      "tier": "write",
+      "stability": "experimental",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 10
+          }
+        },
+        "required": [
+          "node_id",
+          "note",
+          "rationale"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ok",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND",
+        "PROVENANCE_REQUIRED",
+        "RATIONALE_REQUIRED"
+      ]
+    },
+    {
+      "name": "rig_callees",
+      "description": "List direct callees of an anchor",
+      "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Caller anchor id"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "nodes": {
             "type": "array",
             "items": {
               "type": "object",
@@ -406,26 +265,17 @@
                 "name": {
                   "type": "string"
                 },
-                "spec": {
+                "kind": {
                   "type": "string"
                 },
-                "source": {
+                "file_path": {
                   "type": "string"
-                },
-                "manifest_path": {
-                  "type": "string"
-                },
-                "is_dev": {
-                  "type": "boolean"
                 }
               },
               "required": [
                 "id",
                 "name",
-                "spec",
-                "source",
-                "manifest_path",
-                "is_dev"
+                "kind"
               ],
               "additionalProperties": false
             }
@@ -435,14 +285,80 @@
           }
         },
         "required": [
-          "unused",
+          "nodes",
           "elapsed_ms"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "errors": [
-        "NOT_INITIALIZED"
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND"
+      ]
+    },
+    {
+      "name": "rig_callers",
+      "description": "List direct callers of an anchor",
+      "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Callee anchor id"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "file_path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "nodes",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND"
       ]
     },
     {
@@ -681,6 +597,278 @@
       ]
     },
     {
+      "name": "rig_cluster",
+      "description": "Create a cluster meta-anchor over existing anchors",
+      "tier": "write",
+      "stability": "experimental",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 2
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 10
+          }
+        },
+        "required": [
+          "node_ids",
+          "label",
+          "rationale"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "cluster_id": {
+            "type": "string"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "cluster_id",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND",
+        "PROVENANCE_REQUIRED",
+        "RATIONALE_REQUIRED"
+      ]
+    },
+    {
+      "name": "rig_cold",
+      "description": "Nodes not touched in a long time (or ever)",
+      "tier": "light",
+      "stability": "experimental",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "stale_after_ms": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "description": "A node is \"cold\" if its most recent touch is older than this. Default 90 days."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "cold": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "last_ts": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "kind",
+                "last_ts"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "cold",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED"
+      ]
+    },
+    {
+      "name": "rig_context",
+      "description": "Build a context bundle for a task",
+      "tier": "heavy",
+      "stability": "stable",
+      "since": "1.0",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What the agent is trying to do"
+          },
+          "max_nodes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 10
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "markdown",
+              "json"
+            ],
+            "default": "markdown"
+          }
+        },
+        "required": [
+          "task"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "context": {
+            "type": "string"
+          },
+          "anchor_count": {
+            "type": "integer"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "context",
+          "anchor_count",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "MAIN_SESSION_FORBIDDEN"
+      ]
+    },
+    {
+      "name": "rig_critical_path",
+      "description": "Walk the architecture's spine from a root anchor",
+      "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "max_steps": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 32,
+            "default": 12
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "hubness": {
+                  "type": "number"
+                },
+                "activation_count": {
+                  "type": "integer"
+                },
+                "step_weight": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "kind",
+                "hubness",
+                "activation_count",
+                "step_weight"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "path",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND"
+      ]
+    },
+    {
       "name": "rig_dep_conflicts",
       "description": "Packages declared with different versions across manifests",
       "tier": "light",
@@ -754,17 +942,17 @@
       ]
     },
     {
-      "name": "rig_files",
-      "description": "List indexed files",
+      "name": "rig_deps",
+      "description": "List declared dependencies from package manifests",
       "tier": "light",
       "stability": "stable",
       "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "filter": {
+          "manifest_path": {
             "type": "string",
-            "description": "Substring filter on file path"
+            "description": "Restrict to deps declared in this manifest path (relative)"
           }
         },
         "additionalProperties": false,
@@ -773,27 +961,52 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "files": {
+          "deps": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "path": {
+                "id": {
                   "type": "string"
                 },
-                "language": {
+                "name": {
                   "type": "string"
                 },
-                "node_count": {
-                  "type": "integer"
+                "spec": {
+                  "type": "string"
                 },
-                "last_indexed_ts": {
-                  "type": "integer"
+                "source": {
+                  "type": "string"
+                },
+                "manifest_path": {
+                  "type": "string"
+                },
+                "is_dev": {
+                  "type": "boolean"
+                },
+                "is_optional": {
+                  "type": "boolean"
+                },
+                "is_peer": {
+                  "type": "boolean"
+                },
+                "resolved_version": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 }
               },
               "required": [
-                "path",
-                "node_count"
+                "id",
+                "name",
+                "spec",
+                "source",
+                "manifest_path",
+                "is_dev",
+                "is_optional",
+                "is_peer",
+                "resolved_version"
               ],
               "additionalProperties": false
             }
@@ -803,7 +1016,7 @@
           }
         },
         "required": [
-          "files",
+          "deps",
           "elapsed_ms"
         ],
         "additionalProperties": false,
@@ -898,27 +1111,195 @@
       ]
     },
     {
-      "name": "rig_impact",
-      "description": "Transitive impact radius of an anchor",
-      "tier": "light",
-      "stability": "stable",
-      "since": "1.0",
+      "name": "rig_drop_waypoint",
+      "description": "Drop a conversation waypoint at a decision point",
+      "tier": "write",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "id": {
+          "kind": {
             "type": "string",
-            "description": "Anchor id to compute impact from"
+            "enum": [
+              "decision",
+              "observation",
+              "constraint",
+              "open-question",
+              "principle"
+            ]
           },
-          "depth": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 6,
-            "default": 3
+          "title": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 120
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 2000
+          },
+          "analogy": {
+            "type": "string"
+          },
+          "constellation_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "predecessors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "key_terms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "compactable": {
+            "type": "boolean",
+            "default": false
+          },
+          "payloads": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "text-summary"
+                    },
+                    "content": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "content"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "mermaid-diagram"
+                    },
+                    "content": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "content"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "code-snippet"
+                    },
+                    "lang": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "content": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "lang",
+                    "content"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "doc-fragment"
+                    },
+                    "content": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "content"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "image-ref"
+                    },
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "alt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "path"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "dataset-pointer"
+                    },
+                    "query": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "query"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "default": []
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 10
           }
         },
         "required": [
-          "id"
+          "kind",
+          "title",
+          "summary",
+          "rationale"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -926,7 +1307,57 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "nodes": {
+          "id": {
+            "type": "string"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "PROVENANCE_REQUIRED",
+        "RATIONALE_REQUIRED"
+      ]
+    },
+    {
+      "name": "rig_explore",
+      "description": "Full neighborhoods + source for a question",
+      "tier": "heavy",
+      "stability": "stable",
+      "since": "1.0",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Free-text question or topic"
+          },
+          "max_anchors": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 5
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "anchors": {
             "type": "array",
             "items": {
               "type": "object",
@@ -942,12 +1373,49 @@
                 },
                 "file_path": {
                   "type": "string"
+                },
+                "start_line": {
+                  "type": "integer"
+                },
+                "end_line": {
+                  "type": "integer"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "related": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "kind"
+                    ],
+                    "additionalProperties": false
+                  }
                 }
               },
               "required": [
                 "id",
                 "name",
-                "kind"
+                "kind",
+                "file_path",
+                "start_line",
+                "end_line",
+                "source",
+                "related"
               ],
               "additionalProperties": false
             }
@@ -957,7 +1425,7 @@
           }
         },
         "required": [
-          "nodes",
+          "anchors",
           "elapsed_ms"
         ],
         "additionalProperties": false,
@@ -965,8 +1433,113 @@
       },
       "errors": [
         "NOT_INITIALIZED",
-        "NODE_NOT_FOUND",
-        "DEPTH_OUT_OF_RANGE"
+        "MAIN_SESSION_FORBIDDEN"
+      ]
+    },
+    {
+      "name": "rig_files",
+      "description": "List indexed files",
+      "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Substring filter on file path"
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "language": {
+                  "type": "string"
+                },
+                "node_count": {
+                  "type": "integer"
+                },
+                "last_indexed_ts": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "path",
+                "node_count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "files",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED"
+      ]
+    },
+    {
+      "name": "rig_focus",
+      "description": "Ask the UI to focus on a set of anchors",
+      "tier": "write",
+      "stability": "experimental",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "maxItems": 20
+          }
+        },
+        "required": [
+          "node_ids"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ok",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "PROVENANCE_REQUIRED"
       ]
     },
     {
@@ -1046,249 +1619,26 @@
       ]
     },
     {
-      "name": "rig_promote",
-      "description": "Explicitly mark a node as a hub",
-      "tier": "write",
-      "stability": "experimental",
+      "name": "rig_hub_of",
+      "description": "Find the nearest hub(s) for a given anchor",
+      "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string"
           },
-          "rationale": {
-            "type": "string",
-            "minLength": 10
-          }
-        },
-        "required": [
-          "id",
-          "rationale"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "promoted": {
-            "type": "boolean"
-          },
-          "elapsed_ms": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "promoted",
-          "elapsed_ms"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "errors": [
-        "NOT_INITIALIZED",
-        "NODE_NOT_FOUND",
-        "PROVENANCE_REQUIRED",
-        "RATIONALE_REQUIRED"
-      ]
-    },
-    {
-      "name": "rig_subscribe",
-      "description": "Pull mutation events since a cursor",
-      "tier": "live",
-      "stability": "experimental",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "since_ts": {
-            "type": "integer",
-            "default": 0
-          },
-          "session_id": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "events": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "integer"
-                },
-                "ts": {
-                  "type": "integer"
-                },
-                "session_id": {
-                  "type": "string"
-                },
-                "kind": {
-                  "type": "string"
-                },
-                "payload": {},
-                "actor": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "ts",
-                "session_id",
-                "kind",
-                "actor"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "next_cursor": {
-            "type": "integer"
-          },
-          "elapsed_ms": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "events",
-          "next_cursor",
-          "elapsed_ms"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "errors": [
-        "NOT_INITIALIZED"
-      ]
-    },
-    {
-      "name": "rig_cluster",
-      "description": "Create a cluster meta-anchor over existing anchors",
-      "tier": "write",
-      "stability": "experimental",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "node_ids": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            },
-            "minItems": 2
-          },
-          "label": {
-            "type": "string",
-            "minLength": 1
-          },
-          "rationale": {
-            "type": "string",
-            "minLength": 10
-          }
-        },
-        "required": [
-          "node_ids",
-          "label",
-          "rationale"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "cluster_id": {
-            "type": "string"
-          },
-          "elapsed_ms": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "cluster_id",
-          "elapsed_ms"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "errors": [
-        "NOT_INITIALIZED",
-        "NODE_NOT_FOUND",
-        "PROVENANCE_REQUIRED",
-        "RATIONALE_REQUIRED"
-      ]
-    },
-    {
-      "name": "rig_focus",
-      "description": "Ask the UI to focus on a set of anchors",
-      "tier": "write",
-      "stability": "experimental",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "node_ids": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            },
-            "minItems": 1,
-            "maxItems": 20
-          }
-        },
-        "required": [
-          "node_ids"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "ok": {
-            "type": "boolean"
-          },
-          "elapsed_ms": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "ok",
-          "elapsed_ms"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "errors": [
-        "NOT_INITIALIZED",
-        "PROVENANCE_REQUIRED"
-      ]
-    },
-    {
-      "name": "rig_relevant_skills",
-      "description": "Top-k AI tools most relevant to a query",
-      "tier": "light",
-      "stability": "experimental",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "query": {
-            "type": "string",
-            "minLength": 1
-          },
-          "k": {
+          "max_depth": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 20,
-            "default": 5
+            "maximum": 6,
+            "default": 3
           }
         },
         "required": [
-          "query"
+          "id"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -1296,7 +1646,7 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "skills": {
+          "hubs": {
             "type": "array",
             "items": {
               "type": "object",
@@ -1307,25 +1657,22 @@
                 "name": {
                   "type": "string"
                 },
-                "tier": {
+                "kind": {
                   "type": "string"
                 },
-                "summary": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
+                "hubness": {
+                  "type": "number"
                 },
-                "description": {
-                  "type": "string"
+                "explicit": {
+                  "type": "boolean"
                 }
               },
               "required": [
                 "id",
                 "name",
-                "tier",
-                "summary",
-                "description"
+                "kind",
+                "hubness",
+                "explicit"
               ],
               "additionalProperties": false
             }
@@ -1335,7 +1682,80 @@
           }
         },
         "required": [
-          "skills",
+          "hubs",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND"
+      ]
+    },
+    {
+      "name": "rig_hubs",
+      "description": "List top hubs by hubness score",
+      "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "description": "Filter by anchor kind (e.g. file, module)"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "hubs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "hubness": {
+                  "type": "number"
+                },
+                "explicit": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "kind",
+                "hubness",
+                "explicit"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "hubs",
           "elapsed_ms"
         ],
         "additionalProperties": false,
@@ -1343,6 +1763,161 @@
       },
       "errors": [
         "NOT_INITIALIZED"
+      ]
+    },
+    {
+      "name": "rig_impact",
+      "description": "Transitive impact radius of an anchor",
+      "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Anchor id to compute impact from"
+          },
+          "depth": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6,
+            "default": 3
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "file_path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "nodes",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND",
+        "DEPTH_OUT_OF_RANGE"
+      ]
+    },
+    {
+      "name": "rig_neighbors",
+      "description": "List edges touching a node",
+      "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Anchor id"
+          },
+          "kind": {
+            "type": "string",
+            "description": "Filter edges by kind (e.g. calls, imports)"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
+            "default": 100
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "edges": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "src": {
+                  "type": "string"
+                },
+                "dst": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "table": {
+                  "type": "string",
+                  "enum": [
+                    "structural",
+                    "semantic"
+                  ]
+                }
+              },
+              "required": [
+                "src",
+                "dst",
+                "kind",
+                "table"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "edges",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND"
       ]
     },
     {
@@ -1415,10 +1990,11 @@
       ]
     },
     {
-      "name": "rig_undo",
-      "description": "Reverse the last mutation in this session",
-      "tier": "write",
-      "stability": "experimental",
+      "name": "rig_phantom_imports",
+      "description": "Bare imports with no matching declared dependency",
+      "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {},
@@ -1428,115 +2004,29 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "undone": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer"
-                  },
-                  "kind": {
-                    "type": "string"
-                  },
-                  "ts": {
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "id",
-                  "kind",
-                  "ts"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "elapsed_ms": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "undone",
-          "elapsed_ms"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "errors": [
-        "NOT_INITIALIZED",
-        "PROVENANCE_REQUIRED"
-      ]
-    },
-    {
-      "name": "rig_deps",
-      "description": "List declared dependencies from package manifests",
-      "tier": "light",
-      "stability": "stable",
-      "since": "1.0",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "manifest_path": {
-            "type": "string",
-            "description": "Restrict to deps declared in this manifest path (relative)"
-          }
-        },
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "deps": {
+          "phantoms": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "id": {
+                "target_name": {
                   "type": "string"
                 },
-                "name": {
+                "occurrences": {
+                  "type": "integer"
+                },
+                "sample_file": {
                   "type": "string"
                 },
-                "spec": {
-                  "type": "string"
-                },
-                "source": {
-                  "type": "string"
-                },
-                "manifest_path": {
-                  "type": "string"
-                },
-                "is_dev": {
-                  "type": "boolean"
-                },
-                "is_optional": {
-                  "type": "boolean"
-                },
-                "is_peer": {
-                  "type": "boolean"
-                },
-                "resolved_version": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
+                "sample_line": {
+                  "type": "integer"
                 }
               },
               "required": [
-                "id",
-                "name",
-                "spec",
-                "source",
-                "manifest_path",
-                "is_dev",
-                "is_optional",
-                "is_peer",
-                "resolved_version"
+                "target_name",
+                "occurrences",
+                "sample_file",
+                "sample_line"
               ],
               "additionalProperties": false
             }
@@ -1546,7 +2036,7 @@
           }
         },
         "required": [
-          "deps",
+          "phantoms",
           "elapsed_ms"
         ],
         "additionalProperties": false,
@@ -1557,84 +2047,15 @@
       ]
     },
     {
-      "name": "rig_callers",
-      "description": "List direct callers of an anchor",
-      "tier": "light",
-      "stability": "stable",
-      "since": "1.0",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "Callee anchor id"
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "nodes": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "name": {
-                  "type": "string"
-                },
-                "kind": {
-                  "type": "string"
-                },
-                "file_path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "name",
-                "kind"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "elapsed_ms": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "nodes",
-          "elapsed_ms"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "errors": [
-        "NOT_INITIALIZED",
-        "NODE_NOT_FOUND"
-      ]
-    },
-    {
-      "name": "rig_annotate",
-      "description": "Append a note to an anchor",
+      "name": "rig_promote",
+      "description": "Explicitly mark a node as a hub",
       "tier": "write",
       "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "node_id": {
+          "id": {
             "type": "string"
-          },
-          "note": {
-            "type": "string",
-            "minLength": 1
           },
           "rationale": {
             "type": "string",
@@ -1642,8 +2063,7 @@
           }
         },
         "required": [
-          "node_id",
-          "note",
+          "id",
           "rationale"
         ],
         "additionalProperties": false,
@@ -1652,7 +2072,7 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "ok": {
+          "promoted": {
             "type": "boolean"
           },
           "elapsed_ms": {
@@ -1660,7 +2080,77 @@
           }
         },
         "required": [
-          "ok",
+          "promoted",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "NODE_NOT_FOUND",
+        "PROVENANCE_REQUIRED",
+        "RATIONALE_REQUIRED"
+      ]
+    },
+    {
+      "name": "rig_propose_edge",
+      "description": "Propose a semantic edge between two anchors",
+      "tier": "write",
+      "stability": "experimental",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "src": {
+            "type": "string"
+          },
+          "dst": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "default": "related"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 0.5
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 10
+          },
+          "source_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "maxItems": 10,
+            "default": []
+          }
+        },
+        "required": [
+          "src",
+          "dst",
+          "rationale"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pending_id": {
+            "type": "integer"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "pending_id",
           "elapsed_ms"
         ],
         "additionalProperties": false,
@@ -1769,31 +2259,26 @@
       ]
     },
     {
-      "name": "rig_neighbors",
-      "description": "List edges touching a node",
+      "name": "rig_relevant_skills",
+      "description": "Top-k AI tools most relevant to a query",
       "tier": "light",
-      "stability": "stable",
-      "since": "1.0",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "id": {
+          "query": {
             "type": "string",
-            "description": "Anchor id"
+            "minLength": 1
           },
-          "kind": {
-            "type": "string",
-            "description": "Filter edges by kind (e.g. calls, imports)"
-          },
-          "limit": {
+          "k": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 500,
-            "default": 100
+            "maximum": 20,
+            "default": 5
           }
         },
         "required": [
-          "id"
+          "query"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -1801,85 +2286,7 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "edges": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "src": {
-                  "type": "string"
-                },
-                "dst": {
-                  "type": "string"
-                },
-                "kind": {
-                  "type": "string"
-                },
-                "weight": {
-                  "type": "number"
-                },
-                "table": {
-                  "type": "string",
-                  "enum": [
-                    "structural",
-                    "semantic"
-                  ]
-                }
-              },
-              "required": [
-                "src",
-                "dst",
-                "kind",
-                "table"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "elapsed_ms": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "edges",
-          "elapsed_ms"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "errors": [
-        "NOT_INITIALIZED",
-        "NODE_NOT_FOUND"
-      ]
-    },
-    {
-      "name": "rig_critical_path",
-      "description": "Walk the architecture's spine from a root anchor",
-      "tier": "light",
-      "stability": "stable",
-      "since": "1.0",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "max_steps": {
-            "type": "integer",
-            "minimum": 2,
-            "maximum": 32,
-            "default": 12
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "path": {
+          "skills": {
             "type": "array",
             "items": {
               "type": "object",
@@ -1890,26 +2297,25 @@
                 "name": {
                   "type": "string"
                 },
-                "kind": {
+                "tier": {
                   "type": "string"
                 },
-                "hubness": {
-                  "type": "number"
+                "summary": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
-                "activation_count": {
-                  "type": "integer"
-                },
-                "step_weight": {
-                  "type": "number"
+                "description": {
+                  "type": "string"
                 }
               },
               "required": [
                 "id",
                 "name",
-                "kind",
-                "hubness",
-                "activation_count",
-                "step_weight"
+                "tier",
+                "summary",
+                "description"
               ],
               "additionalProperties": false
             }
@@ -1919,72 +2325,14 @@
           }
         },
         "required": [
-          "path",
+          "skills",
           "elapsed_ms"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "errors": [
-        "NOT_INITIALIZED",
-        "NODE_NOT_FOUND"
-      ]
-    },
-    {
-      "name": "rig_add_node",
-      "description": "Add a new anchor extracted from conversation",
-      "tier": "write",
-      "stability": "experimental",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "minLength": 1
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1
-          },
-          "data": {
-            "type": "object",
-            "additionalProperties": {},
-            "default": {}
-          },
-          "rationale": {
-            "type": "string",
-            "minLength": 10
-          }
-        },
-        "required": [
-          "type",
-          "name",
-          "rationale"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "elapsed_ms": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "id",
-          "elapsed_ms"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "errors": [
-        "NOT_INITIALIZED",
-        "PROVENANCE_REQUIRED",
-        "RATIONALE_REQUIRED"
+        "NOT_INITIALIZED"
       ]
     },
     {
@@ -2064,60 +2412,43 @@
       ]
     },
     {
-      "name": "rig_callees",
-      "description": "List direct callees of an anchor",
+      "name": "rig_session_token",
+      "description": "Hand the user a one-click login URL for the local map",
       "tier": "light",
-      "stability": "stable",
-      "since": "1.0",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "id": {
+          "host": {
             "type": "string",
-            "description": "Caller anchor id"
+            "default": "127.0.0.1"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535,
+            "default": 7474
           }
         },
-        "required": [
-          "id"
-        ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "outputSchema": {
         "type": "object",
         "properties": {
-          "nodes": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "name": {
-                  "type": "string"
-                },
-                "kind": {
-                  "type": "string"
-                },
-                "file_path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "name",
-                "kind"
-              ],
-              "additionalProperties": false
-            }
+          "token": {
+            "type": "string"
+          },
+          "login_url": {
+            "type": "string"
           },
           "elapsed_ms": {
             "type": "number"
           }
         },
         "required": [
-          "nodes",
+          "token",
+          "login_url",
           "elapsed_ms"
         ],
         "additionalProperties": false,
@@ -2125,7 +2456,7 @@
       },
       "errors": [
         "NOT_INITIALIZED",
-        "NODE_NOT_FOUND"
+        "NO_RUNTIME_TOKEN"
       ]
     },
     {
@@ -2189,122 +2520,60 @@
       ]
     },
     {
-      "name": "rig_hub_of",
-      "description": "Find the nearest hub(s) for a given anchor",
-      "tier": "light",
-      "stability": "stable",
-      "since": "1.0",
+      "name": "rig_subscribe",
+      "description": "Pull mutation events since a cursor",
+      "tier": "live",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string"
-          },
-          "max_depth": {
+          "since_ts": {
             "type": "integer",
-            "minimum": 1,
-            "maximum": 6,
-            "default": 3
+            "default": 0
+          },
+          "session_id": {
+            "type": "string"
           }
         },
-        "required": [
-          "id"
-        ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "outputSchema": {
         "type": "object",
         "properties": {
-          "hubs": {
+          "events": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
                 "id": {
-                  "type": "string"
+                  "type": "integer"
                 },
-                "name": {
+                "ts": {
+                  "type": "integer"
+                },
+                "session_id": {
                   "type": "string"
                 },
                 "kind": {
                   "type": "string"
                 },
-                "hubness": {
-                  "type": "number"
-                },
-                "explicit": {
-                  "type": "boolean"
+                "payload": {},
+                "actor": {
+                  "type": "string"
                 }
               },
               "required": [
                 "id",
-                "name",
+                "ts",
+                "session_id",
                 "kind",
-                "hubness",
-                "explicit"
+                "actor"
               ],
               "additionalProperties": false
             }
           },
-          "elapsed_ms": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "hubs",
-          "elapsed_ms"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "errors": [
-        "NOT_INITIALIZED",
-        "NODE_NOT_FOUND"
-      ]
-    },
-    {
-      "name": "rig_context",
-      "description": "Build a context bundle for a task",
-      "tier": "heavy",
-      "stability": "stable",
-      "since": "1.0",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "task": {
-            "type": "string",
-            "minLength": 1,
-            "description": "What the agent is trying to do"
-          },
-          "max_nodes": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 50,
-            "default": 10
-          },
-          "format": {
-            "type": "string",
-            "enum": [
-              "markdown",
-              "json"
-            ],
-            "default": "markdown"
-          }
-        },
-        "required": [
-          "task"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "context": {
-            "type": "string"
-          },
-          "anchor_count": {
+          "next_cursor": {
             "type": "integer"
           },
           "elapsed_ms": {
@@ -2312,8 +2581,64 @@
           }
         },
         "required": [
-          "context",
-          "anchor_count",
+          "events",
+          "next_cursor",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED"
+      ]
+    },
+    {
+      "name": "rig_undo",
+      "description": "Reverse the last mutation in this session",
+      "tier": "write",
+      "stability": "experimental",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "undone": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "ts": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "ts"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "undone",
           "elapsed_ms"
         ],
         "additionalProperties": false,
@@ -2321,12 +2646,12 @@
       },
       "errors": [
         "NOT_INITIALIZED",
-        "MAIN_SESSION_FORBIDDEN"
+        "PROVENANCE_REQUIRED"
       ]
     },
     {
-      "name": "rig_phantom_imports",
-      "description": "Bare imports with no matching declared dependency",
+      "name": "rig_unused_deps",
+      "description": "Declared dependencies with no matching imports in source",
       "tier": "light",
       "stability": "stable",
       "since": "1.0",
@@ -2339,29 +2664,37 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "phantoms": {
+          "unused": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "target_name": {
+                "id": {
                   "type": "string"
                 },
-                "occurrences": {
-                  "type": "integer"
-                },
-                "sample_file": {
+                "name": {
                   "type": "string"
                 },
-                "sample_line": {
-                  "type": "integer"
+                "spec": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "manifest_path": {
+                  "type": "string"
+                },
+                "is_dev": {
+                  "type": "boolean"
                 }
               },
               "required": [
-                "target_name",
-                "occurrences",
-                "sample_file",
-                "sample_line"
+                "id",
+                "name",
+                "spec",
+                "source",
+                "manifest_path",
+                "is_dev"
               ],
               "additionalProperties": false
             }
@@ -2371,7 +2704,7 @@
           }
         },
         "required": [
-          "phantoms",
+          "unused",
           "elapsed_ms"
         ],
         "additionalProperties": false,
@@ -2379,74 +2712,6 @@
       },
       "errors": [
         "NOT_INITIALIZED"
-      ]
-    },
-    {
-      "name": "rig_aliases",
-      "description": "List the aliases registered for an anchor",
-      "tier": "light",
-      "stability": "stable",
-      "since": "1.0",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "aliases": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "alias": {
-                  "type": "string"
-                },
-                "provenance": {
-                  "type": "string"
-                },
-                "rationale": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "created_at": {
-                  "type": "integer"
-                }
-              },
-              "required": [
-                "alias",
-                "provenance",
-                "rationale",
-                "created_at"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "elapsed_ms": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "aliases",
-          "elapsed_ms"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "errors": [
-        "NOT_INITIALIZED",
-        "NODE_NOT_FOUND"
       ]
     },
     {
@@ -2687,271 +2952,6 @@
       },
       "errors": [
         "NOT_INITIALIZED"
-      ]
-    },
-    {
-      "name": "rig_session_token",
-      "description": "Hand the user a one-click login URL for the local map",
-      "tier": "light",
-      "stability": "experimental",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "host": {
-            "type": "string",
-            "default": "127.0.0.1"
-          },
-          "port": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 65535,
-            "default": 7474
-          }
-        },
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "token": {
-            "type": "string"
-          },
-          "login_url": {
-            "type": "string"
-          },
-          "elapsed_ms": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "token",
-          "login_url",
-          "elapsed_ms"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "errors": [
-        "NOT_INITIALIZED",
-        "NO_RUNTIME_TOKEN"
-      ]
-    },
-    {
-      "name": "rig_drop_waypoint",
-      "description": "Drop a conversation waypoint at a decision point",
-      "tier": "write",
-      "stability": "experimental",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "decision",
-              "observation",
-              "constraint",
-              "open-question",
-              "principle"
-            ]
-          },
-          "title": {
-            "type": "string",
-            "minLength": 3,
-            "maxLength": 120
-          },
-          "summary": {
-            "type": "string",
-            "minLength": 10,
-            "maxLength": 2000
-          },
-          "analogy": {
-            "type": "string"
-          },
-          "constellation_refs": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "default": []
-          },
-          "predecessors": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "default": []
-          },
-          "key_terms": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "default": []
-          },
-          "compactable": {
-            "type": "boolean",
-            "default": false
-          },
-          "payloads": {
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "const": "text-summary"
-                    },
-                    "content": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "content"
-                  ],
-                  "additionalProperties": false
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "const": "mermaid-diagram"
-                    },
-                    "content": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "content"
-                  ],
-                  "additionalProperties": false
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "const": "code-snippet"
-                    },
-                    "lang": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "content": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "lang",
-                    "content"
-                  ],
-                  "additionalProperties": false
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "const": "doc-fragment"
-                    },
-                    "content": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "content"
-                  ],
-                  "additionalProperties": false
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "const": "image-ref"
-                    },
-                    "path": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "alt": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "path"
-                  ],
-                  "additionalProperties": false
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "const": "dataset-pointer"
-                    },
-                    "query": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "query"
-                  ],
-                  "additionalProperties": false
-                }
-              ]
-            },
-            "default": []
-          },
-          "rationale": {
-            "type": "string",
-            "minLength": 10
-          }
-        },
-        "required": [
-          "kind",
-          "title",
-          "summary",
-          "rationale"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "elapsed_ms": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "id",
-          "elapsed_ms"
-        ],
-        "additionalProperties": false,
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "errors": [
-        "NOT_INITIALIZED",
-        "PROVENANCE_REQUIRED",
-        "RATIONALE_REQUIRED"
       ]
     }
   ]

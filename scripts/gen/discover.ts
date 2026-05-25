@@ -41,6 +41,9 @@ export async function discoverContracts(root: string): Promise<LoadedContract[]>
     const basename = file.split('/').at(-1)!.replace(/\.contract\.ts$/, '');
     out.push({ kind, file, absFile, basename, data: result.data as never });
   }
+  // Sort by path (code-unit order) so codegen is deterministic across machines
+  // — Glob.scan yields filesystem order, which differs between dev and CI.
+  out.sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0));
   return out;
 }
 
