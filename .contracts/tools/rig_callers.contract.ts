@@ -11,6 +11,8 @@ const nodeRef = z.object({
 export default defineToolContract({
   name: 'rig_callers',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: 'List direct callers of an anchor',
   description: `
 Return the set of anchors that directly call the given function/method.

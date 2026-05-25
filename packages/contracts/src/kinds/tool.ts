@@ -6,6 +6,9 @@ import type { PermissionLevel, TargetName } from '../shared.ts';
 export const TOOL_TIERS = ['light', 'heavy', 'write', 'live'] as const;
 export type ToolTier = (typeof TOOL_TIERS)[number];
 
+export const TOOL_STABILITIES = ['stable', 'experimental', 'deprecated'] as const;
+export type ToolStability = (typeof TOOL_STABILITIES)[number];
+
 export const toolContractSchema = z
   .object({
     name: z
@@ -19,6 +22,16 @@ export const toolContractSchema = z
     output: zodSchema,
     errors: z.array(z.string().min(1)).default([]),
     permissions: z.record(targetNameSchema, permissionLevelSchema).default({}),
+    // stability axis — drives the compat gate. Experimental tools are exempt
+    // from breaking-change failures; stable tools are protected until a major
+    // manifest bump. See COMPATIBILITY.md.
+    stability: z.enum(TOOL_STABILITIES).default('experimental'),
+    since: z.string().optional(), // manifest version a tool became stable, e.g. '1.0'
+    deprecated_in: z.string().optional(),
+    replaced_by: z
+      .string()
+      .regex(/^rig_[a-z][a-z0-9_]*$/)
+      .optional(),
     // tier-specific (validated by refinement below)
     records_activation: z.boolean().optional(),
     main_session_forbidden: z.boolean().optional(),
@@ -39,6 +52,9 @@ export const toolContractSchema = z
     if (c.tier === 'live' && !c.subscription_kind) {
       ctx.addIssue({ code: 'custom', message: 'live tier requires subscription_kind' });
     }
+    if (c.stability === 'deprecated' && !c.deprecated_in) {
+      ctx.addIssue({ code: 'custom', message: 'deprecated tools require deprecated_in' });
+    }
   });
 
 export interface ToolContract {
@@ -50,6 +66,10 @@ export interface ToolContract {
   output: ZodTypeAny;
   errors?: readonly string[];
   permissions?: Partial<Record<TargetName, PermissionLevel>>;
+  stability?: ToolStability;
+  since?: string;
+  deprecated_in?: string;
+  replaced_by?: string;
   records_activation?: boolean;
   main_session_forbidden?: boolean;
   provenance_required?: boolean;

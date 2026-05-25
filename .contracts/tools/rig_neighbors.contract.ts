@@ -12,6 +12,8 @@ const edgeRef = z.object({
 export default defineToolContract({
   name: 'rig_neighbors',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: 'List edges touching a node',
   description: `
 Return edges incident to the given anchor in both directions, from both

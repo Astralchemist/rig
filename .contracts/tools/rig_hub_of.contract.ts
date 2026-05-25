@@ -12,6 +12,8 @@ const hubRef = z.object({
 export default defineToolContract({
   name: 'rig_hub_of',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: 'Find the nearest hub(s) for a given anchor',
   description: `
 Walk outward from an anchor via structural edges, return the first hub layer

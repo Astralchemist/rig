@@ -4,6 +4,8 @@ import { defineToolContract } from '@rig/contracts';
 export default defineToolContract({
   name: 'rig_context',
   tier: 'heavy',
+  stability: 'stable',
+  since: '1.0',
   summary: 'Build a context bundle for a task',
   description: `
 Build a context bundle of the top-K anchors most relevant to a task,

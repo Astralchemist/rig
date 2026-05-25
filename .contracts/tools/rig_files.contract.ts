@@ -11,6 +11,8 @@ const fileInfo = z.object({
 export default defineToolContract({
   name: 'rig_files',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: 'List indexed files',
   description: `
 List files known to the rig index, optionally filtered by a substring of

@@ -12,6 +12,8 @@ const drillResult = z.object({
 export default defineToolContract({
   name: 'rig_drill',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: "Explore a hub's sub-tree, ranked by magnetic pull",
   description: `
 Walk outward from a hub via structural edges (contains > references > calls >

@@ -13,6 +13,8 @@ const unused = z.object({
 export default defineToolContract({
   name: 'rig_unused_deps',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: 'Declared dependencies with no matching imports in source',
   description: `
 Heuristic: a declared dependency is flagged when its package name never

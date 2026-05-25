@@ -5,6 +5,8 @@
       "name": "rig_explore",
       "description": "Full neighborhoods + source for a question",
       "tier": "heavy",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -112,6 +114,7 @@
       "name": "rig_propose_edge",
       "description": "Propose a semantic edge between two anchors",
       "tier": "write",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -181,6 +184,7 @@
       "name": "rig_cold",
       "description": "Nodes not touched in a long time (or ever)",
       "tier": "light",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -255,6 +259,8 @@
       "name": "rig_hubs",
       "description": "List top hubs by hubness score",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -325,6 +331,7 @@
       "name": "rig_add_alias",
       "description": "Register an alias that resolves to a canonical anchor",
       "tier": "write",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -377,6 +384,8 @@
       "name": "rig_unused_deps",
       "description": "Declared dependencies with no matching imports in source",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {},
@@ -440,6 +449,7 @@
       "name": "rig_chain",
       "description": "Walk the predecessor chain of a waypoint",
       "tier": "light",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -674,6 +684,8 @@
       "name": "rig_dep_conflicts",
       "description": "Packages declared with different versions across manifests",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {},
@@ -745,6 +757,8 @@
       "name": "rig_files",
       "description": "List indexed files",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -803,6 +817,8 @@
       "name": "rig_drill",
       "description": "Explore a hub's sub-tree, ranked by magnetic pull",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -885,6 +901,8 @@
       "name": "rig_impact",
       "description": "Transitive impact radius of an anchor",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -955,6 +973,7 @@
       "name": "rig_hotspots",
       "description": "Top nodes by recent activation count",
       "tier": "light",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1030,6 +1049,7 @@
       "name": "rig_promote",
       "description": "Explicitly mark a node as a hub",
       "tier": "write",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1076,6 +1096,7 @@
       "name": "rig_subscribe",
       "description": "Pull mutation events since a cursor",
       "tier": "live",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1148,6 +1169,7 @@
       "name": "rig_cluster",
       "description": "Create a cluster meta-anchor over existing anchors",
       "tier": "write",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1204,6 +1226,7 @@
       "name": "rig_focus",
       "description": "Ask the UI to focus on a set of anchors",
       "tier": "write",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1249,6 +1272,7 @@
       "name": "rig_relevant_skills",
       "description": "Top-k AI tools most relevant to a query",
       "tier": "light",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1325,6 +1349,8 @@
       "name": "rig_node",
       "description": "Fetch anchor metadata by id",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1392,6 +1418,7 @@
       "name": "rig_undo",
       "description": "Reverse the last mutation in this session",
       "tier": "write",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {},
@@ -1448,6 +1475,8 @@
       "name": "rig_deps",
       "description": "List declared dependencies from package manifests",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1531,6 +1560,8 @@
       "name": "rig_callers",
       "description": "List direct callers of an anchor",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1594,6 +1625,7 @@
       "name": "rig_annotate",
       "description": "Append a note to an anchor",
       "tier": "write",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1645,6 +1677,8 @@
       "name": "rig_pull",
       "description": "Magnetic-pull ranking around an anchor",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1738,6 +1772,8 @@
       "name": "rig_neighbors",
       "description": "List edges touching a node",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1819,6 +1855,8 @@
       "name": "rig_critical_path",
       "description": "Walk the architecture's spine from a root anchor",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1896,6 +1934,7 @@
       "name": "rig_add_node",
       "description": "Add a new anchor extracted from conversation",
       "tier": "write",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1952,6 +1991,8 @@
       "name": "rig_search",
       "description": "FTS5 search over anchor names",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -2026,6 +2067,8 @@
       "name": "rig_callees",
       "description": "List direct callees of an anchor",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -2089,6 +2132,8 @@
       "name": "rig_status",
       "description": "Report rig index health",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {},
@@ -2147,6 +2192,8 @@
       "name": "rig_hub_of",
       "description": "Find the nearest hub(s) for a given anchor",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -2220,6 +2267,8 @@
       "name": "rig_context",
       "description": "Build a context bundle for a task",
       "tier": "heavy",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -2279,6 +2328,8 @@
       "name": "rig_phantom_imports",
       "description": "Bare imports with no matching declared dependency",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {},
@@ -2334,6 +2385,8 @@
       "name": "rig_aliases",
       "description": "List the aliases registered for an anchor",
       "tier": "light",
+      "stability": "stable",
+      "since": "1.0",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -2400,6 +2453,7 @@
       "name": "rig_waypoints",
       "description": "List conversation waypoints by session or kind",
       "tier": "light",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -2639,6 +2693,7 @@
       "name": "rig_session_token",
       "description": "Hand the user a one-click login URL for the local map",
       "tier": "light",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -2686,6 +2741,7 @@
       "name": "rig_drop_waypoint",
       "description": "Drop a conversation waypoint at a decision point",
       "tier": "write",
+      "stability": "experimental",
       "inputSchema": {
         "type": "object",
         "properties": {

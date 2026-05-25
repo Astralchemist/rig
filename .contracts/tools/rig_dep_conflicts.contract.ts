@@ -16,6 +16,8 @@ const conflictEntry = z.object({
 export default defineToolContract({
   name: 'rig_dep_conflicts',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: 'Packages declared with different versions across manifests',
   description: `
 Return every dependency name (scoped per ecosystem source) that appears in

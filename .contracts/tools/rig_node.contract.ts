@@ -4,6 +4,8 @@ import { defineToolContract } from '@rig/contracts';
 export default defineToolContract({
   name: 'rig_node',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: 'Fetch anchor metadata by id',
   description: `
 Return metadata for a single anchor: id, name, kind, file_path, qualified

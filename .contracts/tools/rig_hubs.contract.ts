@@ -12,6 +12,8 @@ const hubRef = z.object({
 export default defineToolContract({
   name: 'rig_hubs',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: 'List top hubs by hubness score',
   description: `
 Return the most "hub-like" anchors in the graph, ranked by hubness. Hubs are

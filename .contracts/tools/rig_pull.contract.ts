@@ -15,6 +15,8 @@ const pullResult = z.object({
 export default defineToolContract({
   name: 'rig_pull',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: 'Magnetic-pull ranking around an anchor',
   description: `
 Rank the top-k anchors most "magnetically attracted" to the given node.

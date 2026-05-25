@@ -1,5 +1,5 @@
-export { defineToolContract, toolContractSchema, TOOL_TIERS } from './kinds/tool.ts';
-export type { ToolContract, ToolTier } from './kinds/tool.ts';
+export { defineToolContract, toolContractSchema, TOOL_TIERS, TOOL_STABILITIES } from './kinds/tool.ts';
+export type { ToolContract, ToolTier, ToolStability } from './kinds/tool.ts';
 
 export { defineAnchorContract, anchorContractSchema, EXTRACTOR_KINDS } from './kinds/anchor.ts';
 export type { AnchorContract, ExtractorKind } from './kinds/anchor.ts';

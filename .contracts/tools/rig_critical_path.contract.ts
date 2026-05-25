@@ -13,6 +13,8 @@ const step = z.object({
 export default defineToolContract({
   name: 'rig_critical_path',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: "Walk the architecture's spine from a root anchor",
   description: `
 Greedy walk outward from the root anchor, picking the highest-scoring outbound

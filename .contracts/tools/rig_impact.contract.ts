@@ -11,6 +11,8 @@ const nodeRef = z.object({
 export default defineToolContract({
   name: 'rig_impact',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: 'Transitive impact radius of an anchor',
   description: `
 Return all anchors reachable as transitive callers of the given anchor

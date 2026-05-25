@@ -16,6 +16,8 @@ const declaredDep = z.object({
 export default defineToolContract({
   name: 'rig_deps',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: 'List declared dependencies from package manifests',
   description: `
 List the dependencies a project declares in its package manifests (currently

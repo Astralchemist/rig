@@ -11,6 +11,8 @@ const nodeRef = z.object({
 export default defineToolContract({
   name: 'rig_search',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: 'FTS5 search over anchor names',
   description: `
 Find anchors by name or qualified name via SQLite FTS5. Returns

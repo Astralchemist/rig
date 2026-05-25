@@ -4,6 +4,8 @@ import { defineToolContract } from '@rig/contracts';
 export default defineToolContract({
   name: 'rig_status',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: 'Report rig index health',
   description: `
 Returns counts of nodes, edges, files, and the last sync timestamp.

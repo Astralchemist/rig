@@ -21,6 +21,8 @@ const anchor = z.object({
 export default defineToolContract({
   name: 'rig_explore',
   tier: 'heavy',
+  stability: 'stable',
+  since: '1.0',
   summary: 'Full neighborhoods + source for a question',
   description: `
 Search the index for a question and return the top-K anchors with their

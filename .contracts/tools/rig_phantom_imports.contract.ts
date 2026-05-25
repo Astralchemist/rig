@@ -11,6 +11,8 @@ const phantom = z.object({
 export default defineToolContract({
   name: 'rig_phantom_imports',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: 'Bare imports with no matching declared dependency',
   description: `
 Mirror of rig_unused_deps: returns import sites whose target package name

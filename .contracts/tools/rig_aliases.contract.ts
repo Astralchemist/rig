@@ -11,6 +11,8 @@ const aliasRef = z.object({
 export default defineToolContract({
   name: 'rig_aliases',
   tier: 'light',
+  stability: 'stable',
+  since: '1.0',
   summary: 'List the aliases registered for an anchor',
   description: `
 Return every alias name pointing at a given canonical anchor. Aliases are
