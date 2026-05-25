@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    name: gates + tests (bun)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ">=1.1"
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: generated/ is fresh
+        run: bun run gen:check
+
+      - name: tool-surface compatibility
+        run: bun run check:compat
+
+      - name: shipped migrations unchanged
+        run: bun run check:migrations
+
+      - name: tests
+        run: bun test
+
+  node-smoke:
+    name: node fallback runtime
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ">=1.1"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install (incl. better-sqlite3 fallback)
+        run: bun install --frozen-lockfile
+      # Smoke that the DB layer's Node path loads. Expanded once the published
+      # entry point is finalized (see the distribution decision in the backlog).
+      - name: better-sqlite3 loads under Node
+        run: node -e "require('better-sqlite3'); console.log('better-sqlite3 ok')"
