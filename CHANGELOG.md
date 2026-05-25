@@ -6,6 +6,8 @@ All notable changes to Rig are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-05-25
+
 ### Added
 - Single-package distribution: the CLI is bundled to one ~1 MB-packed `dist/rig.js` (was a 105 MB platform-locked binary). Runs under Bun and Node; runtime deps install from npm.
 - One-command onboarding: `bunx rig` / `rig start` — init + index + auto-wire the detected agent + open the live map.
@@ -26,4 +28,5 @@ All notable changes to Rig are documented here. The format follows
 ### Changed (licensing)
 - Relicensed from MIT to **Apache-2.0**. CodeGraph-derived portions remain under their original MIT terms (see `NOTICE` / `LICENSE-CODEGRAPH.txt`).
 
-[Unreleased]: https://github.com/Astralchemist/rig/commits/main
+[Unreleased]: https://github.com/Astralchemist/rig/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Astralchemist/rig/releases/tag/v0.1.0
