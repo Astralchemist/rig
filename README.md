@@ -21,7 +21,7 @@ Everything runs on your machine. No API key, no upload, nothing leaves your lapt
 In any project directory:
 
 ```bash
-bunx rig
+bunx rig-constellation
 ```
 
 That's the whole thing. One command:
@@ -39,7 +39,7 @@ That's the whole thing. One command:
 
 It initializes `.rig/`, indexes your code, wires up whichever agent it detects, and opens the live map in your browser. Re-run any time, or use the explicit subcommands below.
 
-> Prefer a global install? `bun install -g rig` (or `npm i -g rig`), then `rig start`.
+> Prefer a global install? `bun install -g rig-constellation` (or `npm i -g rig-constellation`), then `rig start`.
 
 ---
 
@@ -64,7 +64,7 @@ It initializes `.rig/`, indexes your code, wires up whichever agent it detects, 
 
 ## Wiring your agent
 
-`bunx rig` auto-detects and wires the agents you have installed. To wire one explicitly:
+`bunx rig-constellation` auto-detects and wires the agents you have installed. To wire one explicitly:
 
 ```bash
 rig install claude      # also: cursor · codex · opencode · openrouter
