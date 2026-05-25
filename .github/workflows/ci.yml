@@ -40,8 +40,8 @@ jobs:
       - name: tests
         run: bun test
 
-  node-smoke:
-    name: node fallback runtime
+  pack-smoke:
+    name: pack + install smoke (node)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,9 +51,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Install (incl. better-sqlite3 fallback)
+      - name: Install
         run: bun install --frozen-lockfile
-      # Smoke that the DB layer's Node path loads. Expanded once the published
-      # entry point is finalized (see the distribution decision in the backlog).
-      - name: better-sqlite3 loads under Node
-        run: node -e "require('better-sqlite3'); console.log('better-sqlite3 ok')"
+      - name: Build CLI bundle
+        run: bun run build:cli
+      - name: Pack
+        run: npm pack
+      # Install the real tarball into a clean project and drive it under Node —
+      # exercises the bundle load, the better-sqlite3 DB path, wasm extraction,
+      # and asset resolution in the published node_modules/rig layout.
+      - name: Install tarball + run under Node
+        run: |
+          set -euo pipefail
+          DIR="$(mktemp -d)"
+          cd "$DIR"
+          npm init -y >/dev/null
+          npm install "$GITHUB_WORKSPACE"/rig-*.tgz
+          node node_modules/.bin/rig --version
+          mkdir proj
+          printf 'export function greet(n: string){ return `hi ${n}`; }\n' > proj/a.ts
+          cd proj
+          node ../node_modules/.bin/rig init
+          node ../node_modules/.bin/rig index
