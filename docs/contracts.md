@@ -1,6 +1,6 @@
-# Rig — Contracts (Phase 1.5)
+# Rig — Contracts
 
-> How to add a contract. Read alongside `phase1.5contracts.md` for the architectural rationale.
+> How to add a contract — the declarative source of truth behind every tool, schema, migration, and event.
 
 The contract layer turns "add a tool" from a 5-place edit into a 1-place declaration. Every cross-module boundary (MCP tools, anchor types, agent targets, migrations, WS events) is described in `.contracts/`; `bun run gen` produces the matching files under `generated/`. Pre-commit + `bun test` enforce freshness.
 

@@ -5,6 +5,8 @@
 > **Snapshot taken at:** end of the conversation that produced the original four docs, after Phase 0/1/2 shipped and the screenshot showing 792 nodes / 223 edges / 202 files.
 >
 > **Read order before touching this backlog:** finish the extractor diagnostic (Section 0.1 below), confirm the connectivity ratio reaches 2–5 edges/node on the same codebase, then come back here. Most of the prioritization assumes structural edges work correctly.
+>
+> **How these items compose:** see `integration.md` — it maps every item to one of five integration seams (pull formula, node-type registry, edge-kind registry, mutation spine, pulse stream) and the four long-pole chains.
 
 ---
 
@@ -24,7 +26,7 @@ The screenshot review surfaced one issue that needs to be cleared before any bac
 
 What the four docs already produced:
 
-- Phase 0 — scaffold, workspaces, vendor/codegraph snapshot
+- Phase 0 — scaffold, workspaces, vendored tree-sitter extraction layer
 - Phase 1 — read-only MCP server with light + heavy tools, embeddings, magnetic-pull scoring
 - Phase 1.5 — contract layer (if applied; confirm before assuming downstream)
 - Phase 2 — localhost map UI with force-graph, selection, chat bound to selected node
