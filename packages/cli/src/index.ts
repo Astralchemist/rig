@@ -1,4 +1,6 @@
 #!/usr/bin/env bun
+import { Rig } from '@rig/core';
+import pkg from '../../../package.json' with { type: 'json' };
 import { runBenchCmd } from './bench-cmd.ts';
 import { runDoctor } from './doctor.ts';
 import { runExportDocs } from './export-docs-cmd.ts';
@@ -8,10 +10,12 @@ import { runInit } from './init.ts';
 import { runInstall } from './install-cmd.ts';
 import { runQuery } from './query-cmd.ts';
 import { runServe } from './serve-cmd.ts';
+import { runStart } from './start.ts';
 import { runStatus } from './status.ts';
 import { runSync } from './sync-cmd.ts';
 
 const COMMANDS: Record<string, (cwd: string) => void | Promise<void>> = {
+  start: runStart,
   init: runInit,
   status: runStatus,
   index: runIndex,
@@ -30,6 +34,7 @@ const HELP = `rig — local-first semantic knowledge graph
 usage: rig <command>
 
 commands:
+  start       one-shot: init + index + wire your agent + open the live map
   init        create .rig/ in the current directory
   status      report index health
   index       extract + write nodes to .rig/rig.db (--include / --exclude <glob>, repeatable)
@@ -44,8 +49,22 @@ commands:
 `;
 
 const [, , cmd] = process.argv;
-if (!cmd || cmd === '-h' || cmd === '--help') {
+if (cmd === '-v' || cmd === '--version' || cmd === 'version') {
+  console.log((pkg as { version: string }).version);
+  process.exit(0);
+}
+if (cmd === '-h' || cmd === '--help') {
   console.log(HELP);
+  process.exit(0);
+}
+// Bare `rig` / `bunx rig`: on a fresh project, run the one-shot onboarding;
+// on an already-set-up project, show help rather than silently re-indexing.
+if (!cmd) {
+  if (Rig.isInitialized(process.cwd())) {
+    console.log(HELP);
+    process.exit(0);
+  }
+  await runStart(process.cwd());
   process.exit(0);
 }
 

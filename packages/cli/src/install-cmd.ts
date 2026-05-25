@@ -1,11 +1,11 @@
-import { dirname, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { findAssetRoot } from '@rig/core/asset-root.ts';
 import { allTargetNames, getTarget } from './install/loader.ts';
 import { installTarget, type InstallOptions } from './install/runner.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(HERE, '../../..');
-const GENERATED_DIR = resolve(REPO_ROOT, 'generated/installer');
+const GENERATED_DIR = join(findAssetRoot(HERE), 'generated/installer');
 
 const flag = (name: string): boolean => process.argv.includes(name);
 const optionValue = (name: string): string | null => {

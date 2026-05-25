@@ -12,14 +12,11 @@
     "url": "https://github.com/Astralchemist/rig.git"
   },
   "bin": {
-    "rig": "./dist/rig"
+    "rig": "./dist/rig.js"
   },
   "files": [
     "dist",
     "generated",
-    ".contracts",
-    "packages/*/src",
-    "packages/*/package.json",
     "packages/web/dist",
     "LICENSE",
     "LICENSE-CODEGRAPH.txt",
@@ -36,13 +33,30 @@
     "gen": "bun run scripts/gen.ts",
     "gen:check": "bun run scripts/gen-check.ts",
     "gen:wasm": "bun run scripts/gen-wasm.ts",
+    "check:compat": "bun run scripts/compat-check.ts",
+    "compat:snapshot": "bun run scripts/compat-check.ts --write",
+    "check:migrations": "bun run scripts/migration-lock.ts",
+    "migration:lock": "bun run scripts/migration-lock.ts --write",
     "test": "bun test",
     "test:e2e": "playwright test",
     "install:hooks": "bash scripts/install-hooks.sh",
     "build": "bun run build:web && bun run build:cli",
     "build:web": "cd packages/web && bunx vite build",
-    "build:cli": "bun run gen:wasm && bun build packages/cli/src/index.ts --compile --outfile dist/rig",
-    "prepublishOnly": "bun run build && bun test && bun run gen:check"
+    "build:cli": "bun run gen:wasm && bun run scripts/build-cli.ts",
+    "prepublishOnly": "bun run build && bun test && bun run gen:check && bun run check:compat && bun run check:migrations"
+  },
+  "dependencies": {
+    "@fastify/compress": "8.3.1",
+    "@fastify/cors": "11.2.0",
+    "@fastify/static": "9.1.3",
+    "@xenova/transformers": "^2.17",
+    "fastify": "5.8.5",
+    "ignore": "7.0.5",
+    "jsonc-parser": "3.3.1",
+    "tree-sitter-wasms": "0.1.13",
+    "web-tree-sitter": "^0.25.3",
+    "ws": "8.20.1",
+    "zod": "^3.23"
   },
   "optionalDependencies": {
     "better-sqlite3": "^12"
@@ -57,6 +71,6 @@
     "zod-to-json-schema": "^3.23"
   },
   "comments": {
-    "design": "Local-first per docs/buildbrief.md. bun:sqlite primary, better-sqlite3 as optional Node fallback. Native escape hatches (sqlite-vec, fastembed-rs) land in optionalDependencies in Phase 6+."
+    "design": "Local-first: bun:sqlite is the primary store, better-sqlite3 an optional Node fallback. Optional native accelerators (sqlite-vec, fastembed-rs) ship as optionalDependencies."
   }
 }

@@ -3,15 +3,33 @@
 // Re-shaped for bun:sqlite; pragma/transaction helpers preserved verbatim
 // in shape.
 
-import { Database } from 'bun:sqlite';
+import { createRequire } from 'node:module';
+import type { Database } from 'bun:sqlite';
 import type { SqliteAdapter, SqliteAdapterFactory, SqliteStatement } from './adapter.ts';
+
+// Load `bun:sqlite` via a runtime-computed specifier so bundlers can't hoist a
+// static `import … from "bun:sqlite"` into the Node entry — Node rejects the
+// `bun:` URL scheme at load time. This module is only ever reached under Bun
+// (factory.ts picks it by runtime detection), where the require resolves
+// synchronously. The type import above is erased at build, so it adds no
+// runtime reference.
+const nodeRequire = createRequire(import.meta.url);
+type BunDatabaseCtor = new (path: string) => Database;
+let _Database: BunDatabaseCtor | undefined;
+const bunDatabase = (): BunDatabaseCtor => {
+  if (!_Database) {
+    const spec = ['bun', 'sqlite'].join(':');
+    _Database = (nodeRequire(spec) as { Database: BunDatabaseCtor }).Database;
+  }
+  return _Database;
+};
 
 class BunSqliteAdapter implements SqliteAdapter {
   private db: Database;
   private isOpen = true;
 
   constructor(path: string) {
-    this.db = new Database(path);
+    this.db = new (bunDatabase())(path);
   }
 
   get open(): boolean {

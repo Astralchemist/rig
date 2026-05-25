@@ -25,12 +25,18 @@ const DEFAULT_CONFIG = {
   embedder: { kind: 'local', model: 'Xenova/bge-small-en-v1.5' },
 };
 
-export const runInit = async (cwd: string): Promise<void> => {
-  const root = resolve(cwd);
+export interface EnsureInitResult {
+  rigDir: string;
+  created: boolean;
+  gitignoreUpdated: boolean;
+}
+
+// Idempotent, non-destructive init. Returns whether anything was created so
+// callers (the `init` command, the `start` orchestrator) can report it.
+export const ensureInit = async (root: string): Promise<EnsureInitResult> => {
   const rigDir = join(root, RIG_DIR_NAME);
   if (existsSync(rigDir)) {
-    console.log(`rig: already initialized at ${rigDir}`);
-    return;
+    return { rigDir, created: false, gitignoreUpdated: false };
   }
   const rig = await Rig.init(root);
   const cfgPath = join(rigDir, 'config.json');
@@ -39,6 +45,16 @@ export const runInit = async (cwd: string): Promise<void> => {
   }
   rig.close();
   const gitignoreUpdated = ensureGitignored(root);
+  return { rigDir, created: true, gitignoreUpdated };
+};
+
+export const runInit = async (cwd: string): Promise<void> => {
+  const root = resolve(cwd);
+  const { rigDir, created, gitignoreUpdated } = await ensureInit(root);
+  if (!created) {
+    console.log(`rig: already initialized at ${rigDir}`);
+    return;
+  }
   console.log(`rig: initialized at ${rigDir}`);
   if (gitignoreUpdated) console.log('  .gitignore:       appended .rig/');
   console.log('  next:             `rig index`');
