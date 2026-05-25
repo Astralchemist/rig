@@ -23,6 +23,11 @@ jobs:
       - name: Install git hooks
         run: bun run install:hooks
 
+      - name: Generate embedded wasm
+        # wasm-embedded.ts is gitignored — generated from node_modules at build
+        # time. grammars.ts imports it, so the test run needs it present.
+        run: bun run gen:wasm
+
       - name: generated/ is fresh
         run: bun run gen:check
 
