@@ -72,6 +72,6 @@
     "zod-to-json-schema": "^3.23"
   },
   "comments": {
-    "design": "Local-first: bun:sqlite is the primary store, better-sqlite3 an optional Node fallback. Optional native accelerators (sqlite-vec, fastembed-rs) ship as optionalDependencies."
+    "design": "Local-first: bun:sqlite is the primary store, better-sqlite3 an optional Node fallback (the only optionalDependency today). Optional native accelerators (sqlite-vec, fastembed-rs) are planned as optionalDependencies — see backlog F1 — not yet declared."
   }
 }
