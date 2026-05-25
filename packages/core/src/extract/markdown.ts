@@ -2,13 +2,13 @@ import { createHash } from 'node:crypto';
 import type { ExtractionResult, Node } from './upstream-types.ts';
 
 const idOf = (filePath: string, line: number, name: string): string => {
-  const hash = createHash('sha256').update(`${filePath}:module:${name}:${line}`).digest('hex').slice(0, 32);
-  return `module:${hash}`;
+  const hash = createHash('sha256').update(`${filePath}:markdown:${name}:${line}`).digest('hex').slice(0, 32);
+  return `markdown:${hash}`;
 };
 
 /**
  * Rig-native markdown extractor. ATX headings only — each heading becomes
- * a 'module' node whose qualifiedName encodes the heading path
+ * a 'markdown-section' node whose qualifiedName encodes the heading path
  * (e.g. 'Top.Section.Subsection'). Setext-style and code-block headings are skipped.
  */
 export function extractMarkdown(filePath: string, source: string): Omit<ExtractionResult, 'durationMs'> {
@@ -32,7 +32,7 @@ export function extractMarkdown(filePath: string, source: string): Omit<Extracti
     const qn = [...stack.map((s) => s.name), name].join('.');
     nodes.push({
       id: idOf(filePath, i + 1, qn),
-      kind: 'module',
+      kind: 'markdown-section',
       name,
       qualifiedName: qn,
       filePath,

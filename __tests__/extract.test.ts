@@ -72,10 +72,10 @@ describe('Rig.indexAll — extraction', () => {
     const rig = await Rig.open(root);
     try {
       await rig.indexAll();
-      const moduleNodes = rig.database.adapter
-        .prepare("SELECT name FROM nodes WHERE type='module' ORDER BY name")
+      const headingNodes = rig.database.adapter
+        .prepare("SELECT name FROM nodes WHERE type='markdown-section' ORDER BY name")
         .all() as { name: string }[];
-      const names = moduleNodes.map((n) => n.name);
+      const names = headingNodes.map((n) => n.name);
       expect(names).toContain('Sample Project');
       expect(names).toContain('Overview');
       expect(names).toContain('Subsection');

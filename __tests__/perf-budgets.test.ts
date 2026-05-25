@@ -5,9 +5,9 @@ import { join } from 'node:path';
 import { Rig } from '../packages/core/src/index.ts';
 import { serveWeb } from '../packages/web/src/index.ts';
 
-// Budgets from docs/phase3plan.md §1.3. Where we can't hit the spec's exact
-// scale within a CI-friendly test (e.g. "index 500 files < 15s"), we run a
-// proportional fixture and assert a proportional budget.
+// Performance budgets. Where we can't hit the target scale within a
+// CI-friendly test (e.g. "index 500 files < 15s"), we run a proportional
+// fixture and assert a proportional budget.
 
 describe('performance budgets (§1.3)', () => {
   let project: string;
