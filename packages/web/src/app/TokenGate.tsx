@@ -54,8 +54,8 @@ export function TokenGate({ children }: TokenGateProps): JSX.Element {
       style={{
         position: 'fixed',
         inset: 0,
-        background: '#0b0d12',
-        color: '#e5e7eb',
+        background: 'var(--bg)',
+        color: 'var(--text)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -66,28 +66,28 @@ export function TokenGate({ children }: TokenGateProps): JSX.Element {
         style={{
           maxWidth: 480,
           padding: 32,
-          border: '1px solid #1f2937',
+          border: '1px solid var(--border)',
           borderRadius: 8,
-          background: '#0f1117',
+          background: 'var(--surface2)',
         }}
       >
-        <h1 style={{ margin: 0, fontSize: 20, color: '#fbbf24' }}>Rig — sign in</h1>
-        <p style={{ color: '#9ca3af', marginTop: 12 }}>
+        <h1 style={{ margin: 0, fontSize: 20, color: 'var(--accent)' }}>Rig — sign in</h1>
+        <p style={{ color: 'var(--muted)', marginTop: 12 }}>
           The map requires a session token. Tokens live in <code>.rig/.runtime</code> and rotate
           when you delete that file.
         </p>
-        <h3 style={{ fontSize: 13, color: '#e5e7eb', marginTop: 24, marginBottom: 8 }}>
+        <h3 style={{ fontSize: 13, color: 'var(--text)', marginTop: 24, marginBottom: 8 }}>
           Option 1 — open via your AI agent
         </h3>
-        <p style={{ color: '#9ca3af', fontSize: 12, margin: 0 }}>
+        <p style={{ color: 'var(--muted)', fontSize: 12, margin: 0 }}>
           In Claude Code / Cursor / Codex, ask:{' '}
-          <span style={{ color: '#60a5fa' }}>"open the rig map"</span> — your agent will call{' '}
+          <span style={{ color: 'var(--accent)' }}>"open the rig map"</span> — your agent will call{' '}
           <code>rig_session_token</code> and hand you a one-click login URL.
         </p>
-        <h3 style={{ fontSize: 13, color: '#e5e7eb', marginTop: 24, marginBottom: 8 }}>
+        <h3 style={{ fontSize: 13, color: 'var(--text)', marginTop: 24, marginBottom: 8 }}>
           Option 2 — paste the token
         </h3>
-        <p style={{ color: '#9ca3af', fontSize: 12, margin: '0 0 8px' }}>
+        <p style={{ color: 'var(--muted)', fontSize: 12, margin: '0 0 8px' }}>
           <code>cat .rig/.runtime</code> in your project directory.
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -104,10 +104,10 @@ export function TokenGate({ children }: TokenGateProps): JSX.Element {
             style={{
               flex: 1,
               padding: '6px 10px',
-              background: '#0b0d12',
-              border: `1px solid ${pasteErr ? '#f87171' : '#1f2937'}`,
+              background: 'var(--bg)',
+              border: `1px solid ${pasteErr ? 'var(--danger)' : 'var(--border)'}`,
               borderRadius: 4,
-              color: '#e5e7eb',
+              color: 'var(--text)',
               fontSize: 13,
               fontFamily: 'ui-monospace, monospace',
               outline: 'none',
@@ -117,8 +117,8 @@ export function TokenGate({ children }: TokenGateProps): JSX.Element {
             onClick={() => void submitPaste()}
             style={{
               padding: '6px 14px',
-              background: '#fbbf24',
-              color: '#0b0d12',
+              background: 'var(--accent)',
+              color: 'var(--accent-text)',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
@@ -130,7 +130,7 @@ export function TokenGate({ children }: TokenGateProps): JSX.Element {
           </button>
         </div>
         {pasteErr && (
-          <div style={{ color: '#f87171', fontSize: 12, marginTop: 6 }}>{pasteErr}</div>
+          <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 6 }}>{pasteErr}</div>
         )}
       </div>
     </div>

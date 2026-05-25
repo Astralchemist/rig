@@ -98,24 +98,24 @@ export function NodePopover({
         top,
         width: W,
         zIndex: 25,
-        background: '#0f1117',
-        border: '1px solid #1f2937',
+        background: 'var(--surface2)',
+        border: '1px solid var(--border)',
         borderRadius: 8,
         boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-        color: '#e5e7eb',
+        color: 'var(--text)',
         fontSize: 12,
       }}
     >
-      <div style={{ padding: 12, borderBottom: '1px solid #1f2937' }}>
+      <div style={{ padding: 12, borderBottom: '1px solid var(--border)' }}>
         <div style={{ fontWeight: 600, fontSize: 13 }}>{meta.name}</div>
-        <div style={{ color: '#9ca3af', marginTop: 2 }}>
-          <span style={{ color: '#60a5fa' }}>{meta.type}</span>
+        <div style={{ color: 'var(--muted)', marginTop: 2 }}>
+          <span style={{ color: 'var(--accent)' }}>{meta.type}</span>
           {meta.data?.filePath && <> · {meta.data.filePath}</>}
         </div>
         {meta.data?.signature && (
           <div
             style={{
-              color: '#6b7280',
+              color: 'var(--muted)',
               fontFamily: 'ui-monospace, monospace',
               fontSize: 11,
               marginTop: 4,
@@ -127,17 +127,17 @@ export function NodePopover({
             {meta.data.signature}
           </div>
         )}
-        <div style={{ color: '#6b7280', marginTop: 4, fontSize: 11 }}>
+        <div style={{ color: 'var(--muted)', marginTop: 4, fontSize: 11 }}>
           {totalNeighbors} neighbor{totalNeighbors === 1 ? '' : 's'}
           {meta.neighbor_counts.contains ? ` · ${meta.neighbor_counts.contains} contains` : ''}
           {meta.neighbor_counts.references ? ` · ${meta.neighbor_counts.references} refs` : ''}
         </div>
       </div>
       <div style={{ padding: '8px 12px' }}>
-        <div style={{ color: '#9ca3af', fontSize: 10, marginBottom: 4, textTransform: 'uppercase' }}>
+        <div style={{ color: 'var(--muted)', fontSize: 10, marginBottom: 4, textTransform: 'uppercase' }}>
           magnetic pull
         </div>
-        {pulls.length === 0 && <div style={{ color: '#6b7280' }}>no nearby anchors</div>}
+        {pulls.length === 0 && <div style={{ color: 'var(--muted)' }}>no nearby anchors</div>}
         {pulls.map((p) => (
           <div
             key={p.entry.nodeId}
@@ -151,13 +151,13 @@ export function NodePopover({
             }}
             title={`s=${p.entry.components.structural.toFixed(2)} m=${p.entry.components.semantic.toFixed(2)} r=${p.entry.components.recency.toFixed(2)}`}
           >
-            <span style={{ color: '#fbbf24', minWidth: 36, fontSize: 11 }}>
+            <span style={{ color: 'var(--hub)', minWidth: 36, fontSize: 11 }}>
               {p.entry.score.toFixed(2)}
             </span>
             <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {p.name}
             </span>
-            <span style={{ color: '#6b7280', fontSize: 10 }}>{p.kind}</span>
+            <span style={{ color: 'var(--muted)', fontSize: 10 }}>{p.kind}</span>
           </div>
         ))}
       </div>
@@ -166,15 +166,15 @@ export function NodePopover({
           display: 'flex',
           gap: 8,
           padding: 8,
-          borderTop: '1px solid #1f2937',
+          borderTop: '1px solid var(--border)',
           justifyContent: 'space-between',
         }}
       >
         <button
           onClick={onOpenDetail}
           style={{
-            background: '#1f2937',
-            color: '#e5e7eb',
+            background: 'var(--surface)',
+            color: 'var(--text)',
             border: 'none',
             borderRadius: 4,
             padding: '4px 10px',
@@ -188,7 +188,7 @@ export function NodePopover({
           onClick={onClose}
           style={{
             background: 'transparent',
-            color: '#6b7280',
+            color: 'var(--muted)',
             border: 'none',
             cursor: 'pointer',
             fontSize: 11,

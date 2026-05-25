@@ -5,15 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Rig — Local-First Knowledge Graph</title>
     <style>
+      /* Observatory defaults — overwritten at runtime by the theme provider
+         (see src/app/theme.tsx). Kept here so the first paint is styled. */
       :root {
         color-scheme: dark;
-        --bg: #0b0d12;
-        --fg: #e5e7eb;
-        --muted: #6b7280;
-        --accent: #60a5fa;
+        --bg: #0a0c10;
+        --surface: #12151c;
+        --surface2: #171b24;
+        --border: #232834;
+        --text: #e6e9ef;
+        --muted: #7d8694;
+        --accent: #38e1c6;
+        --accent-text: #04110e;
+        --hub: #f5b544;
       }
       html, body, #root { height: 100%; margin: 0; }
-      body { background: var(--bg); color: var(--fg); font: 14px/1.4 ui-sans-serif, system-ui, sans-serif; }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        transition: background 200ms ease, color 200ms ease;
+      }
     </style>
   </head>
   <body>

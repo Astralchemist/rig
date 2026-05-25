@@ -105,4 +105,13 @@ export const registerRoutes = (app: FastifyInstance, rig: Rig): void => {
     const undone = rig.writes.undoLast({ sessionId: 'web', actor: 'user:web' });
     return { undone: undone ? { id: undone.id, kind: undone.kind, ts: undone.ts } : null };
   });
+
+  app.post<{ Body: { node_id?: string | null } }>(
+    '/api/selection',
+    async (req) => {
+      const nodeId = typeof req.body?.node_id === 'string' ? req.body.node_id : null;
+      rig.writes.recordSelection(nodeId, { sessionId: 'web', actor: 'user:web' });
+      return { ok: true };
+    },
+  );
 };

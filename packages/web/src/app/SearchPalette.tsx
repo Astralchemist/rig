@@ -93,8 +93,8 @@ export function SearchPalette({ onPick }: SearchPaletteProps): JSX.Element | nul
         style={{
           width: 560,
           maxWidth: '90vw',
-          background: '#0f1117',
-          border: '1px solid #1f2937',
+          background: 'var(--surface2)',
+          border: '1px solid var(--border)',
           borderRadius: 8,
           boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
           overflow: 'hidden',
@@ -122,15 +122,15 @@ export function SearchPalette({ onPick }: SearchPaletteProps): JSX.Element | nul
             padding: '14px 18px',
             background: 'transparent',
             border: 'none',
-            borderBottom: '1px solid #1f2937',
-            color: '#e5e7eb',
+            borderBottom: '1px solid var(--border)',
+            color: 'var(--text)',
             fontSize: 15,
             outline: 'none',
           }}
         />
         <div style={{ maxHeight: '40vh', overflowY: 'auto' }}>
           {hits.length === 0 && query.trim() && (
-            <div style={{ padding: 16, color: '#6b7280', fontSize: 12 }}>no matches</div>
+            <div style={{ padding: 16, color: 'var(--muted)', fontSize: 12 }}>no matches</div>
           )}
           {hits.map((h, i) => (
             <div
@@ -139,19 +139,19 @@ export function SearchPalette({ onPick }: SearchPaletteProps): JSX.Element | nul
               onMouseEnter={() => setCursor(i)}
               style={{
                 padding: '8px 18px',
-                background: i === cursor ? '#1f2937' : 'transparent',
+                background: i === cursor ? 'var(--surface)' : 'transparent',
                 cursor: 'pointer',
                 fontSize: 13,
-                color: '#e5e7eb',
+                color: 'var(--text)',
                 display: 'flex',
                 gap: 10,
                 alignItems: 'baseline',
               }}
             >
-              <span style={{ color: '#60a5fa', minWidth: 80, fontSize: 11 }}>{h.type}</span>
+              <span style={{ color: 'var(--accent)', minWidth: 80, fontSize: 11 }}>{h.type}</span>
               <span style={{ flex: 1 }}>{h.name}</span>
               {h.data?.filePath && (
-                <span style={{ color: '#6b7280', fontSize: 11 }}>{h.data.filePath}</span>
+                <span style={{ color: 'var(--muted)', fontSize: 11 }}>{h.data.filePath}</span>
               )}
             </div>
           ))}
@@ -159,8 +159,8 @@ export function SearchPalette({ onPick }: SearchPaletteProps): JSX.Element | nul
         <div
           style={{
             padding: '6px 18px',
-            borderTop: '1px solid #1f2937',
-            color: '#6b7280',
+            borderTop: '1px solid var(--border)',
+            color: 'var(--muted)',
             fontSize: 11,
           }}
         >

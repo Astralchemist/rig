@@ -50,12 +50,13 @@ export function NodeDetail({ id, onClose, onJump }: NodeDetailProps): JSX.Elemen
     <aside
       style={{
         position: 'absolute',
-        top: 56,
+        top: 52,
         right: 0,
         bottom: 0,
         width: 360,
-        background: 'rgba(11,13,18,0.96)',
-        borderLeft: '1px solid #1f2937',
+        background: 'color-mix(in srgb, var(--bg) 94%, transparent)',
+        backdropFilter: 'blur(8px)',
+        borderLeft: '1px solid var(--border)',
         padding: 20,
         overflowY: 'auto',
         zIndex: 9,
@@ -68,7 +69,7 @@ export function NodeDetail({ id, onClose, onJump }: NodeDetailProps): JSX.Elemen
           style={{
             background: 'transparent',
             border: 'none',
-            color: '#9ca3af',
+            color: 'var(--muted)',
             cursor: 'pointer',
             fontSize: 18,
           }}
@@ -76,11 +77,11 @@ export function NodeDetail({ id, onClose, onJump }: NodeDetailProps): JSX.Elemen
           ×
         </button>
       </header>
-      {err && <p style={{ color: '#f87171' }}>{err}</p>}
+      {err && <p style={{ color: 'var(--danger)' }}>{err}</p>}
       {node && (
         <>
-          <div style={{ color: '#6b7280', fontSize: 12, marginBottom: 12 }}>
-            <code style={{ color: '#60a5fa' }}>{node.type}</code>
+          <div style={{ color: 'var(--muted)', fontSize: 12, marginBottom: 12 }}>
+            <code style={{ color: 'var(--accent)' }}>{node.type}</code>
             {filePath && (
               <>
                 {' · '}
@@ -91,7 +92,7 @@ export function NodeDetail({ id, onClose, onJump }: NodeDetailProps): JSX.Elemen
           {signature && (
             <pre
               style={{
-                background: '#111827',
+                background: 'var(--surface)',
                 padding: 8,
                 borderRadius: 4,
                 fontSize: 12,
@@ -103,23 +104,23 @@ export function NodeDetail({ id, onClose, onJump }: NodeDetailProps): JSX.Elemen
             </pre>
           )}
           <section style={{ marginTop: 16 }}>
-            <h3 style={{ fontSize: 13, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <h3 style={{ fontSize: 13, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
               Neighbors
             </h3>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {Object.entries(node.neighbor_counts).map(([k, c]) => (
                 <li key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
                   <span>{k}</span>
-                  <span style={{ color: '#6b7280' }}>{c}</span>
+                  <span style={{ color: 'var(--muted)' }}>{c}</span>
                 </li>
               ))}
               {Object.keys(node.neighbor_counts).length === 0 && (
-                <li style={{ color: '#6b7280' }}>(none)</li>
+                <li style={{ color: 'var(--muted)' }}>(none)</li>
               )}
             </ul>
           </section>
           <section style={{ marginTop: 16 }}>
-            <h3 style={{ fontSize: 13, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <h3 style={{ fontSize: 13, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
               Magnetic pull
             </h3>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -129,14 +130,14 @@ export function NodeDetail({ id, onClose, onJump }: NodeDetailProps): JSX.Elemen
                   onClick={() => onJump(p.nodeId)}
                   style={{ padding: '4px 0', cursor: 'pointer', fontSize: 12 }}
                 >
-                  <div style={{ color: '#60a5fa' }}>{p.nodeId.slice(0, 28)}…</div>
-                  <div style={{ color: '#6b7280' }}>
+                  <div style={{ color: 'var(--accent)' }}>{p.nodeId.slice(0, 28)}…</div>
+                  <div style={{ color: 'var(--muted)' }}>
                     score {fmt(p.score)} · s {fmt(p.components.structural)} · e{' '}
                     {fmt(p.components.semantic)} · r {fmt(p.components.recency)}
                   </div>
                 </li>
               ))}
-              {pull.length === 0 && <li style={{ color: '#6b7280' }}>(none)</li>}
+              {pull.length === 0 && <li style={{ color: 'var(--muted)' }}>(none)</li>}
             </ul>
           </section>
         </>

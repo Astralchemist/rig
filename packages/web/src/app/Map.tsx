@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
+import { useTheme } from './theme.tsx';
 
 export interface SnapshotNode {
   id: string;
@@ -41,33 +42,16 @@ interface GraphLink {
   pending?: SnapshotPending;
 }
 
-const KIND_COLOR: Record<string, string> = {
-  file: '#94a3b8',
-  module: '#a78bfa',
-  'markdown-section': '#fcd34d',
-  class: '#fbbf24',
-  function: '#34d399',
-  method: '#60a5fa',
-  property: '#f472b6',
-  variable: '#f87171',
-  constant: '#fb923c',
-  enum: '#c084fc',
-  interface: '#22d3ee',
-  type_alias: '#22d3ee',
-  cluster: '#ec4899',
+// Compose an #rrggbb hex with an alpha (0–1) into an rgba() string — canvas
+// strokes/fills need a real color value, not a CSS var.
+const withAlpha = (hex: string, a: number): string => {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
 };
 
-const colorFor = (kind: string): string => KIND_COLOR[kind] ?? '#9ca3af';
-
-// Community palette — distinct hues that round-trip the wheel; index modulo
-// length so any community count works. The first ~12 are well-separated.
-const COMMUNITY_PALETTE = [
-  '#60a5fa', '#34d399', '#fbbf24', '#f472b6', '#a78bfa', '#fb923c',
-  '#22d3ee', '#c084fc', '#ec4899', '#facc15', '#4ade80', '#f87171',
-  '#818cf8', '#fcd34d', '#2dd4bf', '#e879f9',
-];
-const communityColor = (cid: number | undefined): string =>
-  cid === undefined ? '#9ca3af' : COMMUNITY_PALETTE[cid % COMMUNITY_PALETTE.length]!;
 const radiusFor = (n: SnapshotNode): number => {
   const base = 4 + Math.max(0, Math.min(1, n.pull_score)) * 14;
   const hubBoost = n.is_hub ? 6 + (n.hubness ?? 0) * 8 : 0;
@@ -89,6 +73,11 @@ export interface MapProps {
 }
 
 export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, selectedId, pulses }: MapProps): JSX.Element {
+  const { theme } = useTheme();
+  const colorFor = (kind: string): string => theme.nodeKinds[kind] ?? theme.tokens.muted;
+  const communityColor = (cid: number | undefined): string =>
+    cid === undefined ? theme.tokens.muted : theme.community[cid % theme.community.length]!;
+
   // Visible-kind set. Mutable via filter chips above the canvas. `null` means
   // "show everything"; a Set means "show only these kinds".
   const allKinds = useMemo(
@@ -157,17 +146,20 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
     ref.current?.zoom(4, 600);
   }, [focusToken, graphData.nodes]);
 
-  // Force a redraw while a pulse halo is fading. force-graph normally only
-  // redraws on simulation tick / pan / zoom; without this the halo would
-  // freeze at its initial radius.
+  // Drive repaints while a pulse halo fades. force-graph only repaints on
+  // simulation ticks, so we reheat the sim when a pulse batch arrives — the
+  // resulting frames animate the halo over its fade window.
   useEffect(() => {
     if (!pulses || pulses.size === 0) return;
-    const id = setInterval(() => {
-      // refresh() schedules a single repaint without disrupting the layout.
-      ref.current?.refresh();
-    }, 50);
-    return () => clearInterval(id);
+    ref.current?.d3ReheatSimulation();
   }, [pulses]);
+
+  // Repaint when the theme swaps. backgroundColor changing already triggers a
+  // canvas repaint (which re-runs the node/edge draw closures with the new
+  // colors); a brief reheat guarantees it even if two themes shared a bg.
+  useEffect(() => {
+    ref.current?.d3ReheatSimulation();
+  }, [theme]);
 
   const toggleKind = (k: string): void => {
     setHiddenKinds((s) => {
@@ -182,7 +174,7 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
       <div
         style={{
           position: 'absolute',
-          top: 56,
+          top: 52,
           left: 12,
           zIndex: 10,
           display: 'flex',
@@ -197,10 +189,10 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
           style={{
             padding: '4px 10px',
             fontSize: 11,
-            border: '1px solid #1f2937',
-            borderRadius: 12,
-            background: hubsOnly ? '#fbbf24' : '#111827',
-            color: hubsOnly ? '#0b0d12' : '#fbbf24',
+            border: `1px solid ${hubsOnly ? theme.tokens.hub : 'var(--border)'}`,
+            borderRadius: 999,
+            background: hubsOnly ? theme.tokens.hub : 'var(--surface)',
+            color: hubsOnly ? theme.tokens.bg : theme.tokens.hub,
             cursor: 'pointer',
           }}
         >
@@ -212,10 +204,10 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
           style={{
             padding: '4px 10px',
             fontSize: 11,
-            border: '1px solid #1f2937',
-            borderRadius: 12,
-            background: '#111827',
-            color: colorMode === 'community' ? '#60a5fa' : '#9ca3af',
+            border: '1px solid var(--border)',
+            borderRadius: 999,
+            background: 'var(--surface)',
+            color: colorMode === 'community' ? 'var(--accent)' : 'var(--muted)',
             cursor: 'pointer',
           }}
         >
@@ -230,10 +222,10 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
               style={{
                 padding: '4px 10px',
                 fontSize: 11,
-                border: `1px solid ${hidden ? '#1f2937' : colorFor(k)}`,
-                borderRadius: 12,
-                background: hidden ? '#0b0d12' : `${colorFor(k)}22`,
-                color: hidden ? '#6b7280' : colorFor(k),
+                border: `1px solid ${hidden ? 'var(--border)' : colorFor(k)}`,
+                borderRadius: 999,
+                background: hidden ? 'var(--surface)' : withAlpha(colorFor(k), 0.13),
+                color: hidden ? 'var(--muted)' : colorFor(k),
                 cursor: 'pointer',
                 opacity: hidden ? 0.5 : 1,
               }}
@@ -248,13 +240,13 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
         width={size.w}
         height={size.h}
         graphData={graphData}
-        backgroundColor="#0b0d12"
+        backgroundColor={theme.tokens.bg}
         nodeId="id"
         linkColor={(l) => {
           const t = (l as GraphLink).table;
-          if (t === 'pending') return '#fbbf24';
-          if (t === 'semantic') return '#3b82f655';
-          return '#374151';
+          if (t === 'pending') return theme.tokens.pending;
+          if (t === 'semantic') return withAlpha(theme.tokens.semantic, 0.33);
+          return theme.tokens.structural;
         }}
         linkWidth={(l) => ((l as GraphLink).table === 'pending' ? 2 : (l as GraphLink).table === 'semantic' ? 1.5 : 0.8)}
         linkLineDash={(l) => ((l as GraphLink).table === 'pending' ? [4, 4] : null)}
@@ -269,7 +261,7 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
             const haloR = r + 3 + (n.hubness ?? 0) * 4;
             ctx.beginPath();
             ctx.arc(x, y, haloR, 0, 2 * Math.PI);
-            ctx.strokeStyle = 'rgba(251, 191, 36, 0.55)';
+            ctx.strokeStyle = withAlpha(theme.tokens.hub, 0.55);
             ctx.lineWidth = 1.5;
             ctx.stroke();
           }
@@ -283,7 +275,7 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
               const pr = r + 6 + (1 - t) * 18;
               ctx.beginPath();
               ctx.arc(x, y, pr, 0, 2 * Math.PI);
-              ctx.strokeStyle = `rgba(244, 114, 182, ${t.toFixed(2)})`;
+              ctx.strokeStyle = withAlpha(theme.tokens.pulse, Number(t.toFixed(2)));
               ctx.lineWidth = 2;
               ctx.stroke();
             }
@@ -295,12 +287,12 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
           if (selectedId === n.id) {
             ctx.beginPath();
             ctx.arc(x, y, r + 4, 0, 2 * Math.PI);
-            ctx.strokeStyle = '#60a5fa';
+            ctx.strokeStyle = theme.tokens.accent;
             ctx.lineWidth = 2;
             ctx.stroke();
           }
           if (scale > 1.2 || n.is_hub) {
-            ctx.fillStyle = n.is_hub ? '#fbbf24' : '#e5e7eb';
+            ctx.fillStyle = n.is_hub ? theme.tokens.hub : theme.tokens.text;
             ctx.font = `${(n.is_hub ? 11 : 10) / scale}px ui-sans-serif`;
             ctx.fillText(n.name, x + r + 2, y + 3);
           }
@@ -326,20 +318,21 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
             position: 'fixed',
             left: tooltipPos.x + 12,
             top: tooltipPos.y + 12,
-            background: '#111827',
-            border: '1px solid #fbbf24',
-            borderRadius: 6,
+            background: 'var(--surface2)',
+            border: `1px solid ${theme.tokens.pending}`,
+            borderRadius: 10,
             padding: 12,
             maxWidth: 320,
             zIndex: 20,
             fontSize: 12,
-            color: '#e5e7eb',
+            color: 'var(--text)',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
           }}
         >
-          <div style={{ color: '#fbbf24', marginBottom: 6, fontWeight: 600 }}>
+          <div style={{ color: 'var(--pending)', marginBottom: 6, fontWeight: 600 }}>
             pending edge
           </div>
-          <div style={{ color: '#9ca3af', marginBottom: 6 }}>
+          <div style={{ color: 'var(--muted)', marginBottom: 6 }}>
             {hovered.provenance} · {hovered.kind} · weight {hovered.weight.toFixed(2)}
           </div>
           <div style={{ marginBottom: 8 }}>{hovered.rationale}</div>
@@ -351,13 +344,14 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
                 setTooltipPos(null);
               }}
               style={{
-                background: '#10b981',
-                color: 'white',
+                background: 'var(--success)',
+                color: 'var(--bg)',
                 border: 'none',
-                borderRadius: 4,
-                padding: '4px 10px',
+                borderRadius: 6,
+                padding: '5px 12px',
                 cursor: 'pointer',
                 fontSize: 11,
+                fontWeight: 600,
               }}
             >
               accept
@@ -369,11 +363,11 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
                 setTooltipPos(null);
               }}
               style={{
-                background: '#374151',
-                color: '#e5e7eb',
-                border: 'none',
-                borderRadius: 4,
-                padding: '4px 10px',
+                background: 'var(--surface)',
+                color: 'var(--text)',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                padding: '5px 12px',
                 cursor: 'pointer',
                 fontSize: 11,
               }}

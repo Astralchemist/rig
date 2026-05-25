@@ -2,17 +2,20 @@ import compress from '@fastify/compress';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import { Rig } from '@rig/core';
+import { findAssetRoot } from '@rig/core/asset-root.ts';
 import { existsSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { loadOrCreateToken, registerAuthRoutes, requireBearer } from './auth.ts';
+import { registerConfigRoutes } from './config-route.ts';
 import { registerRoutes } from './routes.ts';
 import { attachWs, type WsHandle } from './ws.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-// packages/web/src → packages/web → dist/
-const DIST_DIR = resolve(HERE, '..', 'dist');
+// Resolve the built UI in both dev (packages/web/dist) and published
+// (node_modules/rig/packages/web/dist) layouts.
+const DIST_DIR = join(findAssetRoot(HERE), 'packages/web/dist');
 
 export interface ServeWebOptions {
   projectRoot: string;
@@ -72,6 +75,7 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
 
   app.get('/health', async () => ({ ok: true, name: 'rig-web', version: '0.0.1', auth: authOn }));
   registerRoutes(app, rig);
+  registerConfigRoutes(app, opts.projectRoot);
 
   // Serve the built React app from packages/web/dist/. If dist/ is missing
   // (no `vite build` yet) we fall through to a one-line placeholder so the
