@@ -32,6 +32,11 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
+      # The prepublishOnly gate runs the full test suite, which includes
+      # pre-commit-hook.test.ts — that asserts the hook is installed.
+      - name: Install git hooks
+        run: bun run install:hooks
+
       # Guard: a v0.1.5 tag must match package.json 0.1.5, so a mistagged push
       # can never publish the wrong version.
       - name: Tag matches package.json version
