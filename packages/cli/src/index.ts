@@ -15,6 +15,7 @@ import { runStart } from './start.ts';
 import { runStatus } from './status.ts';
 import { runSync } from './sync-cmd.ts';
 import { runUpdate } from './update-cmd.ts';
+import { suggestCommand } from './suggest.ts';
 
 const COMMANDS: Record<string, (cwd: string) => void | Promise<void>> = {
   start: runStart,
@@ -74,7 +75,10 @@ if (!cmd) {
 
 const handler = COMMANDS[cmd];
 if (!handler) {
-  console.error(`rig: unknown command '${cmd}'. Try \`rig --help\`.`);
+  const hint = suggestCommand(cmd, Object.keys(COMMANDS));
+  console.error(
+    `rig: unknown command '${cmd}'.${hint ? ` Did you mean \`rig ${hint}\`?` : ''} Try \`rig --help\`.`,
+  );
   process.exit(2);
 }
 await handler(process.cwd());
