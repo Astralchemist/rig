@@ -3,6 +3,13 @@
 **Watch your codebase become a constellation — and give your AI agent a map of it.**
 
 <p align="center">
+  <a href="https://www.npmjs.com/package/rig-constellation"><img src="https://img.shields.io/npm/v/rig-constellation.svg?color=cb3837&label=npm" alt="npm version"></a>
+  <a href="https://github.com/Astralchemist/rig/actions/workflows/ci.yml"><img src="https://github.com/Astralchemist/rig/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
+  <img src="https://img.shields.io/badge/runtime-Node%2020%2B%20%C2%B7%20Bun-339933.svg" alt="runs on Node 20+ and Bun">
+</p>
+
+<p align="center">
   <a href="https://github.com/Astralchemist/rig/releases/download/v0.1.0/demo.mp4">
     <img src="docs/demo.gif" alt="Rig — the live map of a codebase, navigated in real time" width="820">
   </a>
@@ -21,10 +28,10 @@ Everything runs on your machine. No API key, no upload, nothing leaves your lapt
 In any project directory:
 
 ```bash
-bunx rig-constellation
+npx rig-constellation
 ```
 
-That's the whole thing. One command:
+(Have [Bun](https://bun.sh)? `bunx rig-constellation` works too.) That's the whole thing. One command:
 
 ```
   ⬡ Rig — mapping your codebase…
@@ -51,6 +58,33 @@ It initializes `.rig/`, indexes your code, wires up whichever agent it detects, 
 - **Dependency intelligence.** "What version of X do I have?" and "what's declared but never imported?" become one-hop graph queries.
 - **Waypoints.** Your agent drops durable markers at decisions and constraints that survive context-window compaction — so a new session picks up oriented.
 - **An MCP tool surface** your agent calls directly: search, pull, callers/callees, impact, hubs, deps, and more.
+
+---
+
+## What your agent does differently
+
+Without a map, an agent answers *"what breaks if I change `parseConfig`?"* by grepping the string and reading whatever files match — blind, lossy, and token-expensive.
+
+With Rig it's one call:
+
+```
+rig_impact parseConfig
+→ 7 transitive callers, ranked:
+   loadSettings          calls · depth 1
+   bootstrap             calls · depth 2
+   __tests__/config…     tests · depth 1
+   …
+```
+
+And *"what else should I look at?"* isn't a guess — `rig_pull` returns related anchors scored by graph distance, on-device embedding similarity, and recent activity, with the three components broken out so the ranking is **explainable, not a black box**:
+
+```
+rig_pull parseConfig
+→ { node: "validateSchema", score: 0.81,
+    components: { structural: 0.4, semantic: 0.9, recency: 0.7 } }
+```
+
+That ranked, self-explaining retrieval — not a flat grep dump — is the difference.
 
 ---
 
