@@ -1,6 +1,6 @@
 {
   "name": "rig-constellation",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": false,
   "type": "module",
   "description": "Local-first semantic knowledge graph",
@@ -29,7 +29,8 @@
     "url": "git+https://github.com/Astralchemist/rig.git"
   },
   "bin": {
-    "rig": "./dist/rig.js"
+    "rig": "./dist/rig.js",
+    "rig-constellation": "./dist/rig.js"
   },
   "files": [
     "dist",
