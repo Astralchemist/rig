@@ -11,9 +11,6 @@ All notable changes to Rig are documented here. The format follows
 ### Added
 - `rig <unknown>` now suggests the closest command ("Did you mean `rig serve`?"), and maps agent names to `install` (`rig claude` → `rig install claude`).
 
-### Changed
-- Release workflow publishes to npm via **OIDC trusted publishing** (signed provenance, no `NPM_TOKEN` secret). Requires a trusted publisher registered on the npm package.
-
 ## [0.1.5] - 2026-05-26
 
 ### Added
