@@ -6,6 +6,44 @@ All notable changes to Rig are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-05-26
+
+### Added
+- Automated release pipeline: pushing a `vX.Y.Z` tag publishes to npm (guarded so the tag must match `package.json`) and cuts a GitHub Release with generated notes (`.github/workflows/release.yml`).
+
+### Changed
+- Backfilled changelog entries for 0.1.1–0.1.4.
+
+## [0.1.4] - 2026-05-26
+
+### Added
+- `rig update` — self-update to the latest npm release. Detects local vs global install and runs the right `npm i …@latest`; `--check` reports without applying.
+
+## [0.1.3] - 2026-05-26
+
+### Fixed
+- `rig doctor` now checks the resolved per-project port (from `.rig/config.json`) instead of a hardcoded 7474.
+
+## [0.1.2] - 2026-05-26
+
+### Added
+- Multi-instance awareness: deterministic per-project port (7474–7537 window) plus a free-port fallback on `EADDRINUSE`, so two checkouts run side by side without colliding.
+- Project name captured at init, surfaced in `/health`, `/api/config`, and the map's browser-tab title.
+- `rig-constellation` bin alias — both `rig` and `rig-constellation` resolve after a global install.
+- Richer `rig start` terminal UI: per-phase indexing progress with in-place bars (dependency-free ANSI; no-ops on non-TTY).
+
+### Fixed
+- MCP `serverInfo.version` now reports the real package version (was hardcoded `0.0.1`).
+
+## [0.1.1] - 2026-05-26
+
+### Added
+- npm `keywords` for discoverability; README badge row (npm · CI · license · runtime).
+- Cross-platform CI matrix (ubuntu/macos/windows × Node 20/22) running a real `init + index` under Node.
+
+### Changed
+- README leads with `npx`, adds an agent-facing `rig_pull` / `rig_impact` before-after.
+
 ## [0.1.0] - 2026-05-25
 
 ### Added
