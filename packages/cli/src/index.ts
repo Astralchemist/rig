@@ -14,6 +14,7 @@ import { runServe } from './serve-cmd.ts';
 import { runStart } from './start.ts';
 import { runStatus } from './status.ts';
 import { runSync } from './sync-cmd.ts';
+import { runUpdate } from './update-cmd.ts';
 
 const COMMANDS: Record<string, (cwd: string) => void | Promise<void>> = {
   start: runStart,
@@ -28,6 +29,7 @@ const COMMANDS: Record<string, (cwd: string) => void | Promise<void>> = {
   doctor: runDoctor,
   bench: runBenchCmd,
   'export-docs': runExportDocs,
+  update: runUpdate,
 };
 
 const HELP = `rig — local-first semantic knowledge graph
@@ -47,6 +49,7 @@ commands:
   doctor      diagnose environment, db, model cache, agent configs
   bench       benchmark SQL + analytical surfaces (--fixture <N> for synthetic stress test, --json for raw)
   export-docs render waypoints as a markdown doc tree (--out <dir>, default ./docs)
+  update      update rig to the latest npm release (--check to only report)
 `;
 
 const [, , cmd] = process.argv;
