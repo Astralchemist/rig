@@ -14,6 +14,7 @@ const dirSizeBytes = (dir: string): number => {
   return total;
 };
 import { Rig, RIG_DIR_NAME } from '@rig/core';
+import { resolvePort } from '@rig/web';
 
 interface Check {
   name: string;
@@ -117,15 +118,19 @@ export async function runDoctor(cwd: string): Promise<void> {
     );
   }
 
-  // 4. port 7474
-  const portFree = await checkPort(7474);
+  // 4. map server port — resolved per project (.rig/config.json → 7474), not
+  // hardcoded. On a conflict, `rig serve` walks forward up to +64, so a busy
+  // port is a note, not a blocker.
+  const port = resolvePort(root);
+  const portLabel = `port ${port}`;
+  const portFree = await checkPort(port);
   if (portFree) {
-    checks.push(ok('port 7474', 'available for `rig serve --web`'));
-  } else if (await isRigServer(7474)) {
-    checks.push(ok('port 7474', 'rig map server already running here'));
+    checks.push(ok(portLabel, 'available for `rig serve --web`'));
+  } else if (await isRigServer(port)) {
+    checks.push(ok(portLabel, 'rig map server already running here'));
   } else {
     checks.push(
-      warn('port 7474', 'in use by another process', '`lsof -i :7474` to find the owner, or pass --port'),
+      warn(portLabel, 'in use', `\`lsof -i :${port}\` to find the owner — rig will fall forward to the next free port`),
     );
   }
 
