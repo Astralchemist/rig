@@ -5,8 +5,9 @@ import { Rig } from '@rig/core';
 import { findAssetRoot } from '@rig/core/asset-root.ts';
 import { serveWeb } from '@rig/web';
 import toolsManifest from '../../../generated/mcp/tools-manifest.json' with { type: 'json' };
-import { ensureInit } from './init.ts';
+import { deriveProjectName, ensureInit } from './init.ts';
 import { openUrl } from './open-url.ts';
+import { banner, dim, endProgress, line, makeProgress, sym } from './ui.ts';
 import { allTargetNames, getTarget } from './install/loader.ts';
 import { installTarget } from './install/runner.ts';
 
@@ -18,9 +19,6 @@ const opt = (n: string): string | undefined => {
   const i = process.argv.indexOf(n);
   return i >= 0 && i + 1 < process.argv.length ? process.argv[i + 1] : undefined;
 };
-const isTty = process.stderr.isTTY === true;
-const status = (line: string): void =>
-  void process.stderr.write(isTty ? `\r\x1b[K${line}` : line + '\n');
 
 // Wire every agent that's actually present on this machine. installTarget
 // writes config regardless of detection, so we gate on detect() first and only
@@ -43,10 +41,9 @@ const wireAgents = async (root: string): Promise<string[]> => {
 // demand; this process just keeps the web map alive.
 export const runStart = async (cwd: string): Promise<void> => {
   const root = resolve(cwd);
-  process.stderr.write('\n  ⬡ Rig — mapping your codebase…\n\n');
+  const project = deriveProjectName(root);
 
   const init = await ensureInit(root);
-  process.stderr.write(`  ${init.created ? '✓ initialized' : '· already set up'}  ${init.rigDir}\n`);
 
   // Open the map first so it's connected before nodes start landing. The WS
   // file watcher fires db:changed as the index writes; we add explicit
@@ -60,14 +57,18 @@ export const runStart = async (cwd: string): Promise<void> => {
     ...(host ? { host } : {}),
   });
   const mapUrl = web.token ? `${web.url}/auth?t=${web.token}` : web.url;
-  if (!flag('--no-open')) openUrl(mapUrl);
-  process.stderr.write(`  ✓ map live    ${mapUrl}\n`);
 
+  banner(project, mapUrl);
+  line(init.created ? sym.ok : sym.dot, init.created ? 'initialized' : 'already set up', init.rigDir);
+  if (!flag('--no-open')) openUrl(mapUrl);
+  line(sym.ok, 'map live', web.url);
+
+  const progress = makeProgress();
   const rig = await Rig.open(root);
   try {
     const r = await rig.indexAll({
       onProgress: (p) => {
-        status(`  indexing    ${p.phase} ${p.current ?? ''}${p.total ? '/' + p.total : ''}`);
+        progress(p);
         web.ws.broadcast({
           type: 'index:progress',
           ts: Date.now(),
@@ -75,28 +76,25 @@ export const runStart = async (cwd: string): Promise<void> => {
         });
       },
     });
-    if (isTty) process.stderr.write('\r\x1b[K');
+    endProgress();
     const skills = rig.seedSkills((toolsManifest as { tools: { name: string; description: string; tier: string }[] }).tools);
     web.ws.broadcast({
       type: 'index:progress',
       ts: Date.now(),
       payload: { phase: 'done', done: true, nodes: r.nodes, edges: r.edges, files: r.files },
     });
-    process.stderr.write(`  ✓ indexed     ${r.nodes} nodes · ${r.edges} edges · ${r.files} files · ${skills} skills\n`);
+    line(sym.ok, 'indexed', `${r.nodes} nodes · ${r.edges} edges · ${r.files} files · ${skills} skills`);
   } finally {
     rig.close();
   }
 
   if (!flag('--no-wire')) {
     const wired = await wireAgents(root);
-    process.stderr.write(
-      wired.length
-        ? `  ✓ wired       ${wired.join(', ')}\n`
-        : '  · no agents detected (run `rig install <target>` later)\n',
-    );
+    if (wired.length) line(sym.ok, 'wired', wired.join(', '));
+    else line(sym.dot, 'no agents detected', 'run `rig install <target>` later');
   }
 
-  process.stderr.write('\n  press Ctrl-C to stop the map.\n');
+  process.stderr.write(`\n  ${dim('press Ctrl-C to stop the map.')}\n`);
 
   const shutdown = async (): Promise<never> => {
     await web.close();

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { Rig, RIG_DIR_NAME } from '@rig/core';
 
 // Auto-append .rig/ to a project .gitignore so the local graph + runtime token
@@ -19,12 +19,40 @@ const ensureGitignored = (root: string): boolean => {
   return true;
 };
 
-const DEFAULT_CONFIG = {
-  version: 1,
-  host: '127.0.0.1',
-  port: 7474,
-  embedder: { kind: 'local', model: 'Xenova/bge-small-en-v1.5' },
+// Project name for the map title + /health. Prefer package.json "name"; fall
+// back to the directory name so unnamed projects still get a stable identity.
+export const deriveProjectName = (root: string): string => {
+  const pkgPath = join(root, 'package.json');
+  if (existsSync(pkgPath)) {
+    try {
+      const name = (JSON.parse(readFileSync(pkgPath, 'utf-8')) as { name?: unknown }).name;
+      if (typeof name === 'string' && name.trim()) return name.trim();
+    } catch {
+      // malformed package.json — fall through to basename
+    }
+  }
+  return basename(root);
 };
+
+// Deterministic per-project port in the 7474–7537 window (64 ports). Folding
+// the absolute path's char codes means the same root always lands on the same
+// port, so two checkouts can run side by side without colliding.
+const PORT_BASE = 7474;
+const PORT_SPAN = 64;
+export const stablePort = (root: string): number => {
+  const abs = resolve(root);
+  let h = 0;
+  for (let i = 0; i < abs.length; i++) h = (h * 31 + abs.charCodeAt(i)) >>> 0;
+  return PORT_BASE + (h % PORT_SPAN);
+};
+
+const defaultConfig = (root: string) => ({
+  version: 1,
+  name: deriveProjectName(root),
+  host: '127.0.0.1',
+  port: stablePort(root),
+  embedder: { kind: 'local', model: 'Xenova/bge-small-en-v1.5' },
+});
 
 export interface EnsureInitResult {
   rigDir: string;
@@ -42,7 +70,7 @@ export const ensureInit = async (root: string): Promise<EnsureInitResult> => {
   const rig = await Rig.init(root);
   const cfgPath = join(rigDir, 'config.json');
   if (!existsSync(cfgPath)) {
-    writeFileSync(cfgPath, JSON.stringify(DEFAULT_CONFIG, null, 2) + '\n');
+    writeFileSync(cfgPath, JSON.stringify(defaultConfig(root), null, 2) + '\n');
   }
   rig.close();
   const gitignoreUpdated = ensureGitignored(root);

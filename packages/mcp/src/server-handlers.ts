@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import pkg from '../../../package.json' with { type: 'json' };
 import type { ToolHandler, ToolContext } from './dispatch.ts';
 import { ToolError, dispatchToolCall } from './dispatch.ts';
 import {
@@ -39,7 +40,7 @@ export const buildHandlersMap = (
 const SERVER_INFO = {
   protocolVersion: '2024-11-05',
   capabilities: { tools: {} },
-  serverInfo: { name: 'rig', version: '0.0.1' },
+  serverInfo: { name: 'rig', version: (pkg as { version: string }).version },
 };
 
 const isParams = (v: unknown): v is Record<string, unknown> =>

@@ -70,6 +70,17 @@ export function App(): JSX.Element {
     return () => ws.close();
   }, []);
 
+  // Reflect the project name in the browser tab so multiple open maps are
+  // distinguishable. Falls back to the static title when name is absent.
+  useEffect(() => {
+    void fetch('/api/config')
+      .then((r) => r.json() as Promise<{ name?: string }>)
+      .then((c) => {
+        if (c?.name) document.title = `Rig — ${c.name}`;
+      })
+      .catch(() => {});
+  }, []);
+
   // URL hash → initial selection (shareable links). #node:abc123 selects + focuses.
   useEffect(() => {
     const fromHash = (): void => {

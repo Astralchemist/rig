@@ -34,19 +34,29 @@ npx rig-constellation
 (Have [Bun](https://bun.sh)? `bunx rig-constellation` works too.) That's the whole thing. One command:
 
 ```
-  ⬡ Rig — mapping your codebase…
+  ⬡ Rig — mapping my-project
+  http://localhost:7491
+
   ✓ initialized  ./.rig
-  indexing      extract → resolve → embed → hubness → communities
+  ✓ map live    http://localhost:7491
+  → 1/6 extract      ██████████████████ 212/212
+  → 5/6 hubness      ████████████████░░
   ✓ indexed     1,204 nodes · 3,891 edges · 212 files · 36 skills
   ✓ wired       claude
-  ✓ map live    http://localhost:7474
 
   press Ctrl-C to stop the map.
 ```
 
-It initializes `.rig/`, indexes your code, wires up whichever agent it detects, and opens the live map in your browser. Re-run any time, or use the explicit subcommands below.
+It initializes `.rig/`, opens the live map **first**, then indexes your code so the
+graph assembles in the already-open browser tab in real time, and wires up whichever
+agent it detects. The map title and port are derived per project, so two checkouts can
+run side by side on stable, distinct ports. Re-run any time, or use the explicit
+subcommands below.
 
-> Prefer a global install? `bun install -g rig-constellation` (or `npm i -g rig-constellation`), then `rig start`.
+> The command is `rig` (alias: `rig-constellation`). Prefer a global install?
+> `npm i -g rig-constellation` (or `bun install -g rig-constellation`), then `rig start`.
+> Installed locally with `npm i rig-constellation`? The binary lives in `node_modules/.bin` —
+> run it with `npx rig start` (or install with `-g` to get `rig` on your `PATH`).
 
 ---
 

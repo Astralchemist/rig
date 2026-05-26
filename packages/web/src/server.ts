@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { loadOrCreateToken, registerAuthRoutes, requireBearer } from './auth.ts';
 import { registerConfigRoutes } from './config-route.ts';
+import { listenWithFallback, resolvePort, resolveProjectName } from './listen.ts';
 import { registerRoutes } from './routes.ts';
 import { attachWs, type WsHandle } from './ws.ts';
 
@@ -41,11 +42,11 @@ export interface WebHandle {
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
 
 const DEFAULT_HOST = '127.0.0.1';
-const DEFAULT_PORT = 7474;
 
 export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
   const host = opts.host ?? DEFAULT_HOST;
-  const port = opts.port ?? DEFAULT_PORT;
+  const port = resolvePort(opts.projectRoot, opts.port);
+  const project = resolveProjectName(opts.projectRoot);
   const isLoopback = LOOPBACK_HOSTS.has(host);
   const authMode = opts.auth ?? 'auto';
   const authOn = authMode === true || (authMode === 'auto' && !isLoopback);
@@ -76,7 +77,7 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
   }
 
   const version = (pkg as { version: string }).version;
-  app.get('/health', async () => ({ ok: true, name: 'rig-web', version, auth: authOn }));
+  app.get('/health', async () => ({ ok: true, name: 'rig-web', project, version, auth: authOn }));
   registerRoutes(app, rig);
   registerConfigRoutes(app, opts.projectRoot);
 
@@ -102,7 +103,7 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
     });
   }
 
-  const address = await app.listen({ host, port });
+  const address = await listenWithFallback(app, host, port);
   const ws = attachWs(app.server, rig);
   return {
     app,
