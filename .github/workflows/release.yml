@@ -2,7 +2,8 @@ name: Release
 
 # Publish to npm + cut a GitHub Release when a version tag is pushed.
 # Flow: bump package.json → merge to main → `git tag v0.1.5 && git push --tags`.
-# Requires repo secret NPM_TOKEN (a granular/automation token with publish + bypass-2FA).
+# Auth via OIDC trusted publishing (no NPM_TOKEN); requires id-token: write
+# and the GitHub Actions trusted publisher registered on the npm package.
 on:
   push:
     tags: ['v*.*.*']
@@ -10,6 +11,7 @@ on:
 
 permissions:
   contents: write # cut the GitHub Release
+  id-token: write # mint the OIDC token for npm trusted publishing
 
 jobs:
   publish:
@@ -32,6 +34,10 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
+      # Trusted publishing needs npm >= 11.5.1; Node 20 ships npm 10.x.
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@latest
+
       # The prepublishOnly gate runs the full test suite, which includes
       # pre-commit-hook.test.ts — that asserts the hook is installed.
       - name: Install git hooks
@@ -49,10 +55,10 @@ jobs:
 
       # `npm publish` runs prepublishOnly (build + tests + gen:check + compat +
       # migrations) before uploading, so the gate is enforced here too.
+      # Auth is via OIDC (id-token: write above) — no token env needed.
+      # Provenance is attached automatically when publishing over OIDC.
       - name: Publish to npm
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         if: github.event_name == 'push'
