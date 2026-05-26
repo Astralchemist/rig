@@ -1,15 +1,32 @@
 {
   "name": "rig-constellation",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "type": "module",
   "description": "Local-first semantic knowledge graph",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude-code",
+    "cursor",
+    "code-graph",
+    "knowledge-graph",
+    "code-navigation",
+    "codebase-map",
+    "ast",
+    "tree-sitter",
+    "local-first",
+    "embeddings",
+    "rag",
+    "ai-agents",
+    "developer-tools"
+  ],
   "author": "Astralchemist <kingolajohn55@gmail.com>",
   "license": "Apache-2.0",
   "homepage": "https://github.com/Astralchemist/rig",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Astralchemist/rig.git"
+    "url": "git+https://github.com/Astralchemist/rig.git"
   },
   "bin": {
     "rig": "./dist/rig.js"

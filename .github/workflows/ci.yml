@@ -40,9 +40,14 @@ jobs:
       - name: tests
         run: bun test
 
-  node-smoke:
-    name: node fallback runtime
-    runs-on: ubuntu-latest
+  node-matrix:
+    name: node fallback (${{ matrix.os }} · node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: ["20", "22"]
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -50,10 +55,21 @@ jobs:
           bun-version: ">=1.1"
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ matrix.node }}
       - name: Install (incl. better-sqlite3 fallback)
         run: bun install --frozen-lockfile
-      # Smoke that the DB layer's Node path loads. Expanded once the published
-      # entry point is finalized (see the distribution decision in the backlog).
-      - name: better-sqlite3 loads under Node
-        run: node -e "require('better-sqlite3'); console.log('better-sqlite3 ok')"
+      - name: Build the CLI (bundles wasm + dist/rig.js)
+        run: bun run build:cli
+      # Prove the published Node path end-to-end on every OS: the better-sqlite3
+      # native fallback, extraction, and on-device embeddings must all work
+      # without Bun present at runtime.
+      - name: init + index a fixture under Node
+        shell: bash
+        run: |
+          work="$RUNNER_TEMP/rig-ci"
+          mkdir -p "$work" && cd "$work"
+          printf 'export function add(a,b){return a+b}\n' > a.js
+          printf 'import {add} from "./a.js"\nexport const two = add(1,1)\n' > b.js
+          node "$GITHUB_WORKSPACE/dist/rig.js" init
+          node "$GITHUB_WORKSPACE/dist/rig.js" index
+          node "$GITHUB_WORKSPACE/dist/rig.js" status
