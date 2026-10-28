@@ -1,8 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "mcp__rig__rig_add_alias",
-      "mcp__rig__rig_add_node",
       "mcp__rig__rig_aliases",
       "mcp__rig__rig_annotate",
       "mcp__rig__rig_callees",
@@ -24,7 +22,6 @@
       "mcp__rig__rig_neighbors",
       "mcp__rig__rig_node",
       "mcp__rig__rig_phantom_imports",
-      "mcp__rig__rig_promote",
       "mcp__rig__rig_propose_edge",
       "mcp__rig__rig_pull",
       "mcp__rig__rig_relevant_skills",
@@ -32,13 +29,16 @@
       "mcp__rig__rig_session_token",
       "mcp__rig__rig_status",
       "mcp__rig__rig_subscribe",
-      "mcp__rig__rig_undo",
       "mcp__rig__rig_unused_deps",
       "mcp__rig__rig_waypoints"
     ],
     "ask": [
+      "mcp__rig__rig_add_alias",
+      "mcp__rig__rig_add_node",
       "mcp__rig__rig_context",
-      "mcp__rig__rig_explore"
+      "mcp__rig__rig_explore",
+      "mcp__rig__rig_promote",
+      "mcp__rig__rig_undo"
     ]
   }
 }
