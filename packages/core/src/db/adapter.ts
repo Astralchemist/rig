@@ -1,4 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
+
+/**
+ * How long a connection waits on another connection's lock before failing
+ * with SQLITE_BUSY. Several processes share `.rig/rig.db` (each agent's MCP
+ * server, `rig serve`, `rig index`), and bun:sqlite's default is 0, which
+ * fails the second writer at once.
+ */
+export const BUSY_TIMEOUT_MS = 5000;
+
 export interface SqliteStatement {
   all(...params: unknown[]): unknown[];
   get(...params: unknown[]): unknown | null;

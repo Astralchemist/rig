@@ -5,6 +5,7 @@
 
 import { createRequire } from 'node:module';
 import type { Database } from 'bun:sqlite';
+import { BUSY_TIMEOUT_MS } from './adapter.ts';
 import type { SqliteAdapter, SqliteAdapterFactory, SqliteStatement } from './adapter.ts';
 
 // Load `bun:sqlite` via a runtime-computed specifier so bundlers can't hoist a
@@ -30,6 +31,9 @@ class BunSqliteAdapter implements SqliteAdapter {
 
   constructor(path: string) {
     this.db = new (bunDatabase())(path);
+    // Before anything else touches the file, so the WAL switch and migrations
+    // also wait out another process's lock instead of failing SQLITE_BUSY.
+    this.db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
   }
 
   get open(): boolean {
