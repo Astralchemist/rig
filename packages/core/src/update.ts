@@ -15,7 +15,13 @@ import {
   type AnchoredNode,
   type OrphanReason,
 } from './db/orphaned-memory.ts';
-import { embedAndStore } from './embed/index-embeddings.ts';
+import {
+  EMBEDDED_AGENT_KINDS,
+  STALE_EMBEDDING_SQL,
+  embedAndStore,
+  embeddableOf,
+  type EmbeddableNode,
+} from './embed/index-embeddings.ts';
 import type { Embedder } from './embed/types.ts';
 import { EXTRACTOR_VERSION, extractFromSource } from './extract/extractor.ts';
 import type { ExtractionResult, Node as ExtractNode, NodeKind } from './extract/upstream-types.ts';
@@ -45,8 +51,9 @@ import { rebuildStructuralEdges } from './resolve/rebuild-edges.ts';
 //   7. tests-edges, hubness, lockfile enrichment and communities
 //   8. record the completion time in meta (last_index_ts / last_sync_ts), so
 //      status can tell when the graph last matched the files
-//   9. embed the changed nodes, and any extracted node still missing a vector
-//      from the current model
+//   9. embed the changed nodes, and any extracted node, waypoint or skill
+//      still missing a vector from the current model or embedded from an
+//      older version of its embedding text
 // Steps 4–6 and the tests edges run in one transaction, so readers never see
 // a file's nodes without its edges. The slow, fallible embedding runs last: if
 // it fails, the graph is already complete and the next run embeds what is
@@ -153,26 +160,6 @@ const storedNodeOf = (r: StoredRow): StoredNode => {
   };
 };
 
-// Enough of a node to compute its embedding text (name, qualifiedName,
-// signature, docstring).
-const extractNodeOf = (r: StoredRow): ExtractNode => {
-  const d = JSON.parse(r.data) as Partial<ExtractNode>;
-  return {
-    ...d,
-    id: r.id,
-    kind: r.type as NodeKind,
-    name: r.name,
-    qualifiedName: d.qualifiedName ?? r.name,
-    filePath: d.filePath ?? '',
-    language: d.language ?? 'unknown',
-    startLine: d.startLine ?? 0,
-    endLine: d.endLine ?? 0,
-    startColumn: d.startColumn ?? 0,
-    endColumn: d.endColumn ?? 0,
-    updatedAt: 0,
-  };
-};
-
 const anchoredOf = (node: ExtractNode, ordinal: number): AnchoredNode => ({
   id: node.id,
   kind: node.kind,
@@ -258,17 +245,26 @@ const deleteNodes = (db: SqliteAdapter, nodes: readonly { id: string }[]): void 
   for (const n of nodes) del.run(n.id);
 };
 
-// Extracted nodes without a vector from the current model — left behind by an
-// embedder failure, a busy write, or a model switch.
+// Embedded nodes (extracted ones, waypoints and skills) without a current
+// vector: none from the current model — left behind by an embedder failure,
+// a busy write, a model switch, or a waypoint whose background embed did not
+// finish — or one computed from an older version of the embedding text.
 const MISSING_EMBEDDING_SQL = `FROM nodes n LEFT JOIN embeddings e ON e.node_id = n.id
-  WHERE ${EXTRACTED_NODE_SQL} AND (e.node_id IS NULL OR e.model != ?)`;
+  WHERE ((${EXTRACTED_NODE_SQL})
+         OR n.type IN (${EMBEDDED_AGENT_KINDS.map((k) => `'${k}'`).join(', ')}))
+    AND (e.node_id IS NULL OR e.model != ? OR ${STALE_EMBEDDING_SQL})`;
 
-const nodesMissingEmbedding = (db: SqliteAdapter, model: string): ExtractNode[] =>
+const nodesMissingEmbedding = (db: SqliteAdapter, model: string): EmbeddableNode[] =>
   (
     db
       .prepare(`SELECT n.id, n.type, n.name, n.data ${MISSING_EMBEDDING_SQL}`)
       .all(model) as StoredRow[]
-  ).map(extractNodeOf);
+  ).map((r) => ({
+    id: r.id,
+    kind: r.type,
+    name: r.name,
+    data: JSON.parse(r.data) as Record<string, unknown>,
+  }));
 
 const anyMissingEmbedding = (db: SqliteAdapter, model: string): boolean =>
   db.prepare(`SELECT 1 AS x ${MISSING_EMBEDDING_SQL} LIMIT 1`).get(model) !== null;
@@ -411,7 +407,7 @@ export async function runUpdate(
   // symbol keeps its vector.
   let embedded = 0;
   if (embedder) {
-    const candidates = new Map(changedNodes.map((n) => [n.id, n]));
+    const candidates = new Map(changedNodes.map((n) => [n.id, embeddableOf(n)]));
     for (const n of nodesMissingEmbedding(db, embedder.model)) {
       if (!candidates.has(n.id)) candidates.set(n.id, n);
     }

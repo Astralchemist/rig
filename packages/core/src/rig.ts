@@ -38,6 +38,7 @@ import {
   type GraphSnapshot,
 } from './db/graph-snapshot.ts';
 import { searchNodes as sqSearchNodes, type SearchOptions } from './db/search-queries.ts';
+import { embedAndStore } from './embed/index-embeddings.ts';
 import { selectEmbedder } from './embed/select.ts';
 import type { Embedder } from './embed/types.ts';
 import {
@@ -126,12 +127,17 @@ export class Rig {
   // indexAll/sync runs on this connection, chained so a watcher sync never
   // interleaves with an explicit index.
   private updates: Promise<unknown> = Promise.resolve();
+  // Waypoints and skills written through `writes`, waiting to be embedded in
+  // the background (embedPending), and the chain of those runs.
+  private readonly pendingEmbeds = new Set<string>();
+  private embedTimer: ReturnType<typeof setTimeout> | null = null;
+  private embedRuns: Promise<void> = Promise.resolve();
 
   constructor(opts: RigOptions) {
     this.projectRoot = opts.projectRoot;
     this.database = opts.database;
     this.embedder = opts.embedder;
-    this.writes = new RigWrites(this.database);
+    this.writes = new RigWrites(this.database, (ids) => this.scheduleEmbed(ids));
   }
 
   static async init(
@@ -213,6 +219,61 @@ export class Rig {
     const next = this.updates.then(run, run);
     this.updates = next.catch(() => {});
     return next;
+  }
+
+  // Embed written waypoints and skills after their write has committed, off
+  // the caller's path: the tool call that wrote them never waits on the model.
+  // A failure is left to the update pipeline, which embeds whatever is missing.
+  private scheduleEmbed(ids: readonly string[]): void {
+    if (!this.embedder) return;
+    for (const id of ids) this.pendingEmbeds.add(id);
+    if (this.embedTimer) return;
+    this.embedTimer = setTimeout(() => {
+      this.embedTimer = null;
+      this.embedRuns = this.embedRuns.then(() => this.embedPending());
+    }, 0);
+    this.embedTimer.unref?.();
+  }
+
+  private async embedPending(): Promise<void> {
+    const ids = [...this.pendingEmbeds];
+    this.pendingEmbeds.clear();
+    const adapter = this.database.adapter;
+    if (!this.embedder || ids.length === 0 || !adapter.open) return;
+    try {
+      const rows = adapter
+        .prepare(
+          `SELECT id, type, name, data FROM nodes WHERE id IN (${ids.map(() => '?').join(', ')})`,
+        )
+        .all(...ids) as { id: string; type: string; name: string; data: string }[];
+      await embedAndStore(
+        this.embedder,
+        adapter,
+        rows.map((r) => ({
+          id: r.id,
+          kind: r.type,
+          name: r.name,
+          data: JSON.parse(r.data) as Record<string, unknown>,
+        })),
+      );
+    } catch (e) {
+      if (adapter.open) {
+        logWarn('Background embedding failed; the next sync retries', { error: String(e) });
+      }
+    }
+  }
+
+  // Resolves once background embeds scheduled so far have finished.
+  async whenIdle(): Promise<void> {
+    for (;;) {
+      if (this.embedTimer) {
+        await new Promise((r) => setTimeout(r, 1));
+        continue;
+      }
+      const runs = this.embedRuns;
+      await runs;
+      if (runs === this.embedRuns && !this.embedTimer) return;
+    }
   }
 
   getNode(id: NodeId): RigNode | null {
@@ -483,8 +544,12 @@ export class Rig {
     this.watchLock = null;
   }
 
+  // Waypoints and skills still waiting for their background embed are left
+  // to the next sync.
   close(): void {
     this.unwatch();
+    if (this.embedTimer) clearTimeout(this.embedTimer);
+    this.embedTimer = null;
     this.database.close();
   }
 }

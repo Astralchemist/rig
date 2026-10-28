@@ -26,6 +26,7 @@ const NODE_DATA_KEYS = [
   'isOptionalDep',
   'isPeerDep',
   'resolvedVersion',
+  'excerpt',
 ] as const;
 
 // The persisted `data` JSON of an extracted node: whitelisted fields only.
