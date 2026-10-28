@@ -7,6 +7,7 @@ import { emitAnchorRegistry } from './gen/emitters/anchor.ts';
 import { emitEventTypes } from './gen/emitters/event.ts';
 import { emitMigrations } from './gen/emitters/migration.ts';
 import { emitTargetArtifacts } from './gen/emitters/target.ts';
+import { emitRepoFiles } from './gen/repo-files.ts';
 import {
   emitToolHandlerStubs,
   emitToolNamesIndex,
@@ -19,6 +20,8 @@ const OUT = join(ROOT, 'generated');
 
 export async function buildFiles(): Promise<{
   files: GeneratedFile[];
+  // Rendered outside generated/ (paths relative to the repo root).
+  repoFiles: GeneratedFile[];
   elapsedMs: number;
 }> {
   const start = Date.now();
@@ -46,7 +49,7 @@ export async function buildFiles(): Promise<{
   if (migrations.length) files.push(...emitMigrations(migrations));
   if (events.length) files.push(emitEventTypes(events));
 
-  return { files, elapsedMs: Date.now() - start };
+  return { files, repoFiles: emitRepoFiles(targets, files), elapsedMs: Date.now() - start };
 }
 
 export const assertUniqueByName = <K extends 'tools' | 'anchors' | 'targets'>(
@@ -75,7 +78,7 @@ export const assertContiguousMigrations = (
 };
 
 if (import.meta.main) {
-  const { files, elapsedMs } = await buildFiles();
+  const { files, repoFiles, elapsedMs } = await buildFiles();
   await rm(OUT, { recursive: true, force: true });
   await mkdir(OUT, { recursive: true });
   for (const f of files) {
@@ -85,5 +88,10 @@ if (import.meta.main) {
   }
   const manifest = computeManifest(files);
   await writeFile(join(OUT, '.manifest'), JSON.stringify(manifest, null, 2) + '\n');
-  console.log(`✓ gen: ${files.length} files in ${elapsedMs}ms`);
+  for (const f of repoFiles) {
+    const out = join(ROOT, f.path);
+    await mkdir(dirname(out), { recursive: true });
+    await writeFile(out, f.content);
+  }
+  console.log(`✓ gen: ${files.length} files in ${elapsedMs}ms (+ ${repoFiles.map((f) => f.path).join(', ')})`);
 }
