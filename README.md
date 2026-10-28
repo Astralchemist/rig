@@ -6,7 +6,7 @@
   <a href="https://www.npmjs.com/package/rig-constellation"><img src="https://img.shields.io/npm/v/rig-constellation.svg?color=cb3837&label=npm" alt="npm version"></a>
   <a href="https://github.com/Astralchemist/rig/actions/workflows/ci.yml"><img src="https://github.com/Astralchemist/rig/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
-  <img src="https://img.shields.io/badge/runtime-Node%2020%2B%20%C2%B7%20Bun-339933.svg" alt="runs on Node 20+ and Bun">
+  <img src="https://img.shields.io/badge/runtime-Node%2022%2B%20%C2%B7%20Bun-339933.svg" alt="runs on Node 22+ and Bun">
 </p>
 
 <p align="center">
