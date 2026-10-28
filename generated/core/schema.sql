@@ -1,5 +1,5 @@
 -- GENERATED FILE — DO NOT EDIT.
--- Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts, .contracts/migrations/v5.contract.ts, .contracts/migrations/v6.contract.ts, .contracts/migrations/v7.contract.ts, .contracts/migrations/v8.contract.ts, .contracts/migrations/v9.contract.ts, .contracts/migrations/v10.contract.ts, .contracts/migrations/v11.contract.ts, .contracts/migrations/v12.contract.ts, .contracts/migrations/v13.contract.ts
+-- Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts, .contracts/migrations/v5.contract.ts, .contracts/migrations/v6.contract.ts, .contracts/migrations/v7.contract.ts, .contracts/migrations/v8.contract.ts, .contracts/migrations/v9.contract.ts, .contracts/migrations/v10.contract.ts, .contracts/migrations/v11.contract.ts, .contracts/migrations/v12.contract.ts, .contracts/migrations/v13.contract.ts, .contracts/migrations/v14.contract.ts
 -- Edit the .contract.ts file(s), then run `bun run gen`.
 
 -- v1: Initial Rig schema: nodes, structural + semantic edges, embeddings, activations, FTS5
@@ -334,3 +334,73 @@ CREATE TABLE IF NOT EXISTS meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- v14: Hybrid search: nodes_fts with tokens/signature/docstring/text columns, embeddings.seq
+DROP TRIGGER IF EXISTS nodes_after_insert;
+DROP TRIGGER IF EXISTS nodes_after_update;
+DROP TRIGGER IF EXISTS nodes_after_delete;
+DROP TABLE IF EXISTS nodes_fts;
+
+CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(
+  name, qualified_name, tokens, signature, docstring, text, node_id UNINDEXED
+);
+
+CREATE TRIGGER nodes_after_insert AFTER INSERT ON nodes BEGIN
+  INSERT INTO nodes_fts(name, qualified_name, tokens, signature, docstring, text, node_id)
+  VALUES (
+    NEW.name,
+    COALESCE(json_extract(NEW.data, '$.qualifiedName'), NEW.name),
+    (SELECT replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(s.x, 'N', ' N'), 'O', ' O'), 'P', ' P'), 'Q', ' Q'), 'R', ' R'), 'S', ' S'), 'T', ' T'), 'U', ' U'), 'V', ' V'), 'W', ' W'), 'X', ' X'), 'Y', ' Y'), 'Z', ' Z') FROM (SELECT replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(NEW.name || ' ' || COALESCE(json_extract(NEW.data, '$.qualifiedName'), ''), 'A', ' A'), 'B', ' B'), 'C', ' C'), 'D', ' D'), 'E', ' E'), 'F', ' F'), 'G', ' G'), 'H', ' H'), 'I', ' I'), 'J', ' J'), 'K', ' K'), 'L', ' L'), 'M', ' M') AS x) AS s),
+    COALESCE(json_extract(NEW.data, '$.signature'), ''),
+    COALESCE(json_extract(NEW.data, '$.docstring'), json_extract(NEW.data, '$.description'), ''),
+    trim(
+      COALESCE(json_extract(NEW.data, '$.summary'), '') || ' ' ||
+      COALESCE(json_extract(NEW.data, '$.rationale'), '') || ' ' ||
+      COALESCE((SELECT group_concat(value, ' ') FROM json_each(NEW.data, '$.key_terms')), '') || ' ' ||
+      COALESCE(json_extract(NEW.data, '$.excerpt'), '')
+    ),
+    NEW.id
+  );
+END;
+
+CREATE TRIGGER nodes_after_update AFTER UPDATE OF name, data ON nodes BEGIN
+  DELETE FROM nodes_fts WHERE node_id = OLD.id;
+  INSERT INTO nodes_fts(name, qualified_name, tokens, signature, docstring, text, node_id)
+  VALUES (
+    NEW.name,
+    COALESCE(json_extract(NEW.data, '$.qualifiedName'), NEW.name),
+    (SELECT replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(s.x, 'N', ' N'), 'O', ' O'), 'P', ' P'), 'Q', ' Q'), 'R', ' R'), 'S', ' S'), 'T', ' T'), 'U', ' U'), 'V', ' V'), 'W', ' W'), 'X', ' X'), 'Y', ' Y'), 'Z', ' Z') FROM (SELECT replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(NEW.name || ' ' || COALESCE(json_extract(NEW.data, '$.qualifiedName'), ''), 'A', ' A'), 'B', ' B'), 'C', ' C'), 'D', ' D'), 'E', ' E'), 'F', ' F'), 'G', ' G'), 'H', ' H'), 'I', ' I'), 'J', ' J'), 'K', ' K'), 'L', ' L'), 'M', ' M') AS x) AS s),
+    COALESCE(json_extract(NEW.data, '$.signature'), ''),
+    COALESCE(json_extract(NEW.data, '$.docstring'), json_extract(NEW.data, '$.description'), ''),
+    trim(
+      COALESCE(json_extract(NEW.data, '$.summary'), '') || ' ' ||
+      COALESCE(json_extract(NEW.data, '$.rationale'), '') || ' ' ||
+      COALESCE((SELECT group_concat(value, ' ') FROM json_each(NEW.data, '$.key_terms')), '') || ' ' ||
+      COALESCE(json_extract(NEW.data, '$.excerpt'), '')
+    ),
+    NEW.id
+  );
+END;
+
+CREATE TRIGGER nodes_after_delete AFTER DELETE ON nodes BEGIN
+  DELETE FROM nodes_fts WHERE node_id = OLD.id;
+END;
+
+INSERT INTO nodes_fts(name, qualified_name, tokens, signature, docstring, text, node_id)
+SELECT 
+    n.name,
+    COALESCE(json_extract(n.data, '$.qualifiedName'), n.name),
+    (SELECT replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(s.x, 'N', ' N'), 'O', ' O'), 'P', ' P'), 'Q', ' Q'), 'R', ' R'), 'S', ' S'), 'T', ' T'), 'U', ' U'), 'V', ' V'), 'W', ' W'), 'X', ' X'), 'Y', ' Y'), 'Z', ' Z') FROM (SELECT replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(n.name || ' ' || COALESCE(json_extract(n.data, '$.qualifiedName'), ''), 'A', ' A'), 'B', ' B'), 'C', ' C'), 'D', ' D'), 'E', ' E'), 'F', ' F'), 'G', ' G'), 'H', ' H'), 'I', ' I'), 'J', ' J'), 'K', ' K'), 'L', ' L'), 'M', ' M') AS x) AS s),
+    COALESCE(json_extract(n.data, '$.signature'), ''),
+    COALESCE(json_extract(n.data, '$.docstring'), json_extract(n.data, '$.description'), ''),
+    trim(
+      COALESCE(json_extract(n.data, '$.summary'), '') || ' ' ||
+      COALESCE(json_extract(n.data, '$.rationale'), '') || ' ' ||
+      COALESCE((SELECT group_concat(value, ' ') FROM json_each(n.data, '$.key_terms')), '') || ' ' ||
+      COALESCE(json_extract(n.data, '$.excerpt'), '')
+    ),
+    n.id
+FROM nodes n;
+
+ALTER TABLE embeddings ADD COLUMN seq INTEGER NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_embeddings_model_seq ON embeddings(model, seq);
