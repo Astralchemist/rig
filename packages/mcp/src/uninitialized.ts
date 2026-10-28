@@ -37,7 +37,6 @@ const uninitializedContext = (projectRoot: string): ToolContext => ({
     throw notInitializedError(projectRoot);
   },
   sessionId: crypto.randomUUID(),
-  isMainSession: true,
   provenance: null,
   recordActivation: () => {},
 });
