@@ -58,7 +58,11 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
   }
 
   const rig = await Rig.open(opts.projectRoot);
-  const app = Fastify({ logger: false });
+  // close() must not wait on clients: destroy every open connection (idle
+  // keep-alive, in-flight or half-received request), not just idle ones. On
+  // Bun 1.3 this also frees upgraded /ws sockets, which otherwise left
+  // server.close() pending forever (#3).
+  const app = Fastify({ logger: false, forceCloseConnections: true });
 
   await app.register(cors, {
     origin: [`http://${host}:${port}`, 'http://localhost:7474', 'http://127.0.0.1:7474'],
