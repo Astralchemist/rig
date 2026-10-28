@@ -52,7 +52,9 @@ describe('openrouter target', () => {
     expect(r.code).toBe(0);
     expect(r.stdout).toContain('~/.config/openrouter/mcp.json');
     expect(r.stdout).toContain('~/.config/openrouter/AGENTS.md');
-    expect(r.stdout.match(/note: reference only — OpenRouter is an API, not an MCP host/g)).toHaveLength(2);
+    expect(
+      r.stdout.match(/note: reference only — OpenRouter is an API, not an MCP host/g),
+    ).toHaveLength(2);
     expect(r.stdout).toContain('Copy its mcpServers.rig entry into the MCP client');
     expect(existsSync(join(home, '.config/openrouter/mcp.json'))).toBe(true);
   });

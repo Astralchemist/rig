@@ -19,7 +19,8 @@ export type Scope = 'project' | 'global';
 
 // A target file's path spells its scope: `~/…` is user-level, anything else is
 // relative to the project root.
-export const scopeOf = (p: string): Scope => (p === '~' || p.startsWith('~/') ? 'global' : 'project');
+export const scopeOf = (p: string): Scope =>
+  p === '~' || p.startsWith('~/') ? 'global' : 'project';
 
 const isInside = (child: string, parent: string): boolean => {
   const rel = relative(parent, child);

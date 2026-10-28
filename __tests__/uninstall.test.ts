@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { parse as parseJsonc } from 'jsonc-parser';
@@ -48,7 +56,9 @@ describe('uninstall', () => {
   test('claude, project: restores files that had user content byte for byte', async () => {
     const originals = {
       '.mcp.json': pretty({ mcpServers: { db: { command: 'db-mcp', args: [] } } }),
-      '.claude/settings.json': pretty({ permissions: { allow: ['Bash(npm test)'], deny: ['Read(./.env)'] } }),
+      '.claude/settings.json': pretty({
+        permissions: { allow: ['Bash(npm test)'], deny: ['Read(./.env)'] },
+      }),
       'CLAUDE.md': '# Project\n\nUse pnpm.\n',
     };
     for (const [f, c] of Object.entries(originals)) write(join(project, f), c);
@@ -74,7 +84,10 @@ describe('uninstall', () => {
   });
 
   test('only rig-owned permission entries go — from every list, stale ones too', async () => {
-    write(join(project, '.claude/settings.json'), pretty({ permissions: { allow: ['Bash(npm test)'] } }));
+    write(
+      join(project, '.claude/settings.json'),
+      pretty({ permissions: { allow: ['Bash(npm test)'] } }),
+    );
     await install('claude', 'project');
     const path = join(project, '.claude/settings.json');
     const s = JSON.parse(read(path));
@@ -92,7 +105,11 @@ describe('uninstall', () => {
   });
 
   test('claude, --global: ~/.claude.json keeps everything but rig', async () => {
-    const claudeJson = pretty({ numStartups: 3, mcpServers: { other: { command: 'x' } }, projects: {} });
+    const claudeJson = pretty({
+      numStartups: 3,
+      mcpServers: { other: { command: 'x' } },
+      projects: {},
+    });
     write(join(home, '.claude.json'), claudeJson);
     await install('claude', 'global');
     await uninstall('claude', 'global');
@@ -133,7 +150,10 @@ describe('uninstall', () => {
   });
 
   test('opencode: comments and the user keys survive; rig keys and emptied objects go', async () => {
-    write(join(home, '.config/opencode/opencode.jsonc'), '{\n  // mine\n  "model": "x",\n  "permission": { "bash": "ask" }\n}\n');
+    write(
+      join(home, '.config/opencode/opencode.jsonc'),
+      '{\n  // mine\n  "model": "x",\n  "permission": { "bash": "ask" }\n}\n',
+    );
     await install('opencode', 'global');
     await uninstall('opencode', 'global');
     const text = read(join(home, '.config/opencode/opencode.jsonc'));
@@ -185,9 +205,15 @@ describe('rig uninstall (CLI)', () => {
     const r = runCli(['uninstall', 'claude'], { cwd: project, home });
     expect(r.code).toBe(0);
     expect(r.stdout).toContain(`rig uninstall claude (project: ${project})`);
-    expect(r.stdout).toContain('✓ deleted      mcp_config   .mcp.json — mcpServers.rig — nothing else was in it');
-    expect(r.stdout).toContain('✓ deleted      instructions CLAUDE.md — rig section — nothing else was in it');
-    expect(r.stdout).toMatch(/✓ deleted {6}permissions {2}\.claude\/settings\.json — \d+ rig entries/);
+    expect(r.stdout).toContain(
+      '✓ deleted      mcp_config   .mcp.json — mcpServers.rig — nothing else was in it',
+    );
+    expect(r.stdout).toContain(
+      '✓ deleted      instructions CLAUDE.md — rig section — nothing else was in it',
+    );
+    expect(r.stdout).toMatch(
+      /✓ deleted {6}permissions {2}\.claude\/settings\.json — \d+ rig entries/,
+    );
     expect(readdirSync(project)).toEqual([]);
   });
 
@@ -196,7 +222,9 @@ describe('rig uninstall (CLI)', () => {
     const r = runCli(['uninstall', '--all'], { cwd: project, home });
     expect(r.code).toBe(0);
     expect(readdirSync(project)).toEqual([]);
-    expect(r.stdout).toContain('· Codex CLI: no project-level files — `rig uninstall codex --global` removes it');
+    expect(r.stdout).toContain(
+      '· Codex CLI: no project-level files — `rig uninstall codex --global` removes it',
+    );
   });
 
   test('a user-level-only target falls back to its user files; --global works for claude', () => {

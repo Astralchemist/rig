@@ -36,7 +36,9 @@ export async function runUninstall(cwd: string): Promise<void> {
   }
   for (const name of args.positionals) {
     if (!getTarget(name)) {
-      process.stderr.write(`rig: unknown target '${name}'. Known: ${allTargetNames().join(', ')}\n`);
+      process.stderr.write(
+        `rig: unknown target '${name}'. Known: ${allTargetNames().join(', ')}\n`,
+      );
       process.exit(2);
     }
   }

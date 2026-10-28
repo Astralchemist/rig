@@ -30,7 +30,12 @@ export interface WireReport {
 // so the user opts in with `rig install <name>`.
 export const wireDetectedAgents = async (opts: WireOptions): Promise<WireReport> => {
   const home = opts.home ?? homedir();
-  const report: WireReport = { wired: [], userLevelOnly: [], alsoUserLevel: [], skippedHome: false };
+  const report: WireReport = {
+    wired: [],
+    userLevelOnly: [],
+    alsoUserLevel: [],
+    skippedHome: false,
+  };
   if (resolve(opts.projectRoot) === resolve(home)) return { ...report, skippedHome: true };
   const detect = opts.detect ?? ((t: TargetContract) => t.detect());
   for (const name of allTargetNames()) {
@@ -50,8 +55,11 @@ export const wireDetectedAgents = async (opts: WireOptions): Promise<WireReport>
         dryRun: false,
       }),
     );
-    const userLevel = wiredLocations(contract, opts.projectRoot, home).filter((w) => w.scope === 'global');
-    if (userLevel.length) report.alsoUserLevel.push({ target: name, paths: userLevel.map((w) => w.path) });
+    const userLevel = wiredLocations(contract, opts.projectRoot, home).filter(
+      (w) => w.scope === 'global',
+    );
+    if (userLevel.length)
+      report.alsoUserLevel.push({ target: name, paths: userLevel.map((w) => w.path) });
   }
   return report;
 };
@@ -105,7 +113,12 @@ export const describeWiring = (
     });
   }
   if (!out.length) {
-    out.push({ ok: false, label: 'no agents detected', detail: 'run `rig install <target>` later', files: [] });
+    out.push({
+      ok: false,
+      label: 'no agents detected',
+      detail: 'run `rig install <target>` later',
+      files: [],
+    });
   }
   return out;
 };

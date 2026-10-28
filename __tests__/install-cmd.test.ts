@@ -37,7 +37,9 @@ describe('rig install — scope', () => {
     const r = runCli(['install', 'claude', '--global'], { cwd: project, home });
     expect(r.code).toBe(0);
     expect(r.stdout).toContain('rig install claude (global: ~)');
-    expect(JSON.parse(readFileSync(join(home, '.claude.json'), 'utf-8')).mcpServers.rig.command).toBe('rig');
+    expect(
+      JSON.parse(readFileSync(join(home, '.claude.json'), 'utf-8')).mcpServers.rig.command,
+    ).toBe('rig');
     expect(existsSync(join(home, '.claude/settings.json'))).toBe(true);
     expect(existsSync(join(home, '.claude/CLAUDE.md'))).toBe(true);
     expect(r.stdout).toContain(' ~/.claude.json\n');

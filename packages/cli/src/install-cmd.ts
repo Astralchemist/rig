@@ -27,7 +27,9 @@ export async function runInstall(cwd: string): Promise<void> {
   const names = args.positionals.length ? args.positionals : ['claude'];
   for (const name of names) {
     if (!getTarget(name)) {
-      process.stderr.write(`rig: unknown target '${name}'. Known: ${allTargetNames().join(', ')}\n`);
+      process.stderr.write(
+        `rig: unknown target '${name}'. Known: ${allTargetNames().join(', ')}\n`,
+      );
       process.exit(2);
     }
   }
@@ -79,7 +81,9 @@ export async function runInstall(cwd: string): Promise<void> {
     }
     // Upgrading from user-wide wiring: say where the old entry still lives.
     if (scope === 'project') {
-      for (const w of wiredLocations(contract, projectRoot, home).filter((l) => l.scope === 'global')) {
+      for (const w of wiredLocations(contract, projectRoot, home).filter(
+        (l) => l.scope === 'global',
+      )) {
         process.stdout.write(
           `  note: rig is also wired user-wide in ${displayPath(w.path, projectRoot, home)} — ` +
             `\`rig uninstall ${name} --global\` removes that.\n`,
