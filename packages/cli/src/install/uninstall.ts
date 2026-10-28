@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { existsSync, readdirSync, rmdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, rmdirSync } from 'node:fs';
 import { readFile, rm } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { applyEdits, modify, parse as parseJsonc } from 'jsonc-parser';
@@ -232,6 +232,36 @@ const pruneEmptyDirs = (from: string, root: string): void => {
     rmdirSync(dir);
     dir = dirname(dir);
   }
+};
+
+// Where a target's MCP config has rig's server entry: one { scope, path } per
+// file that has it (used by `rig doctor`).
+export const wiredLocations = (
+  contract: TargetFiles,
+  projectRoot: string,
+  home?: string,
+): Array<{ scope: Scope; path: string }> => {
+  const out: Array<{ scope: Scope; path: string }> = [];
+  for (const scope of ['project', 'global'] as const) {
+    for (const file of filesInScope(contract, scope).filter((f) => f.role === 'mcp_config')) {
+      const path = expandRelativeTo(file.path, resolve(projectRoot), home);
+      if (!existsSync(path)) continue;
+      try {
+        const text = readFileSync(path, 'utf-8');
+        const wired =
+          file.mode === 'write-toml'
+            ? isObj(file.template) &&
+              flattenTables(file.template).some((t) => listTomlTables(text).includes(t.header))
+            : serverPaths(file.template).some((p) =>
+                isObj(getAt(file.mode === 'merge-jsonc' ? parseJsonc(text) : JSON.parse(text), p)),
+              );
+        if (wired) out.push({ scope, path });
+      } catch {
+        // unreadable config: not wired as far as we can tell
+      }
+    }
+  }
+  return out;
 };
 
 export async function uninstallTarget(
