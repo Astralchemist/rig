@@ -8,10 +8,10 @@ type Result = z.infer<typeof contract.output>;
 
 export async function run(args: Args, ctx: ToolContext): Promise<Result> {
   const start = Date.now();
-  const skills = ctx.rig.getRelevantSkills(args.query, args.k);
+  const { skills, degraded } = await ctx.rig.getRelevantSkills(args.query, args.k);
   ctx.recordActivation(
     skills.map((s) => s.id),
     { queryHash: queryHash(args.query) },
   );
-  return { skills, elapsed_ms: Date.now() - start };
+  return { skills, elapsed_ms: Date.now() - start, ...(degraded ? { degraded } : {}) };
 }

@@ -68,4 +68,7 @@ export async function serveMcp(opts: ServeMcpOptions = {}): Promise<void> {
   transport.start(handler);
   // After the transport is up, so watcher setup never delays the handshake.
   if (opts.watch !== false) rig.watch();
+  // Load the search vectors and the embedding model off the startup path; the
+  // first search would load them lazily otherwise.
+  setTimeout(() => rig.warmSearch(), 250).unref?.();
 }

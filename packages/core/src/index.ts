@@ -15,6 +15,7 @@ export type {
   SearchHit,
   SearchResult,
   MatchSource,
+  RelevantSkill,
   FileRow,
   WaypointKind,
   WaypointPayload,

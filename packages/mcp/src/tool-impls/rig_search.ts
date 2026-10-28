@@ -7,18 +7,26 @@ import { toNodeRef } from './_refs.ts';
 type Args = z.infer<typeof contract.input>;
 type Result = z.infer<typeof contract.output>;
 
+// Scores are RRF sums (~0.01–0.1); six decimals keep their order.
+const round = (n: number): number => Math.round(n * 1e6) / 1e6;
+
 export async function run(args: Args, ctx: ToolContext): Promise<Result> {
   const start = Date.now();
-  const nodes = ctx.rig.searchNodes(args.query, {
-    kind: args.kind,
+  const { hits, degraded } = await ctx.rig.search(args.query, {
+    ...(args.kind ? { kinds: [args.kind] } : {}),
     limit: args.limit,
   });
   ctx.recordActivation(
-    nodes.map((n) => n.id),
+    hits.map((h) => h.node.id),
     { queryHash: queryHash(args.query) },
   );
   return {
-    nodes: nodes.map(toNodeRef),
+    nodes: hits.map((h) => ({
+      ...toNodeRef(h.node),
+      score: round(h.score),
+      matched_by: h.matchedBy,
+    })),
     elapsed_ms: Date.now() - start,
+    ...(degraded ? { degraded } : {}),
   };
 }

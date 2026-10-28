@@ -36,25 +36,30 @@ describe('D4 rig_relevant_skills', () => {
     rmSync(project, { recursive: true, force: true });
   });
 
-  test('returns skills matching the query', () => {
-    const hits = rig.getRelevantSkills('pull');
+  test('returns skills matching the query', async () => {
+    const { skills: hits } = await rig.getRelevantSkills('pull');
     const names = hits.map((s) => s.name);
     expect(names).toContain('rig_pull');
   });
 
-  test('returns full payload (tier + description) per skill', () => {
-    const hits = rig.getRelevantSkills('pull', 1);
+  test('returns full payload (tier + description) per skill', async () => {
+    const { skills: hits } = await rig.getRelevantSkills('pull', 1);
     expect(hits.length).toBe(1);
     expect(hits[0]!.tier).toBe('light');
     expect(hits[0]!.description.length).toBeGreaterThan(0);
   });
 
-  test('respects k limit', () => {
-    const hits = rig.getRelevantSkills('rig', 2);
+  test('respects k limit', async () => {
+    const { skills: hits } = await rig.getRelevantSkills('rig', 2);
     expect(hits.length).toBeLessThanOrEqual(2);
   });
 
-  test('empty query returns no results', () => {
-    expect(rig.getRelevantSkills('')).toEqual([]);
+  test('empty query returns no results', async () => {
+    expect(await rig.getRelevantSkills('')).toEqual({ skills: [] });
+  });
+
+  test('matches words of the description, not only the name', async () => {
+    const { skills } = await rig.getRelevantSkills('fetch a web page');
+    expect(skills[0]!.name).toBe('browser_fetch');
   });
 });

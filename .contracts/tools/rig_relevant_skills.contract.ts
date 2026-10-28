@@ -21,8 +21,11 @@ discover which of its tools to call — "I need to validate this externally"
 ranks browser/web tools high; "what is connected to X" ranks
 rig_pull/rig_neighbors high.
 
-Same retrieval substrate as rig_search; this just narrows to skill anchors
-and returns the tier+description so the agent has enough to pick.
+Same hybrid retrieval as rig_search (names, keywords over the
+descriptions, and semantic similarity of the embedded descriptions); this
+just narrows to skill anchors and returns the tier+description so the
+agent has enough to pick. degraded is "keyword-only" when the embedding
+model was unavailable.
   `.trim(),
   input: z
     .object({
@@ -33,6 +36,10 @@ and returns the tier+description so the agent has enough to pick.
   output: z.object({
     skills: z.array(skill),
     elapsed_ms: z.number(),
+    degraded: z
+      .literal('keyword-only')
+      .optional()
+      .describe('Set when semantic matching was unavailable (embedding model not loaded)'),
   }),
   errors: ['NOT_INITIALIZED'],
   permissions: {

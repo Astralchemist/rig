@@ -128,6 +128,14 @@ export interface SearchResult {
   degraded?: 'keyword-only';
 }
 
+export interface RelevantSkill {
+  id: string;
+  name: string;
+  tier: string;
+  summary: string | null;
+  description: string;
+}
+
 export interface RigWatchOptions extends WatchOptions {
   // How often a process that did not get the watch lock tries again, so it
   // takes over when the current watcher exits. Default: 30s
@@ -403,50 +411,41 @@ export class Rig {
 
   // C4 — register the AI's tool surface as skill anchors. Caller supplies the
   // tools-manifest (MCP layer owns it); core stays manifest-format-agnostic.
-  // D4 — return top-k skills most relevant to a free-text query. Mirrors
-  // rig_search but joins through to the skill payload so the caller gets the
-  // tier + description without a second roundtrip. Falls back to a name-prefix
-  // scan if FTS yields nothing (FTS quirks with short queries / underscores).
-  getRelevantSkills(
+  // D4 — return top-k skills most relevant to a free-text query: hybrid search
+  // narrowed to skill anchors (their names, descriptions and embeddings),
+  // joined through to the skill payload so the caller gets the tier +
+  // description without a second roundtrip. Falls back to a name substring
+  // scan when search finds nothing.
+  async getRelevantSkills(
     query: string,
     k = 5,
-  ): Array<{ id: string; name: string; tier: string; summary: string | null; description: string }> {
+  ): Promise<{ skills: RelevantSkill[]; degraded?: 'keyword-only' }> {
     const trimmed = query.trim();
-    if (!trimmed) return [];
-    const adapter = this.database.adapter;
-    const fts = trimmed
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((t) => `"${t.replace(/"/g, '""')}"*`)
-      .join(' ');
-    let rows = adapter
-      .prepare(
-        `SELECT n.id, n.name, n.data, bm25(nodes_fts) AS rank
-         FROM nodes_fts JOIN nodes n ON n.id = nodes_fts.node_id
-         WHERE nodes_fts MATCH ? AND n.type = 'skill'
-         ORDER BY rank
-         LIMIT ?`,
-      )
-      .all(fts, k) as { id: string; name: string; data: string; rank: number }[];
+    if (!trimmed) return { skills: [] };
+    const r = await this.searcher.search(trimmed, { kinds: ['skill'], limit: k });
+    let rows = r.hits.map((h) => ({ id: h.node.id, name: h.node.name }));
     if (rows.length === 0) {
-      rows = adapter
+      rows = this.database.adapter
         .prepare(
-          `SELECT id, name, data, 0 AS rank FROM nodes
+          `SELECT id, name FROM nodes
            WHERE type = 'skill' AND name LIKE ?
            ORDER BY name LIMIT ?`,
         )
-        .all(`%${trimmed}%`, k) as { id: string; name: string; data: string; rank: number }[];
+        .all(`%${trimmed}%`, k) as { id: string; name: string }[];
     }
-    return rows.map((r) => {
-      const d = JSON.parse(r.data) as { tier?: string; summary?: string; description?: string };
+    const dataOf = this.database.adapter.prepare(`SELECT data FROM nodes WHERE id = ?`);
+    const skills = rows.map((row) => {
+      const raw = (dataOf.get(row.id) as { data: string } | null)?.data ?? '{}';
+      const d = JSON.parse(raw) as { tier?: string; summary?: string; description?: string };
       return {
-        id: r.id,
-        name: r.name,
+        id: row.id,
+        name: row.name,
         tier: d.tier ?? 'light',
         summary: d.summary ?? null,
         description: d.description ?? '',
       };
     });
+    return r.degraded ? { skills, degraded: r.degraded } : { skills };
   }
 
   seedSkills(
@@ -476,6 +475,35 @@ export class Rig {
 
   getWaypoints(opts: ListWaypointsOpts = {}): WaypointRow[] {
     return wqList(this.database.adapter, opts);
+  }
+
+  // Waypoints most relevant to `query` (hybrid search over their titles,
+  // summaries, key terms and rationales), best first, within the same
+  // session/kind filters as getWaypoints.
+  async searchWaypoints(
+    query: string,
+    opts: ListWaypointsOpts = {},
+  ): Promise<{ waypoints: WaypointRow[]; degraded?: 'keyword-only' }> {
+    const limit = opts.limit ?? 50;
+    // Every waypoint the filters allow, so relevance decides the cut.
+    const allowed = new Map(
+      wqList(this.database.adapter, { ...opts, limit: Number.MAX_SAFE_INTEGER }).map((w) => [
+        w.id,
+        w,
+      ]),
+    );
+    if (allowed.size === 0) return { waypoints: [] };
+    const r = await this.searcher.search(query, {
+      kinds: ['conversation-waypoint'],
+      limit: Math.max(limit, allowed.size),
+    });
+    const waypoints: WaypointRow[] = [];
+    for (const h of r.hits) {
+      const w = allowed.get(h.node.id);
+      if (w) waypoints.push(w);
+      if (waypoints.length >= limit) break;
+    }
+    return r.degraded ? { waypoints, degraded: r.degraded } : { waypoints };
   }
 
   getWaypoint(id: string): WaypointRow | null {

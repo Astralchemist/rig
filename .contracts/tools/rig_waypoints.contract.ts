@@ -32,7 +32,10 @@ export default defineToolContract({
   tier: 'light',
   summary: 'List conversation waypoints by session or kind',
   description: `
-List waypoints in newest-first order. Optional filters: session_id (pass
+List waypoints in newest-first order, or by relevance to query when one is
+given (hybrid search over titles, summaries, key terms and rationales;
+degraded is "keyword-only" when the embedding model was unavailable).
+Optional filters: session_id (pass
 "last" to auto-resolve to the most recently active session with waypoints
 other than your own — useful at session start to rehydrate the previous
 thread, and it keeps finding that thread after you drop waypoints of your
@@ -49,11 +52,20 @@ session_id="last" limit=20 to pick up where the previous session ended.
         .enum(['decision', 'observation', 'constraint', 'open-question', 'principle'])
         .optional(),
       limit: z.number().int().min(1).max(200).default(50),
+      query: z
+        .string()
+        .min(1)
+        .optional()
+        .describe('Rank waypoints by relevance to this text instead of by recency'),
     })
     .strict(),
   output: z.object({
     waypoints: z.array(waypoint),
     elapsed_ms: z.number(),
+    degraded: z
+      .literal('keyword-only')
+      .optional()
+      .describe('Set when semantic matching was unavailable (embedding model not loaded)'),
   }),
   errors: ['NOT_INITIALIZED'],
   permissions: {
