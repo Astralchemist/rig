@@ -98,6 +98,8 @@ describe('schema golden (v1 + v2)', () => {
       expect(SCHEMA).toMatch(
         new RegExp(`${t} \\(\\s*path TEXT NOT NULL REFERENCES files\\(path\\) ON DELETE CASCADE`),
       );
+      // The complete extraction object, so new extractor fields round-trip.
+      expect(SCHEMA).toMatch(new RegExp(`${t} \\([^;]+payload TEXT NOT NULL`));
     }
     expect(SCHEMA).toContain('CREATE INDEX IF NOT EXISTS idx_nodes_file_path');
   });

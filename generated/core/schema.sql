@@ -248,8 +248,7 @@ CREATE TABLE IF NOT EXISTS file_refs (
   src TEXT NOT NULL,
   target_name TEXT NOT NULL,
   kind TEXT NOT NULL,
-  line INTEGER NOT NULL,
-  col INTEGER NOT NULL DEFAULT 0
+  payload TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_file_refs_path ON file_refs(path);
 
@@ -257,7 +256,8 @@ CREATE TABLE IF NOT EXISTS file_edges (
   path TEXT NOT NULL REFERENCES files(path) ON DELETE CASCADE,
   src TEXT NOT NULL,
   dst TEXT NOT NULL,
-  kind TEXT NOT NULL
+  kind TEXT NOT NULL,
+  payload TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_file_edges_path ON file_edges(path);
 

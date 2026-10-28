@@ -11,7 +11,10 @@ import { defineMigrationContract } from '@rig/contracts';
 //   pre-v12 row, so every existing file is re-extracted once after upgrade.
 // - file_refs / file_edges — each file's last extraction output (unresolved
 //   references + direct edges), keyed by path and cascaded with the files row.
-//   All provenance='ast' edges are rebuilt from the artifacts of every file, so
+//   `payload` is the complete extraction object as JSON (node ids rewritten
+//   to the kept ones), so fields an extractor adds round-trip without a
+//   migration; the other columns are copies for querying. All
+//   provenance='ast' edges are rebuilt from the artifacts of every file, so
 //   `index --include`, `sync` and skipped files can never drop another file's
 //   edges.
 // - idx_nodes_file_path — per-file node lookups during in-place updates.
@@ -35,8 +38,7 @@ CREATE TABLE IF NOT EXISTS file_refs (
   src TEXT NOT NULL,
   target_name TEXT NOT NULL,
   kind TEXT NOT NULL,
-  line INTEGER NOT NULL,
-  col INTEGER NOT NULL DEFAULT 0
+  payload TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_file_refs_path ON file_refs(path);
 
@@ -44,7 +46,8 @@ CREATE TABLE IF NOT EXISTS file_edges (
   path TEXT NOT NULL REFERENCES files(path) ON DELETE CASCADE,
   src TEXT NOT NULL,
   dst TEXT NOT NULL,
-  kind TEXT NOT NULL
+  kind TEXT NOT NULL,
+  payload TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_file_edges_path ON file_edges(path);
 
