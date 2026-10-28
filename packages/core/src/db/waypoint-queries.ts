@@ -17,7 +17,7 @@ export type WaypointPayload =
   | { type: 'mermaid-diagram'; content: string }
   | { type: 'code-snippet'; lang: string; content: string }
   | { type: 'doc-fragment'; content: string }
-  | { type: 'image-ref'; path: string; alt?: string }
+  | { type: 'image-ref'; path: string; alt?: string | undefined }
   | { type: 'dataset-pointer'; query: string };
 
 export interface WaypointRow {
@@ -28,11 +28,11 @@ export interface WaypointRow {
   title: string;
   summary: string;
   analogy: string | null;
-  constellation_refs: readonly string[];
-  predecessors: readonly string[];
-  key_terms: readonly string[];
+  constellation_refs: string[];
+  predecessors: string[];
+  key_terms: string[];
   compactable: boolean;
-  payloads: readonly WaypointPayload[];
+  payloads: WaypointPayload[];
 }
 
 interface RawNode {

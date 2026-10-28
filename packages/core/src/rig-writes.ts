@@ -273,7 +273,7 @@ export class RigWrites {
   // Deterministic id `skill:<name>` so re-seeding on every startup is a no-op
   // after the first run; data stays in sync with the contract if descriptions
   // change. C4 — closes the loop so rig_pull can rank skills alongside code.
-  upsertSkill(args: { name: string; description: string; tier: string; summary?: string; recordsActivation?: boolean }): string {
+  upsertSkill(args: { name: string; description: string; tier: string; summary?: string | undefined; recordsActivation?: boolean }): string {
     const adapter = this.db.adapter;
     const id = `skill:${args.name}`;
     const now = Date.now();
