@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { runAgent } from './agent.ts';
-import { GREP_ARMS, makeArm, parseArms } from './arms.ts';
+import { GREP_ARMS, MAP_ARMS, makeArm, parseArms } from './arms.ts';
 import { RG_BIN, rgAvailable } from './tools-baseline.ts';
 import { checkAnswer, validateExpected } from './criteria.ts';
 import { judgeAnswer } from './judge.ts';
@@ -20,13 +20,15 @@ import {
   type HttpOpts,
 } from './providers.ts';
 import { gitHead, indexState, prepareIndex, rigVersion } from './target.ts';
-import type { BenchFile, QueriesFile, RunResult } from './types.ts';
+import type { BenchFile, OverviewInfo, QueriesFile, RunResult } from './types.ts';
 
 const USAGE = `usage: bun scripts/bench/run.ts [options]
   --repo <path>            target checkout (default $BENCH_REPO or ~/Development/rig-bench/next-auth)
   --provider <name>        openrouter | anthropic (default $BENCH_PROVIDER, else by which key is set)
   --model <id>             model id (default ${DEFAULT_MODELS.openrouter} / ${DEFAULT_MODELS.anthropic})
-  --arms <list>            comma-separated: baseline,rig,rig-search,grep+rig (default all)
+  --arms <list>            comma-separated: baseline,rig,rig-search,grep+rig,grep+rig+map
+                           (default all)
+  --map-budget <tokens>    grep+rig+map: the overview's token budget (default 2000)
   --queries <ids>          comma-separated query ids (default all)
   --trials <n>             trials per (query, arm) (default 3)
   --max-turns <n>          model calls per run before giving up (default 12)
@@ -89,6 +91,8 @@ const main = async (): Promise<void> => {
   const judgeModel = argValue('--judge') ?? null;
   const label = (argValue('--label') ?? model.split('/').pop()!).replace(/[^A-Za-z0-9._-]+/g, '-');
   const dryRun = flag('--dry-run');
+  const usesMap = arms.some((a) => MAP_ARMS.includes(a));
+  const mapBudget = intArg('--map-budget', 2000);
 
   const catalogue = await fetchCatalogue();
   const pricing = lookupPricing(catalogue, model);
@@ -99,7 +103,10 @@ const main = async (): Promise<void> => {
   const version = rigVersion();
   const runsPerArm = queries.length * trials;
   const usesGrep = arms.some((a) => GREP_ARMS.includes(a));
-  const grepArms = arms.filter((a) => GREP_ARMS.includes(a)).join(' and ');
+  const grepArms = arms
+    .filter((a) => GREP_ARMS.includes(a))
+    .join(', ')
+    .replace(/, ([^,]+)$/, ' and $1');
 
   if (dryRun) {
     const estimateFrom = argValue('--estimate-from');
@@ -113,6 +120,7 @@ const main = async (): Promise<void> => {
       ...(profiles ? { profiles } : {}),
       judge: judgeModel !== null,
       judgePricing,
+      mapTokens: mapBudget,
     });
     const priceLine = (p: ModelPricing | null): string =>
       p
@@ -137,6 +145,11 @@ const main = async (): Promise<void> => {
         ? [`ripgrep:   ${rgAvailable() ? RG_BIN : `MISSING (${RG_BIN}); ${grepArms} need it`}`]
         : []),
       `arms:      ${arms.join(', ')}`,
+      ...(usesMap
+        ? [
+            `overview:  grep+rig+map's system prompt gets rig's map of the target, generated from its index at run time (budget ${mapBudget.toLocaleString()} tokens ≈ ${(mapBudget * 4).toLocaleString()} chars, resent on every model call)`,
+          ]
+        : []),
       `queries:   ${queries.length} (${queries.filter((q) => q.category === 'natural').length} natural-language)`,
       `trials:    ${trials}, max ${maxTurns} model calls per run`,
       `runs:      ${runsPerArm * arms.length} (${runsPerArm} per arm)`,
@@ -144,12 +157,12 @@ const main = async (): Promise<void> => {
       `estimate (${estimateFrom ? `per-arm means from ${estimateFrom}` : 'default per-run token profiles'}):`,
       ...est.arms.map(
         (a) =>
-          `  ${a.arm.padEnd(11)} ${a.runs} runs × ~${(a.profile.prompt_tokens / 1000).toFixed(0)}k in + ${(a.profile.completion_tokens / 1000).toFixed(1)}k out ≈ ${usd(a.cost_usd)}`,
+          `  ${a.arm.padEnd(13)} ${a.runs} runs × ~${(a.profile.prompt_tokens / 1000).toFixed(0)}k in + ${(a.profile.completion_tokens / 1000).toFixed(1)}k out ≈ ${usd(a.cost_usd)}`,
       ),
       ...(judgeModel
-        ? [`  judge       ${runsPerArm * arms.length} calls ≈ ${usd(est.judge_cost_usd)}`]
+        ? [`  judge         ${runsPerArm * arms.length} calls ≈ ${usd(est.judge_cost_usd)}`]
         : []),
-      `  total       ~${(est.total_tokens / 1e6).toFixed(2)}M tokens ≈ ${usd(est.total_usd)}`,
+      `  total         ~${(est.total_tokens / 1e6).toFixed(2)}M tokens ≈ ${usd(est.total_usd)}`,
     ];
     console.log(lines.join('\n'));
     return;
@@ -194,7 +207,29 @@ const main = async (): Promise<void> => {
     : null;
 
   const index = await indexNow();
-  const armImpls = arms.map((a) => makeArm(a, repo, index?.rig ?? null));
+  // The overview grep+rig+map hands the model, from this checkout's rig.
+  let overview: { map: string; info: OverviewInfo } | null = null;
+  if (usesMap && index) {
+    const o = index.rig.overview({ budget: mapBudget });
+    overview = {
+      map: o.map,
+      info: {
+        budget_tokens: o.budget,
+        chars: o.chars,
+        est_tokens: o.est_tokens,
+        elapsed_ms: o.cached ? 0 : o.elapsed_ms,
+        cached: o.cached,
+        generated_at: new Date(o.generated_at).toISOString(),
+      },
+    };
+    log(
+      `overview: ${o.chars.toLocaleString()} chars ≈ ${o.est_tokens.toLocaleString()} tokens ` +
+        `(budget ${o.budget})${o.cached ? ', cached' : `, generated in ${o.elapsed_ms} ms`}`,
+    );
+  }
+  const armImpls = arms.map((a) =>
+    makeArm(a, repo, index?.rig ?? null, overview ? { overview: overview.map } : {}),
+  );
 
   const outPath = (() => {
     const explicit = argValue('--out');
@@ -228,6 +263,7 @@ const main = async (): Promise<void> => {
       },
     },
     arms,
+    ...(overview ? { overview: overview.info } : {}),
     trials,
     max_turns: maxTurns,
     queries,
