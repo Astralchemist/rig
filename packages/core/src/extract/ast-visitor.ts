@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Node as SyntaxNode } from 'web-tree-sitter';
-import { calleeNameOf, declKindOf, nameFor } from './node-builders.ts';
+import { calleeNameOf, declKindOf, docAnchorOf, nameFor } from './node-builders.ts';
 import { generateNodeId, getPrecedingDocstring } from './tree-sitter-helpers.ts';
 import type { LanguageExtractor } from './tree-sitter-types.ts';
 import type {
@@ -132,7 +132,7 @@ export function visit(node: SyntaxNode, ctx: VisitCtx): void {
       const id = generateNodeId(ctx.filePath, kind, name, node.startPosition.row + 1);
       const qn = ctx.scope.slice(1).map((s) => s.name).concat(name).join('.');
       const signature = ctx.extractor.getSignature?.(node, ctx.source);
-      const docstring = getPrecedingDocstring(node, ctx.source);
+      const docstring = getPrecedingDocstring(docAnchorOf(node), ctx.source);
       ctx.nodes.push({
         id,
         kind,

@@ -42,6 +42,11 @@ export const declKindOf = (
 export const nameFor = (node: SyntaxNode, ex: LanguageExtractor): string | null =>
   getChildByField(node, ex.nameField)?.text ?? null;
 
+// The node a declaration's doc comment sits above: `/** … */ export function f`
+// documents f, but the comment is a sibling of the export statement.
+export const docAnchorOf = (node: SyntaxNode): SyntaxNode =>
+  node.parent?.type === 'export_statement' ? node.parent : node;
+
 export const calleeNameOf = (callNode: SyntaxNode): string | null => {
   const fn = getChildByField(callNode, 'function') ?? callNode.namedChild(0);
   if (!fn) return null;
