@@ -3,11 +3,12 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { atomicWrite } from './atomic.ts';
 import { deepMerge, permissionsUnion, type MergeOptions } from './json-merge.ts';
-import { mergeJsonc } from './jsonc-merge.ts';
+import { expandScalarShorthands, mergeJsonc } from './jsonc-merge.ts';
 import { expandRelativeTo } from './paths.ts';
+import { stricter } from './strictness.ts';
 import { upsertSection, upsertSectionSafe } from './section.ts';
 import { expandTokens, type TokenContext } from './tokens.ts';
-import { buildTomlTable, flattenSingleTable, upsertTomlTable } from './toml.ts';
+import { buildTomlTable, flattenTables, upsertTomlKeys, upsertTomlTable } from './toml.ts';
 
 export interface TargetFileLike {
   role: string;
@@ -122,8 +123,10 @@ const applyMode = async (
   }
   if (file.mode === 'append-section') return applyAppendSection(resolvedPath, template, dryRun);
   if (file.mode === 'replace') return applyReplace(resolvedPath, template, dryRun);
-  if (file.mode === 'write-toml') return applyWriteToml(resolvedPath, template, dryRun);
-  if (file.mode === 'merge-jsonc') return applyMergeJsonc(resolvedPath, template, dryRun);
+  // Permission entries are set key by key, so user additions next to them survive.
+  const perms = file.role === 'permissions';
+  if (file.mode === 'write-toml') return applyWriteToml(resolvedPath, template, dryRun, perms);
+  if (file.mode === 'merge-jsonc') return applyMergeJsonc(resolvedPath, template, dryRun, perms);
 
   return {
     path: resolvedPath,
@@ -138,9 +141,12 @@ const applyMergeJsonc = async (
   resolvedPath: string,
   template: unknown,
   dryRun: boolean,
+  permissions: boolean,
 ): Promise<ApplyResult> => {
   const existing = await readOrEmpty(resolvedPath);
-  const next = mergeJsonc(existing, template);
+  // Permission values keep the stricter of the user's and rig's (allow < ask < deny).
+  const base = permissions ? expandScalarShorthands(existing, template) : existing;
+  const next = mergeJsonc(base, template, permissions ? stricter : undefined);
   if (existing === next) {
     return { path: resolvedPath, mode: 'merge-jsonc', changed: false, status: 'unchanged' };
   }
@@ -176,18 +182,27 @@ const applyWriteToml = async (
   resolvedPath: string,
   template: unknown,
   dryRun: boolean,
+  keyLevel: boolean,
 ): Promise<ApplyResult> => {
   if (!template || typeof template !== 'object') {
     throw new Error('write-toml template must be an object');
   }
-  const { header, body } = flattenSingleTable(template as Record<string, unknown>);
-  const block = buildTomlTable(header, body);
   const existing = await readOrEmpty(resolvedPath);
-  const result = upsertTomlTable(existing, header, block);
-  if (result.action === 'unchanged') {
+  let content = existing;
+  // A server entry replaces its whole table; permission tables are updated
+  // key by key so the user's other keys in them (output_token_limit) stay,
+  // and an approval_mode the user made stricter is kept.
+  const keepStricter = (existing: string | null, incoming: string | string[]) =>
+    typeof incoming === 'string' ? (stricter(existing, incoming) as string) : incoming;
+  for (const { header, body } of flattenTables(template as Record<string, unknown>)) {
+    content = keyLevel
+      ? upsertTomlKeys(content, header, body, keepStricter).content
+      : upsertTomlTable(content, header, buildTomlTable(header, body)).content;
+  }
+  if (content === existing) {
     return { path: resolvedPath, mode: 'write-toml', changed: false, status: 'unchanged' };
   }
-  if (!dryRun) await atomicWrite(resolvedPath, result.content);
+  if (!dryRun) await atomicWrite(resolvedPath, content);
   return {
     path: resolvedPath,
     mode: 'write-toml',

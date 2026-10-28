@@ -205,8 +205,14 @@ the map. Used when "open the rig map" comes up in chat — the agent fetches the
 token (because it has filesystem access to .rig/), the user clicks the URL,
 and the cookie gets set.
 
-Returns 'no_runtime_token' in errors when the server isn't running with auth
-enabled (loopback dev mode skips the token by default).
+The URL points at the host and port the web server last bound (ports are
+per project; the server records its address in .rig/.web.json), falling
+back to 127.0.0.1:7474 only when no server has recorded one. Pass host or
+port only to override that.
+
+The map requires this token on loopback too. Returns NO_RUNTIME_TOKEN until
+the map has been served once in this project (`rig start` or
+`rig serve --web` writes .rig/.runtime).
 
 ### `rig_status`
 
@@ -242,19 +248,25 @@ Build a context bundle of the top-K anchors most relevant to a task,
 formatted for direct LLM consumption (markdown by default; JSON
 available). Uses search + magnetic-pull ranking.
 
-Heavy tier — must be invoked from a sub-agent, not the main session.
-Use rig_explore for raw exploration; use rig_context when you want a
-single ready-to-prompt block.
+Heavy tier — the bundle carries full source bodies, so it costs far more
+context than the light tools. Use rig_explore for raw exploration; use
+rig_context when you want a single ready-to-prompt block.
+
+The response is capped at about 60,000 characters. Sources cut to fit
+end with a "… [truncated: N of M lines shown]" line and truncated is
+true; lower max_nodes or narrow the task to get whole bodies.
 
 ### `rig_explore`
 
 Search the index for a question and return the top-K anchors with their
 source bodies and one-hop related anchors. Returns full file slices, so
-this is token-heavy.
+this is token-heavy: navigate with the light tools first and call this
+once you know which code you need. For lightweight metadata-only
+navigation use rig_pull or rig_neighbors.
 
-NEVER call this in the main agent session — spawn a sub-agent. The
-two-tier gate is enforced by the dispatcher (MAIN_SESSION_FORBIDDEN).
-For lightweight metadata-only navigation use rig_pull or rig_neighbors.
+The response is capped at about 60,000 characters. Sources cut to fit
+end with a "… [truncated: N of M lines shown]" line and truncated is
+true; lower max_anchors or narrow the question to get whole bodies.
 
 ## write tools
 
@@ -339,9 +351,11 @@ rejected, nodes added). Polling every 2s is a good default.
 Use this to inject "user is now looking at <anchor>" context into your
 next agent turn without the user typing.
 
-## Two-tier gate
+## Context budget
 
-NEVER call `rig_explore` or `rig_context` directly in the main session — spawn a sub-agent for these.
+`rig_explore` and `rig_context` return full source bodies, so a call costs far more context than the light tools. Navigate with the light tools first and call a heavy tool once you know which code you need. They work from any session; if you can hand heavy exploration to a sub-agent, doing so keeps the main context lean.
+
+Heavy responses are capped at about 60,000 characters. A source cut to fit ends with a `… [truncated: N of M lines shown]` line and the result has `truncated: true` — lower `max_anchors` / `max_nodes` or narrow the query to get whole bodies.
 
 ## Session bootstrap
 

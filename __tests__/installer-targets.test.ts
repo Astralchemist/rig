@@ -98,9 +98,13 @@ describe('installer targets', () => {
     }
   });
 
-  test('cursor project scope writes .cursor/mcp.json + rig.mdc with frontmatter', async () => {
+  test('cursor project scope writes .cursor/mcp.json, cli.json + rig.mdc with frontmatter', async () => {
     const result = await installTarget(getTarget('cursor')!, installOpts('project'));
-    expect(result.applied).toHaveLength(2);
+    expect(result.applied.map((a) => a.path)).toEqual([
+      join(PROJECT, '.cursor/mcp.json'),
+      join(PROJECT, '.cursor/cli.json'),
+      join(PROJECT, '.cursor/rules/rig.mdc'),
+    ]);
     const mcp = json(join(PROJECT, '.cursor/mcp.json'));
     expect(mcp.mcpServers.rig.args).toContain('--path');
     const mdc = readFileSync(join(PROJECT, '.cursor/rules/rig.mdc'), 'utf-8');
@@ -123,7 +127,7 @@ describe('installer targets', () => {
     }
   });
 
-  test('codex writes [mcp_servers.rig] TOML table preserving sibling tables', async () => {
+  test('codex writes [mcp_servers.rig] + per-tool approval tables preserving sibling tables', async () => {
     // Pre-seed file with a sibling table that must survive the install.
     const codexDir = join(HOME, '.codex');
     mkdirSync(codexDir, { recursive: true });
@@ -134,6 +138,8 @@ describe('installer targets', () => {
     expect(toml).toContain('command = "rig"');
     expect(toml).toContain('[model]');
     expect(toml).toContain('name = "gpt-4"');
+    expect(toml).toContain('[mcp_servers.rig.tools.rig_status]\napproval_mode = "approve"');
+    expect(toml).toContain('[mcp_servers.rig.tools.rig_explore]\napproval_mode = "prompt"');
   });
 
   test('opencode merge-jsonc preserves user comments', async () => {
@@ -145,6 +151,8 @@ describe('installer targets', () => {
     expect(jsonc).toContain('// user comment');
     expect(jsonc).toContain('"model": "claude"');
     expect(jsonc).toContain('"rig"');
+    expect(jsonc).toContain('"rig_rig_status": "allow"');
+    expect(jsonc).toContain('"rig_rig_explore": "ask"');
   });
 
   test('openrouter writes mcp.json + AGENTS.md', async () => {

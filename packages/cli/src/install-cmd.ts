@@ -71,7 +71,7 @@ export async function runInstall(cwd: string): Promise<void> {
     for (const a of result.applied) {
       const mark = a.status === 'wrote' ? '✓' : a.status === 'dry-run' ? '~' : '·';
       process.stdout.write(
-        `  ${mark} ${a.status.padEnd(22)} ${a.mode.padEnd(15)} ${displayPath(a.path, projectRoot, home)}\n`,
+        `  ${mark} ${a.status.padEnd(9)} ${(a.role ?? a.mode).padEnd(12)} ${displayPath(a.path, projectRoot, home)}\n`,
       );
       if (a.reason) process.stdout.write(`      ${a.reason}\n`);
       if (a.note) process.stdout.write(`      note: ${a.note}\n`);

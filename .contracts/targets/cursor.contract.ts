@@ -34,6 +34,14 @@ export default defineTargetContract({
       template: server,
     },
     {
+      // The Cursor CLI's documented per-project permissions (Mcp(server:tool)).
+      // The editor's MCP allowlist is a settings-UI setting with no file to write.
+      role: 'permissions',
+      path: '.cursor/cli.json',
+      mode: 'merge-json',
+      template: '{{GENERATED:cursor.permissions.json}}',
+    },
+    {
       role: 'instructions',
       path: '.cursor/rules/rig.mdc',
       mode: 'replace',
