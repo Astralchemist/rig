@@ -75,7 +75,19 @@ describe('A2 rig_unused_deps — Python imports', () => {
     project = mkdtempSync(join(tmpdir(), 'rig-unused-py-'));
     writeFileSync(
       join(project, 'requirements.txt'),
-      'pandas==2.1.4\nnumpy>=1.26\nmatplotlib\nscipy\nrequests\n',
+      [
+        'pandas==2.1.4',
+        'numpy>=1.26',
+        'matplotlib',
+        'scipy',
+        'requests',
+        'PyYAML',
+        'Flask',
+        'typing-extensions',
+        'protobuf',
+        'Pillow',
+        '',
+      ].join('\n'),
     );
     writeFileSync(join(project, 'pyproject.toml'), '[project]\ndependencies = ["pandas>=2.1"]\n');
     writeFileSync(
@@ -85,6 +97,11 @@ describe('A2 rig_unused_deps — Python imports', () => {
         'import pandas as pd',
         'import matplotlib.pyplot as plt',
         'from scipy.stats import norm',
+        'import yaml',
+        'from flask import Flask',
+        'from typing_extensions import Literal',
+        'from google.protobuf import json_format',
+        'from PIL import Image',
         '',
         'def load(path):',
         '    return pd.read_csv(path)',
@@ -116,8 +133,21 @@ describe('A2 rig_unused_deps — Python imports', () => {
     expect(names).not.toContain('scipy');
   });
 
+  test('a distribution counts as used under its import name (PyYAML → import yaml)', () => {
+    const names = rig.getUnusedDependencies().map((d) => d.name);
+    expect(names).not.toContain('PyYAML');
+    expect(names).not.toContain('Pillow'); // from PIL import …
+    expect(names).not.toContain('protobuf'); // from google.protobuf import …
+  });
+
+  test('distribution names match imports per PEP 503 (Flask → flask)', () => {
+    const names = rig.getUnusedDependencies().map((d) => d.name);
+    expect(names).not.toContain('Flask');
+    expect(names).not.toContain('typing-extensions'); // typing_extensions
+  });
+
   test('a declared package that is never imported is still flagged', () => {
     const unused = rig.getUnusedDependencies();
-    expect(unused.map((d) => d.name)).toContain('requests');
+    expect(unused.map((d) => d.name)).toEqual(['requests']);
   });
 });

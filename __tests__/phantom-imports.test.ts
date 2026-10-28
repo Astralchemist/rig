@@ -72,7 +72,7 @@ describe('A2 rig_phantom_imports — Python', () => {
 
   beforeEach(async () => {
     project = mkdtempSync(join(tmpdir(), 'rig-phantom-py-'));
-    writeFileSync(join(project, 'requirements.txt'), 'matplotlib\n');
+    writeFileSync(join(project, 'requirements.txt'), 'matplotlib\nPyYAML\nopencv-python\n');
     writeFileSync(
       join(project, 'main.py'),
       [
@@ -80,6 +80,8 @@ describe('A2 rig_phantom_imports — Python', () => {
         'import os, sys, json',
         'import os.path',
         'from typing import List',
+        'import yaml',
+        'import cv2',
         'import matplotlib.pyplot as plt',
         'import yamll.loader',
         'from .helpers import tidy',
@@ -104,6 +106,12 @@ describe('A2 rig_phantom_imports — Python', () => {
   test('a dotted import of an undeclared package is a phantom', () => {
     const ph = rig.getPhantomImports();
     expect(ph.map((p) => p.target_name)).toContain('yamll.loader');
+  });
+
+  test('a declared distribution covers its import name (PyYAML → yaml)', () => {
+    const names = rig.getPhantomImports().map((p) => p.target_name);
+    expect(names).not.toContain('yaml');
+    expect(names).not.toContain('cv2'); // opencv-python
   });
 
   test('standard-library imports are never phantoms', () => {
