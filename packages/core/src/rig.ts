@@ -56,6 +56,7 @@ import {
   type MemoryExport,
   type MemoryImportResult,
 } from './memory-file.ts';
+import { getOverview, type BuildOverviewOptions, type Overview } from './orientation.ts';
 import { computeMagneticPull, type PullResult } from './pull.ts';
 import { listAliases, type AliasRow } from './db/alias-queries.ts';
 import { listAnnotations, type AnnotationRow } from './db/annotation-queries.ts';
@@ -76,6 +77,7 @@ import { watchDisabledReason } from './watch-policy.ts';
 export { DB_FILE_NAME, RIG_DIR_NAME };
 export type { IndexResult, RigOptions, StatusInfo };
 export type { PullResult } from './pull.ts';
+export type { Overview, BuildOverviewOptions } from './orientation.ts';
 export type { HubRef } from './graph/hubness.ts';
 export type { DrillResult } from './graph/hub-drill.ts';
 export type { CriticalStep } from './graph/critical-path.ts';
@@ -360,6 +362,13 @@ export class Rig {
 
   getFiles(filter?: string): FileRow[] {
     return fqGetFiles(this.database.adapter, filter);
+  }
+
+  // The orientation map (orientation.ts): a compact markdown overview of the
+  // repository within a token budget. The default budget comes from the
+  // cache the update pipeline keeps fresh; others are generated on the fly.
+  overview(opts: BuildOverviewOptions = {}): Overview {
+    return getOverview(this.database.adapter, this.projectRoot, opts);
   }
 
   snapshot(limit = 500): GraphSnapshot {

@@ -17,6 +17,8 @@ export type {
   MatchSource,
   RelevantSkill,
   FileRow,
+  Overview,
+  BuildOverviewOptions,
   WaypointKind,
   WaypointPayload,
   WaypointRow,
@@ -27,6 +29,13 @@ export type {
   MemoryRecordType,
 } from './rig.ts';
 export { Database } from './db/database.ts';
+export {
+  CHARS_PER_TOKEN,
+  DEFAULT_OVERVIEW_BUDGET,
+  MAX_OVERVIEW_BUDGET,
+  MIN_OVERVIEW_BUDGET,
+  estimateTokens,
+} from './orientation.ts';
 export { bunSqliteFactory } from './db/bun-adapter.ts';
 export type {
   NodeId,
