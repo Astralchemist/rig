@@ -64,12 +64,13 @@ export const mergePermissions = (base: unknown, policy: unknown): unknown => {
   for (const [list, entries] of Object.entries(policy.permissions)) {
     if (Array.isArray(entries)) for (const e of entries) listOf.set(JSON.stringify(e), list);
   }
-  const permissions = merged.permissions;
-  for (const [list, entries] of Object.entries(permissions)) {
-    if (!Array.isArray(entries)) continue;
-    permissions[list] = entries.filter((e) => !isRigListEntry(e) || listOf.get(JSON.stringify(e)) === list);
+  const permissions: JsonObj = {};
+  for (const [list, entries] of Object.entries(merged.permissions)) {
+    permissions[list] = Array.isArray(entries)
+      ? entries.filter((e) => !isRigListEntry(e) || listOf.get(JSON.stringify(e)) === list)
+      : entries;
   }
-  return merged;
+  return { ...merged, permissions };
 };
 
 export const jsonEqual = (a: unknown, b: unknown): boolean =>

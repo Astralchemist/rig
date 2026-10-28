@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { existsSync, readFileSync, readdirSync, rmdirSync } from 'node:fs';
 import { readFile, rm } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, sep } from 'node:path';
 import { applyEdits, modify, parse as parseJsonc } from 'jsonc-parser';
 import { atomicWrite } from './atomic.ts';
 import type { TargetFileLike } from './modes.ts';
@@ -228,7 +228,7 @@ const removeFromFile = (text: string, file: TargetFileLike, template: unknown): 
 // Remove now-empty directories between a deleted file and the project root.
 const pruneEmptyDirs = (from: string, root: string): void => {
   let dir = dirname(from);
-  while (dir !== root && dir.startsWith(root) && existsSync(dir) && !readdirSync(dir).length) {
+  while (dir.startsWith(root + sep) && existsSync(dir) && !readdirSync(dir).length) {
     rmdirSync(dir);
     dir = dirname(dir);
   }

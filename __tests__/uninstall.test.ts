@@ -123,7 +123,10 @@ describe('uninstall', () => {
     write(join(home, '.codex/config.toml'), original);
     await install('codex', 'global');
     // a user tweak under rig's entry — meaningless once the entry is gone
-    write(join(home, '.codex/config.toml'), read(join(home, '.codex/config.toml')) + '\n[mcp_servers.rig.env]\nFOO = "1"\n');
+    write(
+      join(home, '.codex/config.toml'),
+      read(join(home, '.codex/config.toml')) + '\n[mcp_servers.rig.env] # mine\nFOO = "1"\n',
+    );
     await uninstall('codex', 'global');
     expect(read(join(home, '.codex/config.toml'))).toBe(original);
     expect(existsSync(join(home, '.codex/AGENTS.md'))).toBe(false);

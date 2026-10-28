@@ -146,7 +146,7 @@ const keyOfLine = (line: string): string | null => {
 
 // Every `[table]` header in the file, in order (array-of-tables excluded).
 export const listTomlTables = (fileContent: string): string[] =>
-  [...fileContent.matchAll(/^\[([^[\]\n]+)\][ \t]*$/gm)].map((m) => m[1]!.trim());
+  [...fileContent.matchAll(/^\[([^[\]\n]+)\][ \t]*(?:#.*)?$/gm)].map((m) => m[1]!.trim());
 
 /**
  * Set individual keys inside `[header]` and leave the table's other keys,
