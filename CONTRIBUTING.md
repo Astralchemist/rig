@@ -6,7 +6,8 @@ Thanks for being here. Rig is built so that contributing is *cheap* — most add
 
 ```bash
 bun install
-bun run gen          # emit generated/ from .contracts/
+bun run install:hooks  # pre-commit hook that runs gen:check (the suite checks it's installed)
+bun run gen            # emit generated/ from .contracts/
 bun test
 ```
 
