@@ -7,13 +7,17 @@ import { Database } from '@rig/core/db/database.ts';
 
 const EXPECTED_TABLES = [
   'activations',
+  'annotations',
   'edges',
   'edges_semantic',
   'embeddings',
+  'file_edges',
+  'file_refs',
   'files',
   'mutation_log',
   'nodes',
   'nodes_fts',
+  'orphaned_memory',
   'pending_edges',
   'schema_versions',
   'sessions',
@@ -31,7 +35,7 @@ describe('Database — schema', () => {
 
   it('applies all migrations on a fresh DB', () => {
     const db = Database.open(join(dir, 'rig.db'));
-    expect(db.appliedVersions()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    expect(db.appliedVersions()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
     db.close();
   });
 
@@ -55,8 +59,8 @@ describe('Database — schema', () => {
     const count = db.adapter
       .prepare('SELECT COUNT(*) AS n FROM schema_versions')
       .get() as { n: number };
-    expect(count.n).toBe(11);
-    expect(db.appliedVersions()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    expect(count.n).toBe(12);
+    expect(db.appliedVersions()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
     db.close();
   });
 

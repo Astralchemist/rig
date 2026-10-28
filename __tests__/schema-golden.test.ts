@@ -89,4 +89,26 @@ describe('schema golden (v1 + v2)', () => {
     expect(SCHEMA).toMatch(/pending_edges[\s\S]+provenance TEXT NOT NULL/);
     expect(SCHEMA).toMatch(/pending_edges[\s\S]+rationale TEXT NOT NULL/);
   });
+
+  test('v12 adds extractor_version + per-file artifacts cascaded with the files row', () => {
+    expect(SCHEMA).toContain('-- v12:');
+    expect(SCHEMA).toMatch(/ALTER TABLE files ADD COLUMN extractor_version/);
+    for (const t of ['file_refs', 'file_edges']) {
+      expect(SCHEMA).toContain(`CREATE TABLE IF NOT EXISTS ${t}`);
+      expect(SCHEMA).toMatch(
+        new RegExp(`${t} \\(\\s*path TEXT NOT NULL REFERENCES files\\(path\\) ON DELETE CASCADE`),
+      );
+    }
+    expect(SCHEMA).toContain('CREATE INDEX IF NOT EXISTS idx_nodes_file_path');
+  });
+
+  test('v12 adds annotations (FK cascade + actor trigger) and orphaned_memory', () => {
+    expect(SCHEMA).toContain('CREATE TABLE IF NOT EXISTS annotations');
+    expect(SCHEMA).toMatch(
+      /annotations \([\s\S]+node_id TEXT NOT NULL REFERENCES nodes\(id\) ON DELETE CASCADE/,
+    );
+    expect(SCHEMA).toContain('CREATE TRIGGER IF NOT EXISTS annotations_actor_nonempty');
+    expect(SCHEMA).toContain('CREATE TABLE IF NOT EXISTS orphaned_memory');
+    expect(SCHEMA).toContain('CREATE INDEX IF NOT EXISTS idx_orphaned_memory_anchor');
+  });
 });

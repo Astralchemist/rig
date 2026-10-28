@@ -1,5 +1,5 @@
 -- GENERATED FILE — DO NOT EDIT.
--- Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts, .contracts/migrations/v5.contract.ts, .contracts/migrations/v6.contract.ts, .contracts/migrations/v7.contract.ts, .contracts/migrations/v8.contract.ts, .contracts/migrations/v9.contract.ts, .contracts/migrations/v10.contract.ts, .contracts/migrations/v11.contract.ts
+-- Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts, .contracts/migrations/v5.contract.ts, .contracts/migrations/v6.contract.ts, .contracts/migrations/v7.contract.ts, .contracts/migrations/v8.contract.ts, .contracts/migrations/v9.contract.ts, .contracts/migrations/v10.contract.ts, .contracts/migrations/v11.contract.ts, .contracts/migrations/v12.contract.ts
 -- Edit the .contract.ts file(s), then run `bun run gen`.
 
 -- v1: Initial Rig schema: nodes, structural + semantic edges, embeddings, activations, FTS5
@@ -239,3 +239,70 @@ CREATE INDEX IF NOT EXISTS idx_unresolved_kind_target ON unresolved_refs(kind, t
 
 -- v11: E1: source_urls JSON column on pending_edges
 ALTER TABLE pending_edges ADD COLUMN source_urls TEXT;
+
+-- v12: Retention: per-file extraction artifacts, extractor_version, annotations table, orphaned_memory
+ALTER TABLE files ADD COLUMN extractor_version INTEGER;
+
+CREATE TABLE IF NOT EXISTS file_refs (
+  path TEXT NOT NULL REFERENCES files(path) ON DELETE CASCADE,
+  src TEXT NOT NULL,
+  target_name TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  line INTEGER NOT NULL,
+  col INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_file_refs_path ON file_refs(path);
+
+CREATE TABLE IF NOT EXISTS file_edges (
+  path TEXT NOT NULL REFERENCES files(path) ON DELETE CASCADE,
+  src TEXT NOT NULL,
+  dst TEXT NOT NULL,
+  kind TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_file_edges_path ON file_edges(path);
+
+CREATE INDEX IF NOT EXISTS idx_nodes_file_path ON nodes(json_extract(data, '$.filePath'));
+
+CREATE TABLE IF NOT EXISTS annotations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  node_id TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+  note TEXT NOT NULL,
+  ts INTEGER NOT NULL,
+  actor TEXT NOT NULL,
+  rationale TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_annotations_node ON annotations(node_id, ts);
+
+CREATE TRIGGER IF NOT EXISTS annotations_actor_nonempty
+  BEFORE INSERT ON annotations
+  WHEN NEW.actor IS NULL OR NEW.actor = ''
+  BEGIN
+    SELECT RAISE(ABORT, 'annotations: actor required');
+  END;
+
+INSERT INTO annotations (node_id, note, ts, actor, rationale)
+SELECT n.id,
+       COALESCE(json_extract(a.value, '$.note'), ''),
+       COALESCE(json_extract(a.value, '$.ts'), n.updated_at),
+       COALESCE(NULLIF(json_extract(a.value, '$.actor'), ''), 'unknown'),
+       json_extract(a.value, '$.rationale')
+FROM nodes n, json_each(n.data, '$.annotations') a
+WHERE json_type(n.data, '$.annotations') = 'array' AND a.type = 'object'
+ORDER BY n.rowid, a.key;
+
+UPDATE nodes SET data = json_remove(data, '$.annotations')
+WHERE json_type(data, '$.annotations') = 'array';
+
+CREATE TABLE IF NOT EXISTS orphaned_memory (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  node_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  name TEXT NOT NULL,
+  qualified_name TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  orphaned_at INTEGER NOT NULL,
+  reason TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_orphaned_memory_anchor
+  ON orphaned_memory(file_path, kind, qualified_name);
