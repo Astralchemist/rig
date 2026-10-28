@@ -16,6 +16,10 @@ available). Uses search + magnetic-pull ranking.
 Heavy tier — the bundle carries full source bodies, so it costs far more
 context than the light tools. Use rig_explore for raw exploration; use
 rig_context when you want a single ready-to-prompt block.
+
+The response is capped at about 60,000 characters. Sources cut to fit
+end with a "… [truncated: N of M lines shown]" line and truncated is
+true; lower max_nodes or narrow the task to get whole bodies.
   `.trim(),
   input: z
     .object({
@@ -28,6 +32,7 @@ rig_context when you want a single ready-to-prompt block.
     context: z.string(),
     anchor_count: z.number().int(),
     elapsed_ms: z.number(),
+    truncated: z.boolean().describe('True when a source was cut to fit the response cap'),
   }),
   // MAIN_SESSION_FORBIDDEN is no longer raised: MCP can't tell a main session
   // from a sub-agent, so the gate is gone. Removing an error code from a stable

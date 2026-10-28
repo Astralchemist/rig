@@ -24,7 +24,8 @@ export const emitToolsManifest = (tools: LoadedContract<'tools'>[]): GeneratedFi
 };
 
 // No guard for the heavy tier: MCP can't tell a main session from a sub-agent,
-// so a main-session gate would refuse every call.
+// so a main-session gate would refuse every call. Heavy tools cap their own
+// response size instead (packages/mcp/src/tool-impls/_budget.ts).
 const tierGuards = (t: LoadedContract<'tools'>): string => {
   const lines: string[] = [];
   if (t.data.tier === 'write') {

@@ -774,12 +774,17 @@
           },
           "elapsed_ms": {
             "type": "number"
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when a source was cut to fit the response cap"
           }
         },
         "required": [
           "context",
           "anchor_count",
-          "elapsed_ms"
+          "elapsed_ms",
+          "truncated"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -1422,11 +1427,16 @@
           },
           "elapsed_ms": {
             "type": "number"
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when a source was cut to fit the response cap"
           }
         },
         "required": [
           "anchors",
-          "elapsed_ms"
+          "elapsed_ms",
+          "truncated"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"

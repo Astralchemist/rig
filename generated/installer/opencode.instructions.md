@@ -247,6 +247,10 @@ Heavy tier — the bundle carries full source bodies, so it costs far more
 context than the light tools. Use rig_explore for raw exploration; use
 rig_context when you want a single ready-to-prompt block.
 
+The response is capped at about 60,000 characters. Sources cut to fit
+end with a "… [truncated: N of M lines shown]" line and truncated is
+true; lower max_nodes or narrow the task to get whole bodies.
+
 ### `rig_explore`
 
 Search the index for a question and return the top-K anchors with their
@@ -254,6 +258,10 @@ source bodies and one-hop related anchors. Returns full file slices, so
 this is token-heavy: navigate with the light tools first and call this
 once you know which code you need. For lightweight metadata-only
 navigation use rig_pull or rig_neighbors.
+
+The response is capped at about 60,000 characters. Sources cut to fit
+end with a "… [truncated: N of M lines shown]" line and truncated is
+true; lower max_anchors or narrow the question to get whole bodies.
 
 ## write tools
 
@@ -341,6 +349,8 @@ next agent turn without the user typing.
 ## Context budget
 
 `rig_explore` and `rig_context` return full source bodies, so a call costs far more context than the light tools. Navigate with the light tools first and call a heavy tool once you know which code you need. They work from any session; if you can hand heavy exploration to a sub-agent, doing so keeps the main context lean.
+
+Heavy responses are capped at about 60,000 characters. A source cut to fit ends with a `… [truncated: N of M lines shown]` line and the result has `truncated: true` — lower `max_anchors` / `max_nodes` or narrow the query to get whole bodies.
 
 ## Session bootstrap
 
