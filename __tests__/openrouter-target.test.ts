@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { getTarget } from '../packages/cli/src/install/loader.ts';
@@ -15,7 +15,7 @@ describe('openrouter target', () => {
   let savedKey: string | undefined;
 
   beforeEach(() => {
-    base = mkdtempSync(join(tmpdir(), 'rig-openrouter-'));
+    base = realpathSync(mkdtempSync(join(tmpdir(), 'rig-openrouter-')));
     home = join(base, 'home');
     project = join(base, 'project');
     mkdirSync(home, { recursive: true });

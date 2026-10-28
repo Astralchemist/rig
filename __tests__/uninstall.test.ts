@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -45,7 +46,7 @@ describe('uninstall', () => {
   const read = (path: string) => readFileSync(path, 'utf-8');
 
   beforeEach(() => {
-    base = mkdtempSync(join(tmpdir(), 'rig-uninstall-'));
+    base = realpathSync(mkdtempSync(join(tmpdir(), 'rig-uninstall-')));
     home = join(base, 'home');
     project = join(base, 'project');
     mkdirSync(home, { recursive: true });
@@ -185,7 +186,7 @@ describe('rig uninstall (CLI)', () => {
   let project: string;
 
   beforeEach(() => {
-    base = mkdtempSync(join(tmpdir(), 'rig-uninstall-cli-'));
+    base = realpathSync(mkdtempSync(join(tmpdir(), 'rig-uninstall-cli-')));
     home = join(base, 'home');
     project = join(base, 'project');
     mkdirSync(home, { recursive: true });

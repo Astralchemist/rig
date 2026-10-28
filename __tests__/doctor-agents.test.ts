@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { getTarget } from '../packages/cli/src/install/loader.ts';
@@ -20,7 +20,7 @@ describe('rig doctor — agent wiring', () => {
     out.split('\n').find((l) => l.includes('agent: Claude Code')) ?? '';
 
   beforeEach(() => {
-    base = mkdtempSync(join(tmpdir(), 'rig-doctor-agents-'));
+    base = realpathSync(mkdtempSync(join(tmpdir(), 'rig-doctor-agents-')));
     home = join(base, 'home');
     project = join(base, 'project');
     mkdirSync(home, { recursive: true });

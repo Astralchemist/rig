@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { relative, resolve, sep } from 'node:path';
 
@@ -33,4 +34,18 @@ export const displayPath = (abs: string, projectRoot: string, home: string = hom
   if (isInside(abs, projectRoot)) return relative(projectRoot, abs);
   if (isInside(abs, home)) return `~/${relative(home, abs)}`;
   return abs;
+};
+
+// Same directory, even when one spelling goes through a symlink (macOS
+// /var → /private/var, or a symlinked $HOME): process.cwd() is already
+// resolved, $HOME may not be.
+export const samePath = (a: string, b: string): boolean => {
+  const real = (p: string): string => {
+    try {
+      return realpathSync(p);
+    } catch {
+      return resolve(p);
+    }
+  };
+  return real(a) === real(b);
 };

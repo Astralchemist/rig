@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { homedir } from 'node:os';
-import { resolve } from 'node:path';
 import type { TargetContract } from '@rig/contracts';
 import { allTargetNames, getTarget } from './loader.ts';
-import { displayPath } from './paths.ts';
+import { displayPath, samePath } from './paths.ts';
 import { hasScope, installTarget, type InstallResult } from './runner.ts';
 import type { TokenContext } from './tokens.ts';
 import { wiredLocations } from './uninstall.ts';
@@ -36,7 +35,7 @@ export const wireDetectedAgents = async (opts: WireOptions): Promise<WireReport>
     alsoUserLevel: [],
     skippedHome: false,
   };
-  if (resolve(opts.projectRoot) === resolve(home)) return { ...report, skippedHome: true };
+  if (samePath(opts.projectRoot, home)) return { ...report, skippedHome: true };
   const detect = opts.detect ?? ((t: TargetContract) => t.detect());
   for (const name of allTargetNames()) {
     const contract = getTarget(name);

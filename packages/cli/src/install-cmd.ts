@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { findAssetRoot } from '@rig/core/asset-root.ts';
 import { parseArgs } from './install/args.ts';
 import { allTargetNames, getTarget } from './install/loader.ts';
-import { displayPath, type Scope } from './install/paths.ts';
+import { displayPath, samePath, type Scope } from './install/paths.ts';
 import { hasScope, installTarget, type InstallOptions } from './install/runner.ts';
 import { wiredLocations } from './install/uninstall.ts';
 
@@ -42,7 +42,7 @@ export async function runInstall(cwd: string): Promise<void> {
   for (const name of names) {
     const contract = getTarget(name)!;
     const scope = hasScope(contract, requested) ? requested : other(requested);
-    if (scope === 'project' && projectRoot === resolve(home)) {
+    if (scope === 'project' && samePath(projectRoot, home)) {
       process.stderr.write(
         `rig: ${projectRoot} is your home directory — project files here would land in your user config.\n` +
           `     Run \`rig install ${name}\` inside a project, or pass --global.\n`,

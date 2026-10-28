@@ -6,7 +6,7 @@ import { findAssetRoot } from '@rig/core/asset-root.ts';
 import { scopeLabel } from './install-cmd.ts';
 import { parseArgs } from './install/args.ts';
 import { allTargetNames, getTarget } from './install/loader.ts';
-import { displayPath, type Scope } from './install/paths.ts';
+import { displayPath, samePath, type Scope } from './install/paths.ts';
 import { hasScope } from './install/runner.ts';
 import { uninstallTarget, type RemoveResult } from './install/uninstall.ts';
 
@@ -63,7 +63,7 @@ export async function runUninstall(cwd: string): Promise<void> {
       }
       scope = other(requested);
     }
-    if (scope === 'project' && projectRoot === resolve(home)) {
+    if (scope === 'project' && samePath(projectRoot, home)) {
       process.stderr.write(
         `rig: ${projectRoot} is your home directory — its project files are your user config.\n` +
           `     Run \`rig uninstall ${name}\` inside a project, or pass --global.\n`,

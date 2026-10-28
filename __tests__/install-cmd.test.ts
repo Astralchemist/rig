@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runCli } from './support/cli.ts';
@@ -12,7 +20,7 @@ describe('rig install — scope', () => {
   let project: string;
 
   beforeEach(() => {
-    base = mkdtempSync(join(tmpdir(), 'rig-install-cmd-'));
+    base = realpathSync(mkdtempSync(join(tmpdir(), 'rig-install-cmd-')));
     home = join(base, 'home');
     project = join(base, 'project');
     mkdirSync(home, { recursive: true });
