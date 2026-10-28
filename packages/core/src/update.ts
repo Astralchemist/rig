@@ -41,10 +41,13 @@ import { rebuildStructuralEdges } from './resolve/rebuild-edges.ts';
 //      orphaned_memory, delete them and the files rows of deleted files, and
 //      re-attach orphaned memory to re-created nodes with the same anchor
 //   6. rebuild the derived ('ast') edges from the artifacts of ALL files
-//   7. embed the changed nodes
-//   8. tests-edges, hubness, lockfile enrichment and communities
+//   7. tests-edges, hubness, lockfile enrichment and communities
+//   8. embed the changed nodes, and any extracted node still missing a vector
+//      from the current model
 // Steps 4–6 and the tests edges run in one transaction, so readers never see
-// a file's nodes without its edges.
+// a file's nodes without its edges. The slow, fallible embedding runs last: if
+// it fails, the graph is already complete and the next run embeds what is
+// missing (sync does not skip while vectors are missing).
 
 export interface IndexProgress {
   phase: 'extract' | 'resolve' | 'embed' | 'tests-edges' | 'hubness' | 'communities';
@@ -55,9 +58,9 @@ export interface IndexProgress {
 
 export interface UpdateOptions {
   // 'index' (`rig index`, `rig start`): full hubness recompute + communities,
-  // and embeds any extracted node still missing a current-model vector.
-  // 'sync' (`rig sync`, the watcher): the cheaper incremental tail, and a
-  // no-op when nothing changed.
+  // and the edge rebuild runs even when no file changed.
+  // 'sync' (`rig sync`, the watcher): the cheaper incremental tail; with no
+  // file changes it only embeds nodes still missing a vector, if any.
   mode: 'index' | 'sync';
   // include/exclude globs. Only files the filtered walk could yield are
   // re-extracted or treated as deleted.
@@ -115,12 +118,12 @@ const isBusy = (e: unknown): boolean => {
 };
 
 // Another rig process (a watcher in an MCP server, a CLI `rig index`) may hold
-// the write lock. The apply transaction reads and writes in one go and rolls
+// the write lock. Each step retried here reads and writes in one go and rolls
 // back on failure, so it is simply run again.
-const retryWhenBusy = async <T>(run: () => T, attempts = 6): Promise<T> => {
+const retryWhenBusy = async <T>(run: () => T | Promise<T>, attempts = 6): Promise<T> => {
   for (let attempt = 1; ; attempt++) {
     try {
-      return run();
+      return await run();
     } catch (e) {
       if (!isBusy(e) || attempt >= attempts) throw e;
       await new Promise((r) => setTimeout(r, 25 * 2 ** attempt));
@@ -253,17 +256,19 @@ const deleteNodes = (db: SqliteAdapter, nodes: readonly { id: string }[]): void 
 };
 
 // Extracted nodes without a vector from the current model — left behind by an
-// embedder failure or a model switch. Index mode re-checks them.
+// embedder failure, a busy write, or a model switch.
+const MISSING_EMBEDDING_SQL = `FROM nodes n LEFT JOIN embeddings e ON e.node_id = n.id
+  WHERE ${EXTRACTED_NODE_SQL} AND (e.node_id IS NULL OR e.model != ?)`;
+
 const nodesMissingEmbedding = (db: SqliteAdapter, model: string): ExtractNode[] =>
   (
     db
-      .prepare(
-        `SELECT n.id, n.type, n.name, n.data FROM nodes n
-         LEFT JOIN embeddings e ON e.node_id = n.id
-         WHERE ${EXTRACTED_NODE_SQL} AND (e.node_id IS NULL OR e.model != ?)`,
-      )
+      .prepare(`SELECT n.id, n.type, n.name, n.data ${MISSING_EMBEDDING_SQL}`)
       .all(model) as StoredRow[]
   ).map(extractNodeOf);
+
+const anyMissingEmbedding = (db: SqliteAdapter, model: string): boolean =>
+  db.prepare(`SELECT 1 AS x ${MISSING_EMBEDDING_SQL} LIMIT 1`).get(model) !== null;
 
 const countWalkedNodes = (db: SqliteAdapter, walked: ReadonlySet<string>): number => {
   const rows = db
@@ -313,7 +318,9 @@ export async function runUpdate(
   const inWalk = makeWalkFilter(opts.walk);
   const deleted = [...known.keys()].filter((p) => !seen.has(p) && inWalk(p));
 
-  if (mode === 'sync' && changed.length === 0 && deleted.length === 0) {
+  const nothingChanged = changed.length === 0 && deleted.length === 0;
+  const healOnly = mode === 'sync' && nothingChanged;
+  if (healOnly && !(embedder && anyMissingEmbedding(db, embedder.model))) {
     return {
       files: seen.size,
       changed: 0,
@@ -330,7 +337,6 @@ export async function runUpdate(
   }
 
   // 4–6 (+ tests edges, which derive from the rebuilt imports edges).
-  onProgress?.({ phase: 'resolve' });
   const apply = db.transaction(() => {
     const changedNodes: ExtractNode[] = [];
     const written: AnchoredNode[] = [];
@@ -358,41 +364,52 @@ export async function runUpdate(
     inferTestsEdges(db);
     return { changedNodes, stats, orphaned, reattached };
   });
-  const { changedNodes, stats, orphaned, reattached } = await retryWhenBusy(apply);
+  let applied = {
+    changedNodes: [] as ExtractNode[],
+    stats: { edges: 0, unresolved: 0 },
+    orphaned: 0,
+    reattached: 0,
+  };
+  if (!healOnly) {
+    onProgress?.({ phase: 'resolve' });
+    applied = await retryWhenBusy(apply);
 
-  // 7. Embed. Unchanged embedding text is skipped by text_hash, so a moved
+    // 7. Hubness, lockfile enrichment, communities.
+    onProgress?.({ phase: 'hubness' });
+    await retryWhenBusy(() => {
+      if (mode === 'index' || deleted.length > 0) {
+        // Deletions can change type rosters globally; full recompute is safer.
+        recomputeHubness(db);
+      } else {
+        recomputeHubnessForFiles(
+          db,
+          changed.map((f) => f.path),
+        );
+      }
+    });
+    // A2 — pull resolved versions out of lockfiles and attach to declared-deps.
+    await retryWhenBusy(() => enrichDependenciesFromLockfiles(db, projectRoot));
+    if (mode === 'index') {
+      onProgress?.({ phase: 'communities' });
+      const communityCount = await retryWhenBusy(() => detectCommunities(db));
+      onProgress?.({ phase: 'communities', total: communityCount });
+    }
+  }
+  const { changedNodes, stats, orphaned, reattached } = applied;
+
+  // 8. Embed. Unchanged embedding text is skipped by text_hash, so a moved
   // symbol keeps its vector.
   let embedded = 0;
   if (embedder) {
     const candidates = new Map(changedNodes.map((n) => [n.id, n]));
-    if (mode === 'index') {
-      for (const n of nodesMissingEmbedding(db, embedder.model)) {
-        if (!candidates.has(n.id)) candidates.set(n.id, n);
-      }
+    for (const n of nodesMissingEmbedding(db, embedder.model)) {
+      if (!candidates.has(n.id)) candidates.set(n.id, n);
     }
     if (candidates.size > 0) {
       onProgress?.({ phase: 'embed', total: candidates.size, detail: embedder.model });
-      embedded = (await embedAndStore(embedder, db, [...candidates.values()])).embedded;
+      const nodes = [...candidates.values()];
+      embedded = (await retryWhenBusy(() => embedAndStore(embedder, db, nodes))).embedded;
     }
-  }
-
-  // 8. Hubness, lockfile enrichment, communities.
-  onProgress?.({ phase: 'hubness' });
-  if (mode === 'index' || deleted.length > 0) {
-    // Deletions can change type rosters globally; full recompute is safer.
-    recomputeHubness(db);
-  } else {
-    recomputeHubnessForFiles(
-      db,
-      changed.map((f) => f.path),
-    );
-  }
-  // A2 — pull resolved versions out of lockfiles and attach to declared-deps.
-  enrichDependenciesFromLockfiles(db, projectRoot);
-  if (mode === 'index') {
-    onProgress?.({ phase: 'communities' });
-    const communityCount = detectCommunities(db);
-    onProgress?.({ phase: 'communities', total: communityCount });
   }
 
   return {

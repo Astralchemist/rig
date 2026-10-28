@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Rig } from '../packages/core/src/index.ts';
 import { recordActivation } from '../packages/core/src/db/activation-queries.ts';
+import { getEmbedding } from '../packages/core/src/db/embed-queries.ts';
 import { DeterministicEmbedder } from '../packages/core/src/embed/deterministic-embedder.ts';
 import { EXTRACTOR_VERSION } from '../packages/core/src/extract/extractor.ts';
 
@@ -21,7 +22,12 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 
 class CountingEmbedder extends DeterministicEmbedder {
   count = 0;
+  failNext = false;
   override async embed(texts: readonly string[]): Promise<Float32Array[]> {
+    if (this.failNext) {
+      this.failNext = false;
+      throw new Error('embedder down');
+    }
     this.count += texts.length;
     return super.embed(texts);
   }
@@ -315,6 +321,18 @@ describe('retention across index and sync', () => {
       { id: pid, src: nodeId('main', 'function'), dst: nodeId('helper', 'function') },
     ]);
     expect((await rig.status()).orphans).toBe(0);
+  });
+
+  test('a failed embedding after the graph committed is healed by the next sync', async () => {
+    write('d.ts', `export function delta(): number { return 4; }\n`);
+    embedder.failNext = true;
+    await expect(rig.sync()).rejects.toThrow('embedder down');
+    const delta = nodeId('delta', 'function');
+    expect(getEmbedding(rig.database.adapter, delta)).toBeNull();
+
+    const healed = await rig.sync();
+    expect(healed.filesChanged).toBe(0);
+    expect(getEmbedding(rig.database.adapter, delta)).not.toBeNull();
   });
 
   test('editing a file and syncing rebuilds its outgoing calls/imports edges', async () => {
