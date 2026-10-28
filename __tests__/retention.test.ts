@@ -269,6 +269,54 @@ describe('retention across index and sync', () => {
     expect((await rig.status()).orphans).toBe(0);
   });
 
+  test('orphaned memory finds an endpoint whose anchor changed in place', async () => {
+    write('package.json', JSON.stringify({ dependencies: { zod: '^3.0.0' } }));
+    await rig.sync();
+    const helper = nodeId('helper', 'function');
+    const zod = nodeId('zod', 'declared-dependency');
+    rig.writes.proposeEdge({ src: helper, dst: zod, rationale: 'helper validates with zod' }, ctx);
+
+    write('b.ts', `export const keep = 1;\n`);
+    await rig.sync();
+    // zod keeps its id while its qualifiedName follows the new spec.
+    write('package.json', JSON.stringify({ dependencies: { zod: '^3.1.0' } }));
+    write('b.ts', B_TS);
+    await rig.sync();
+
+    expect(nodeId('zod', 'declared-dependency')).toBe(zod);
+    expect(all(`SELECT src, dst FROM pending_edges`)).toEqual([
+      { src: nodeId('helper', 'function'), dst: zod },
+    ]);
+    expect((await rig.status()).orphans).toBe(0);
+  });
+
+  test('memory between two symbols deleted in turn comes back once both return', async () => {
+    const main = nodeId('main', 'function');
+    const helper = nodeId('helper', 'function');
+    const pid = rig.writes.proposeEdge(
+      { src: main, dst: helper, rationale: 'main wraps helper' },
+      ctx,
+    );
+
+    write('a.ts', `import { helper } from './b';\n`); // main gone: its row holds the edge
+    await rig.sync();
+    write('b.ts', `export const keep = 1;\n`); // helper gone: nothing left on it
+    await rig.sync();
+    write('a.ts', A_TS); // main back first: the edge waits for helper
+    await rig.sync();
+    expect(all(`SELECT 1 AS x FROM pending_edges`)).toHaveLength(0);
+    expect(all<{ reason: string }>(`SELECT reason FROM orphaned_memory`)).toEqual([
+      { reason: 'endpoint-missing' },
+    ]);
+
+    write('b.ts', B_TS);
+    await rig.sync();
+    expect(all(`SELECT id, src, dst FROM pending_edges`)).toEqual([
+      { id: pid, src: nodeId('main', 'function'), dst: nodeId('helper', 'function') },
+    ]);
+    expect((await rig.status()).orphans).toBe(0);
+  });
+
   test('editing a file and syncing rebuilds its outgoing calls/imports edges', async () => {
     const before = edgesFromFile('a.ts');
     expect(countByKind(before)).toMatchObject({ calls: 1, imports: 1 });

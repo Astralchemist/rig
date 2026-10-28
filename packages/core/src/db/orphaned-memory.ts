@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { positionOrdinals } from '../reconcile-nodes.ts';
 import type { SqliteAdapter } from './adapter.ts';
 import { DERIVED_EDGE_PROVENANCE, EXTRACTED_KINDS } from './extracted-nodes.ts';
 
@@ -9,7 +10,7 @@ import { DERIVED_EDGE_PROVENANCE, EXTRACTED_KINDS } from './extracted-nodes.ts';
 // among equal anchors — is extracted again. Cross-file moves and renames are
 // not followed.
 //
-// Payload (JSON, `v: 1`), ids as they were when the node was deleted:
+// Payload (JSON, `v: 1`), ids as they were when the row was written:
 //   ordinal          position among nodes with the same anchor
 //   hub_explicit     promoted via rig_promote
 //   aliases          [{ alias, provenance, rationale, created_at }]
@@ -21,13 +22,19 @@ import { DERIVED_EDGE_PROVENANCE, EXTRACTED_KINDS } from './extracted-nodes.ts';
 //   anchors          { [other endpoint id]: anchor } for endpoints that are
 //                    extracted nodes, so one re-created under a new id is
 //                    still found
+//
+// Reasons: 'symbol-removed' and 'file-deleted' for a deleted node's own
+// memory; 'endpoint-missing' for edges of a re-attached node whose other end
+// is still gone — they wait in a row anchored at that end.
 
-export type OrphanReason = 'symbol-removed' | 'file-deleted';
+export type OrphanReason = 'symbol-removed' | 'file-deleted' | 'endpoint-missing';
 
 export interface OrphanAnchor {
   file_path: string;
   kind: string;
   qualified_name: string;
+  name?: string;
+  ordinal?: number;
 }
 
 export interface OrphanPayload {
@@ -67,6 +74,8 @@ export interface OrphanPayload {
   anchors: Record<string, OrphanAnchor>;
 }
 
+type EdgeList = 'semantic_edges' | 'pending_edges' | 'edges';
+
 // A node about to be deleted, or a node just written, with its anchor.
 export interface AnchoredNode {
   id: string;
@@ -78,6 +87,57 @@ export interface AnchoredNode {
 }
 
 const EXTRACTED: ReadonlySet<string> = new Set(EXTRACTED_KINDS);
+
+const emptyPayload = (ordinal: number): OrphanPayload => ({
+  v: 1,
+  ordinal,
+  hub_explicit: false,
+  aliases: [],
+  annotations: [],
+  semantic_edges: [],
+  pending_edges: [],
+  edges: [],
+  anchors: {},
+});
+
+const anchorOfNode = (n: AnchoredNode): OrphanAnchor => ({
+  file_path: n.filePath,
+  kind: n.kind,
+  qualified_name: n.qualifiedName,
+  name: n.name,
+  ordinal: n.ordinal,
+});
+
+// Ids of the nodes holding an anchor, in ordinal (position) order.
+const nodesAtAnchor = (db: SqliteAdapter) => {
+  const q = db.prepare(
+    `SELECT id, data FROM nodes
+     WHERE json_extract(data, '$.filePath') = ? AND type = ?
+       AND COALESCE(json_extract(data, '$.qualifiedName'), name) = ?`,
+  );
+  return (filePath: string, kind: string, qualifiedName: string): string[] => {
+    const rows = (q.all(filePath, kind, qualifiedName) as { id: string; data: string }[]).map(
+      (r) => {
+        const d = JSON.parse(r.data) as { startLine?: number; startColumn?: number };
+        return {
+          id: r.id,
+          kind,
+          qualifiedName,
+          startLine: d.startLine ?? 0,
+          startColumn: d.startColumn ?? 0,
+        };
+      },
+    );
+    const ordinals = positionOrdinals(rows);
+    const out: string[] = [];
+    rows.forEach((r, i) => (out[ordinals[i]!] = r.id));
+    return out;
+  };
+};
+
+const insertOrphanSql = `INSERT INTO orphaned_memory
+  (node_id, kind, name, qualified_name, file_path, payload, orphaned_at, reason)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
 
 export const countOrphans = (db: SqliteAdapter): number =>
   (db.prepare(`SELECT COUNT(*) AS n FROM orphaned_memory`).get() as { n: number }).n;
@@ -113,17 +173,22 @@ export const snapshotOrphans = (
     ),
     endpoint: db.prepare(`SELECT type, name, data FROM nodes WHERE id = ?`),
   };
-  const insert = db.prepare(
-    `INSERT INTO orphaned_memory
-       (node_id, kind, name, qualified_name, file_path, payload, orphaned_at, reason)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  );
+  const insert = db.prepare(insertOrphanSql);
+  const atAnchor = nodesAtAnchor(db);
   const anchorOf = (id: string): OrphanAnchor | null => {
     const r = q.endpoint.get(id) as { type: string; name: string; data: string } | null;
     if (!r || !EXTRACTED.has(r.type)) return null;
     const d = JSON.parse(r.data) as { filePath?: string; qualifiedName?: string };
     if (!d.filePath) return null;
-    return { file_path: d.filePath, kind: r.type, qualified_name: d.qualifiedName ?? r.name };
+    const qualifiedName = d.qualifiedName ?? r.name;
+    const ordinal = atAnchor(d.filePath, r.type, qualifiedName).indexOf(id);
+    return {
+      file_path: d.filePath,
+      kind: r.type,
+      qualified_name: qualifiedName,
+      name: r.name,
+      ordinal: Math.max(ordinal, 0),
+    };
   };
 
   const now = Date.now();
@@ -171,12 +236,21 @@ export const snapshotOrphans = (
   return written;
 };
 
+interface Match {
+  rowId: number;
+  oldId: string;
+  node: AnchoredNode;
+  orphanedAt: number;
+  payload: OrphanPayload;
+}
+
 // Re-attach orphaned memory to freshly written nodes whose anchor and ordinal
-// match an orphan row, then drop the row. Edges come back only when their
-// other endpoint exists (by id, or by anchor if it was re-created under a new
-// id); the rest is dropped with the row. A re-attached waypoint_references
-// edge also gets its waypoint's constellation_refs rewritten to the new id.
-// Returns the number of orphan rows re-attached.
+// match an orphan row, then drop the row. An edge comes back once its other
+// endpoint exists; until then it waits in an 'endpoint-missing' row anchored
+// at that endpoint (an agent-written endpoint that is gone is gone for good).
+// A re-attached waypoint_references edge also gets its waypoint's
+// constellation_refs rewritten to the new id. Returns the number of orphan
+// rows re-attached.
 export const reattachOrphans = (db: SqliteAdapter, nodes: readonly AnchoredNode[]): number => {
   const files = new Set(
     (
@@ -185,13 +259,13 @@ export const reattachOrphans = (db: SqliteAdapter, nodes: readonly AnchoredNode[
   );
   if (files.size === 0) return 0;
   const byAnchor = db.prepare(
-    `SELECT id, node_id, payload FROM orphaned_memory
+    `SELECT id, node_id, payload, orphaned_at FROM orphaned_memory
      WHERE file_path = ? AND kind = ? AND qualified_name = ? ORDER BY id`,
   );
 
   // Pass 1: pair rows with nodes, and map every old id to its new one, so
   // memory linking two re-created nodes is restored whichever comes first.
-  const matches: { rowId: number; oldId: string; newId: string; payload: OrphanPayload }[] = [];
+  const matches: Match[] = [];
   const idMap = new Map<string, string>();
   for (const n of nodes) {
     if (!files.has(n.filePath)) continue;
@@ -199,32 +273,64 @@ export const reattachOrphans = (db: SqliteAdapter, nodes: readonly AnchoredNode[
       id: number;
       node_id: string;
       payload: string;
+      orphaned_at: number;
     }[];
     for (const r of rows) {
       const payload = JSON.parse(r.payload) as OrphanPayload;
       if ((payload.ordinal ?? 0) !== n.ordinal) continue;
-      matches.push({ rowId: r.id, oldId: r.node_id, newId: n.id, payload });
+      matches.push({ rowId: r.id, oldId: r.node_id, node: n, orphanedAt: r.orphaned_at, payload });
       idMap.set(r.node_id, n.id);
     }
   }
   if (matches.length === 0) return 0;
 
-  const exists = db.prepare(`SELECT 1 AS x FROM nodes WHERE id = ?`);
-  const byNodeAnchor = db.prepare(
-    `SELECT id FROM nodes
-     WHERE json_extract(data, '$.filePath') = ? AND type = ?
-       AND COALESCE(json_extract(data, '$.qualifiedName'), name) = ?`,
-  );
-  // An endpoint with an anchor is checked against it: a deleted node's id can
-  // later be generated again for a different symbol.
-  const resolveEnd = (id: string, anchors: Record<string, OrphanAnchor>): string | null => {
+  const created = db.prepare(`SELECT created_at FROM nodes WHERE id = ?`);
+  const atAnchor = nodesAtAnchor(db);
+  // Where an endpoint of the memory is now, or null while it is gone.
+  const resolveEnd = (id: string, m: Match): string | null => {
     const mapped = idMap.get(id);
     if (mapped) return mapped;
-    const a = anchors[id];
-    if (!a) return exists.get(id) ? id : null;
-    const hits = byNodeAnchor.all(a.file_path, a.kind, a.qualified_name) as { id: string }[];
-    if (hits.some((h) => h.id === id)) return id;
-    return hits.length === 1 ? hits[0]!.id : null;
+    const row = created.get(id) as { created_at: number } | null;
+    const a = m.payload.anchors[id];
+    // Still the row the memory pointed at: it predates the orphaning, and an
+    // id is never handed to another node while a row holds it. Its anchor may
+    // have changed in place since (a dependency's spec, a renamed class).
+    if (row && (!a || row.created_at <= m.orphanedAt)) return id;
+    if (!a) return null;
+    // Re-created since: find it by anchor and ordinal (a deleted node's id can
+    // later be generated again for a different symbol).
+    const hits = atAnchor(a.file_path, a.kind, a.qualified_name);
+    if (hits.includes(id)) return id;
+    return hits[a.ordinal ?? 0] ?? null;
+  };
+
+  // Edges whose other endpoint is still gone, grouped by that endpoint.
+  const waiting = new Map<string, { anchor: OrphanAnchor; payload: OrphanPayload }>();
+  // Resolve both ends of an edge; when one is missing, park the edge (the end
+  // that did resolve rewritten) on the missing end's anchor and return null.
+  const place = <T extends { src: string; dst: string }>(
+    item: T,
+    list: EdgeList,
+    m: Match,
+  ): { src: string; dst: string } | null => {
+    const src = resolveEnd(item.src, m);
+    const dst = resolveEnd(item.dst, m);
+    if (src && dst) return { src, dst };
+    const missing = src ? item.dst : item.src;
+    const anchor = m.payload.anchors[missing];
+    if (!anchor) return null;
+    let entry = waiting.get(missing);
+    if (!entry) {
+      entry = { anchor, payload: emptyPayload(anchor.ordinal ?? 0) };
+      waiting.set(missing, entry);
+    }
+    (entry.payload[list] as unknown[]).push({
+      ...item,
+      src: src ?? item.src,
+      dst: dst ?? item.dst,
+    });
+    entry.payload.anchors[m.node.id] = anchorOfNode(m.node);
+    return null;
   };
 
   const ins = {
@@ -255,10 +361,13 @@ export const reattachOrphans = (db: SqliteAdapter, nodes: readonly AnchoredNode[
     waypoint: db.prepare(`SELECT data FROM nodes WHERE id = ? AND type = 'conversation-waypoint'`),
     waypointData: db.prepare(`UPDATE nodes SET data = ? WHERE id = ?`),
     drop: db.prepare(`DELETE FROM orphaned_memory WHERE id = ?`),
+    orphan: db.prepare(insertOrphanSql),
   };
 
   // Pass 2: attach.
-  for (const { rowId, oldId, newId, payload: p } of matches) {
+  for (const m of matches) {
+    const { oldId, payload: p } = m;
+    const newId = m.node.id;
     for (const a of p.aliases) {
       ins.alias.run(newId, a.alias, a.provenance, a.rationale, a.created_at);
     }
@@ -270,19 +379,19 @@ export const reattachOrphans = (db: SqliteAdapter, nodes: readonly AnchoredNode[
     }
     if (p.hub_explicit) ins.promote.run(newId);
     for (const e of p.semantic_edges) {
-      const src = resolveEnd(e.src, p.anchors);
-      const dst = resolveEnd(e.dst, p.anchors);
-      if (src && dst) ins.semantic.run(src, dst, e.weight, e.provenance, e.rationale, e.created_at);
+      const ends = place(e, 'semantic_edges', m);
+      if (ends) {
+        ins.semantic.run(ends.src, ends.dst, e.weight, e.provenance, e.rationale, e.created_at);
+      }
     }
     for (const e of p.pending_edges) {
       if (ins.pendingById.get(e.id)) continue;
-      const src = resolveEnd(e.src, p.anchors);
-      const dst = resolveEnd(e.dst, p.anchors);
-      if (!src || !dst) continue;
+      const ends = place(e, 'pending_edges', m);
+      if (!ends) continue;
       ins.pending.run(
         e.id,
-        src,
-        dst,
+        ends.src,
+        ends.dst,
         e.kind,
         e.weight,
         e.provenance,
@@ -294,22 +403,35 @@ export const reattachOrphans = (db: SqliteAdapter, nodes: readonly AnchoredNode[
       );
     }
     for (const e of p.edges) {
-      const src = resolveEnd(e.src, p.anchors);
-      const dst = resolveEnd(e.dst, p.anchors);
-      if (!src || !dst) continue;
-      ins.edge.run(src, dst, e.kind, e.provenance, e.created_at);
-      if (e.kind === 'waypoint_references' && dst === newId && newId !== oldId) {
-        const w = ins.waypoint.get(src) as { data: string } | null;
+      const ends = place(e, 'edges', m);
+      if (!ends) continue;
+      ins.edge.run(ends.src, ends.dst, e.kind, e.provenance, e.created_at);
+      if (e.kind === 'waypoint_references' && ends.dst === newId && newId !== oldId) {
+        const w = ins.waypoint.get(ends.src) as { data: string } | null;
         if (w) {
           const data = JSON.parse(w.data) as { constellation_refs?: string[] };
           if (Array.isArray(data.constellation_refs)) {
             data.constellation_refs = data.constellation_refs.map((r) => (r === oldId ? newId : r));
-            ins.waypointData.run(JSON.stringify(data), src);
+            ins.waypointData.run(JSON.stringify(data), ends.src);
           }
         }
       }
     }
-    ins.drop.run(rowId);
+    ins.drop.run(m.rowId);
+  }
+
+  const now = Date.now();
+  for (const [missing, { anchor, payload }] of waiting) {
+    ins.orphan.run(
+      missing,
+      anchor.kind,
+      anchor.name ?? anchor.qualified_name,
+      anchor.qualified_name,
+      anchor.file_path,
+      JSON.stringify(payload),
+      now,
+      'endpoint-missing',
+    );
   }
   return matches.length;
 };
