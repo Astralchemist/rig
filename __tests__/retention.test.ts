@@ -4,7 +4,9 @@ import { mkdtempSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Rig } from '../packages/core/src/index.ts';
+import { recordActivation } from '../packages/core/src/db/activation-queries.ts';
 import { DeterministicEmbedder } from '../packages/core/src/embed/deterministic-embedder.ts';
+import { EXTRACTOR_VERSION } from '../packages/core/src/extract/extractor.ts';
 
 // Retention: re-index and sync must keep the graph's structural edges and the
 // memory agents attached to code. Each case reproduces a loss measured on the
@@ -52,6 +54,56 @@ describe('retention across index and sync', () => {
     return out;
   };
 
+  // Agent memory on code nodes, as the MCP write tools leave it.
+  const ctx = { sessionId: 'agent-1', actor: 'ai:test' };
+  const attachMemory = (): { helper: string; main: string; widget: string; waypoint: string } => {
+    const helper = nodeId('helper', 'function');
+    const main = nodeId('main', 'function');
+    const widget = nodeId('Widget', 'class');
+    rig.writes.addAlias({ nodeId: helper, alias: 'doubler', rationale: 'test alias' }, ctx);
+    rig.writes.promoteHub(widget, 'promote for test', ctx);
+    const waypoint = rig.writes.dropWaypoint(
+      {
+        kind: 'decision',
+        title: 'Use helper',
+        summary: 'We decided to route through helper',
+        constellationRefs: [helper, main],
+      },
+      ctx,
+    );
+    rig.writes.proposeEdge({ src: main, dst: widget, rationale: 'semantic link for test' }, ctx);
+    const accepted = rig.writes.proposeEdge(
+      { src: helper, dst: widget, rationale: 'second link for test' },
+      ctx,
+    );
+    rig.writes.acceptPending(accepted, { sessionId: 'web', actor: 'user:web' });
+    rig.writes.annotateNode(
+      { nodeId: helper, note: 'auth boundary', rationale: 'test annotate' },
+      ctx,
+    );
+    return { helper, main, widget, waypoint };
+  };
+  const memoryState = (): Record<string, unknown> => ({
+    aliases: all(`SELECT node_id, alias FROM aliases ORDER BY node_id, alias`),
+    doublerHits: rig.searchNodes('doubler').map((n) => n.id),
+    hubs: all(`SELECT id, hub_explicit, is_hub FROM nodes WHERE hub_explicit = 1 ORDER BY id`),
+    waypointRefs: all(`SELECT src, dst FROM edges WHERE kind = 'waypoint_references' ORDER BY dst`),
+    pending: all(`SELECT id, src, dst, status FROM pending_edges ORDER BY id`),
+    semantic: all(`SELECT src, dst, provenance FROM edges_semantic ORDER BY src, dst`),
+    annotations: all(`SELECT node_id, note FROM annotations ORDER BY id`),
+  });
+  const expectMemoryAttached = (state: Record<string, unknown>): void => {
+    expect(state).toMatchObject({
+      aliases: [expect.anything()],
+      doublerHits: [expect.anything()],
+      hubs: [{ hub_explicit: 1, is_hub: 1 }],
+      waypointRefs: [expect.anything(), expect.anything()],
+      pending: [{ status: 'pending' }, { status: 'accepted' }],
+      semantic: [expect.anything()],
+      annotations: [{ note: 'auth boundary' }],
+    });
+  };
+
   beforeEach(async () => {
     project = mkdtempSync(join(tmpdir(), 'rig-retention-'));
     write('b.ts', B_TS);
@@ -66,6 +118,73 @@ describe('retention across index and sync', () => {
   afterEach(() => {
     rig.close();
     rmSync(project, { recursive: true, force: true });
+  });
+
+  test('a no-change re-index keeps agent memory and re-embeds nothing', async () => {
+    attachMemory();
+    const before = memoryState();
+    expectMemoryAttached(before);
+
+    embedder.count = 0;
+    const r = await rig.indexAll();
+
+    expect(memoryState()).toEqual(before);
+    expect(embedder.count).toBe(0);
+    expect(r.changed).toBe(0);
+    expect(r.unchanged).toBe(r.files);
+  });
+
+  test('a line shift keeps the node id, so activations and waypoint refs still resolve', async () => {
+    const m = attachMemory();
+    recordActivation(rig.database.adapter, m.helper, 'mcp', { sessionId: 'agent-1' });
+    const before = memoryState();
+
+    write('b.ts', `// a comment shifts helper down\n${B_TS}`);
+    const s = await rig.sync();
+    expect(s.filesChanged).toBe(1);
+
+    expect(nodeId('helper', 'function')).toBe(m.helper);
+    const data = JSON.parse(
+      one<{ data: string }>(`SELECT data FROM nodes WHERE id = ?`, m.helper).data,
+    ) as { startLine: number };
+    expect(data.startLine).toBe(2);
+    expect(
+      one<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM activations a WHERE NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id = a.node_id)`,
+      ).n,
+    ).toBe(0);
+    const refs = (
+      JSON.parse(one<{ data: string }>(`SELECT data FROM nodes WHERE id = ?`, m.waypoint).data) as {
+        constellation_refs: string[];
+      }
+    ).constellation_refs;
+    expect(refs.filter((id) => one(`SELECT 1 AS x FROM nodes WHERE id = ?`, id) !== null)).toEqual(
+      refs,
+    );
+    expect(memoryState()).toEqual(before);
+  });
+
+  test('an extractor version bump re-extracts unchanged files once, in place', async () => {
+    attachMemory();
+    const before = memoryState();
+    const fileCount = one<{ n: number }>(`SELECT COUNT(*) AS n FROM files`).n;
+    // What a DB written by the previous extractor looks like.
+    rig.database.adapter
+      .prepare(`UPDATE files SET extractor_version = ?`)
+      .run(EXTRACTOR_VERSION - 1);
+
+    embedder.count = 0;
+    const first = await rig.indexAll();
+    expect(first.changed).toBe(fileCount);
+    expect(
+      all<{ v: number }>(`SELECT DISTINCT extractor_version AS v FROM files`).map((r) => r.v),
+    ).toEqual([EXTRACTOR_VERSION]);
+    // Re-extracted in place: memory intact, unchanged embedding text skipped.
+    expect(memoryState()).toEqual(before);
+    expect(embedder.count).toBe(0);
+
+    const second = await rig.indexAll();
+    expect(second.changed).toBe(0);
   });
 
   test('editing a file and syncing rebuilds its outgoing calls/imports edges', async () => {

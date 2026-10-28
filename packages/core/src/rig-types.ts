@@ -28,9 +28,12 @@ export interface IndexResult {
   edges: number;
   unresolved: number;
   elapsed_ms: number;
-  // How the walked files were handled: (re-)extracted, skipped as unchanged,
-  // or removed because they are gone from disk.
+  // How the walked files were handled: (re-)extracted, skipped as unchanged
+  // (same content hash and extractor version), or removed because they are
+  // gone from disk.
   changed: number;
   unchanged: number;
   deleted: number;
+  // Nodes whose embedding was (re)computed.
+  embedded: number;
 }

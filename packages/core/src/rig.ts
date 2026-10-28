@@ -153,11 +153,13 @@ export class Rig {
     onProgress?: (p: import('./index-all.ts').IndexProgress) => void;
     include?: readonly string[];
     exclude?: readonly string[];
+    // Re-extract every walked file, even unchanged ones (still in place).
+    force?: boolean;
   } = {}): Promise<IndexResult> {
     return runIndexAll(this.projectRoot, this.database, this.embedder, opts.onProgress, {
       include: opts.include,
       exclude: opts.exclude,
-    });
+    }, { force: opts.force === true });
   }
 
   sync(): Promise<SyncResult> {

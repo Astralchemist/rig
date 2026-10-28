@@ -51,6 +51,9 @@ export const runIndex = async (cwd: string): Promise<void> => {
   }
   const include = collectFlag('--include');
   const exclude = collectFlag('--exclude');
+  // Unchanged files (same content hash + extractor version) are skipped;
+  // --force re-extracts them anyway, still updating nodes in place.
+  const force = process.argv.includes('--force');
   const rig = await Rig.open(cwd);
   try {
     process.stderr.write('rig: indexing...\n');
@@ -63,6 +66,7 @@ export const runIndex = async (cwd: string): Promise<void> => {
       onProgress: (p) => writeStatus(fmtPhase(p.phase, p.current, p.total, p.detail)),
       include,
       exclude,
+      force,
     });
     if (isTty) process.stderr.write('\r\x1b[K');
     // C4 — seed skill anchors after indexing so search hits them too.
@@ -70,9 +74,13 @@ export const runIndex = async (cwd: string): Promise<void> => {
     console.log(`rig: done`);
     console.log(`  skills:           ${skillCount}`);
     console.log(`  files:            ${r.files}`);
+    console.log(`    re-extracted:   ${r.changed}`);
+    console.log(`    unchanged:      ${r.unchanged}`);
+    if (r.deleted > 0) console.log(`    deleted:        ${r.deleted}`);
     console.log(`  nodes:            ${r.nodes}`);
     console.log(`  edges:            ${r.edges}`);
     console.log(`  unresolved:       ${r.unresolved}`);
+    console.log(`  embedded:         ${r.embedded}`);
     console.log(`  elapsed:          ${r.elapsed_ms}ms`);
   } finally {
     rig.close();

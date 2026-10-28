@@ -7,19 +7,23 @@ import { runUpdate, type IndexProgress } from './update.ts';
 
 export type { IndexProgress } from './update.ts';
 
-// `rig index`: the shared update pipeline (update.ts) in index mode. With
-// include/exclude globs only the matching files are re-extracted; every other
-// file keeps its nodes and edges.
+// `rig index`: the shared update pipeline (update.ts) in index mode. Files
+// whose content hash and extractor version are unchanged are skipped; `force`
+// re-extracts them anyway (still updated in place). With include/exclude globs
+// only the matching files are re-extracted; every other file keeps its nodes
+// and edges.
 export async function runIndexAll(
   projectRoot: string,
   database: Database,
   embedder?: Embedder,
   onProgress?: (p: IndexProgress) => void,
   walkOpts?: WalkOptions,
+  opts: { force?: boolean } = {},
 ): Promise<IndexResult> {
   const r = await runUpdate(projectRoot, database, embedder, {
     mode: 'index',
     walk: walkOpts,
+    force: opts.force,
     onProgress,
   });
   return {
@@ -31,5 +35,6 @@ export async function runIndexAll(
     changed: r.changed,
     unchanged: r.unchanged,
     deleted: r.deleted,
+    embedded: r.embedded,
   };
 }

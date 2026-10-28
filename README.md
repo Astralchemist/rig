@@ -146,7 +146,7 @@ config to copy into the MCP client you use with it.
 | `rig start` | One-shot: init + index + wire agent + open the live map |
 | `rig install <agent>` | Wire an agent into this project (`--global` for your user-level config) |
 | `rig uninstall <agent>` | Remove exactly what install added (`--all`, `--global`, `--dry-run`) |
-| `rig index` | Extract + write nodes (`--include` / `--exclude <glob>`) |
+| `rig index` | Extract + write nodes, skipping unchanged files (`--include` / `--exclude <glob>`, `--force`) |
 | `rig sync` | Incremental update |
 | `rig query` | CLI search |
 | `rig serve --all` | Start MCP and/or the web map (`--mcp` / `--web` / `--no-auth`; `--path <dir>` for another project) |

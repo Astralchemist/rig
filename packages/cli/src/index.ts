@@ -43,7 +43,8 @@ commands:
   start       one-shot: init + index + wire your agent + open the live map
   init        create .rig/ in the current directory
   status      report index health
-  index       extract + write nodes to .rig/rig.db (--include / --exclude <glob>, repeatable)
+  index       extract + write nodes to .rig/rig.db; skips unchanged files
+              (--include / --exclude <glob>, repeatable; --force re-extracts all)
   sync        incremental update
   query       CLI search
   files       list indexed files
