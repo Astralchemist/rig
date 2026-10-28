@@ -1,0 +1,3284 @@
+{
+  "schema": 2,
+  "label": "hybrid-grep-rig",
+  "started_at": "2026-10-28T23:03:22.082Z",
+  "finished_at": "2026-10-28T23:15:38.606Z",
+  "provider": "openrouter",
+  "model": "anthropic/claude-haiku-5.5",
+  "judge_model": null,
+  "rig": {
+    "version": "0.2.0",
+    "commit": "ab8634a92362edfa52e6aeecc5ad8fb868e4f823",
+    "dirty": true,
+    "fingerprint": "f0e6da8652a16429"
+  },
+  "target": {
+    "repo": "~/rig-bench/next-auth",
+    "commit": "e293b3746616660f0844347a68d09eac54b95c6f",
+    "expected_commit": "e293b3746616660f0844347a68d09eac54b95c6f",
+    "index": {
+      "nodes": 2948,
+      "files": 692,
+      "rebuilt": true,
+      "elapsed_ms": 90945
+    }
+  },
+  "arms": [
+    "baseline",
+    "grep+rig"
+  ],
+  "trials": 3,
+  "max_turns": 12,
+  "queries": [
+    {
+      "id": "dep-version",
+      "category": "lookup",
+      "ask": "What version range of `jose` does the @auth/core package declare as a dependency?",
+      "reference": "packages/core/package.json declares \"jose\": \"^6.0.6\".",
+      "expected": {
+        "all": [
+          "6.0.6"
+        ]
+      }
+    },
+    {
+      "id": "where-handled",
+      "category": "lookup",
+      "ask": "Where is the GitHub OAuth provider implemented? Name the file.",
+      "reference": "packages/core/src/providers/github.ts (default export GitHub).",
+      "expected": {
+        "all": [
+          "providers/github.ts"
+        ]
+      }
+    },
+    {
+      "id": "callers-of",
+      "category": "lookup",
+      "ask": "What functions call the `encode` function from @auth/core's JWT module (packages/core/src/jwt.ts)? List up to 5 call sites.",
+      "reference": "Directly, in packages/core/src/lib/actions/callback/oauth/checks.ts: sealCookie, state.create and webauthnChallenge.create. Through options.jwt.encode (jwt.encode by default): session() in lib/actions/session.ts and callback() in lib/actions/callback/index.ts.",
+      "expected": {
+        "all": [
+          "sealCookie"
+        ],
+        "any": [
+          "webauthnChallenge",
+          "/state\\.create/",
+          "actions/session",
+          "callback/index"
+        ]
+      }
+    },
+    {
+      "id": "routes",
+      "category": "lookup",
+      "ask": "Which auth actions (URL path segments such as `/signin`) does @auth/core route requests to? List them all.",
+      "reference": "The AuthAction union in packages/core/src/types.ts (also listed in lib/utils/actions.ts): providers, session, csrf, signin, signout, callback, verify-request, error, webauthn-options.",
+      "expected": {
+        "all": [
+          "/\\bsignin\\b/i",
+          "/\\bsignout\\b/i",
+          "/\\bcallback\\b/i",
+          "/\\bsession\\b/i",
+          "/\\bcsrf\\b/i",
+          "/\\bproviders\\b/i"
+        ],
+        "any": [
+          "verify-request",
+          "webauthn-options"
+        ]
+      }
+    },
+    {
+      "id": "file-summary",
+      "category": "lookup",
+      "ask": "Summarize what `packages/core/src/index.ts` does in 3 sentences. Name its main exported function and say what it takes and returns.",
+      "reference": "It is the @auth/core entry point. Its main export is the Auth function, which takes a standard web Request and an AuthConfig and returns a Response (a ResponseInternal when called with raw). It also re-exports helpers such as setEnvDefaults, createActionURL, isAuthAction and skipCSRFCheck.",
+      "expected": {
+        "all": [
+          "/\\bAuth\\b(?!\\.js)/",
+          "/\\bRequest\\b/",
+          "/\\bResponse\\b/"
+        ],
+        "any": [
+          "AuthConfig",
+          "config"
+        ]
+      }
+    },
+    {
+      "id": "db-init",
+      "category": "lookup",
+      "ask": "Where is the database adapter interface defined?",
+      "reference": "packages/core/src/adapters.ts: `export interface Adapter`.",
+      "expected": {
+        "all": [
+          "adapters.ts",
+          "/\\bAdapter\\b/"
+        ]
+      }
+    },
+    {
+      "id": "tests-for",
+      "category": "lookup",
+      "ask": "Which test files cover the JWT encode/decode flow?",
+      "reference": "packages/core/test/jwt.test.ts imports encode/decode from the JWT module; packages/core/test/actions/session.test.ts and test/actions/callback.test.ts also encode and decode session tokens.",
+      "expected": {
+        "all": [
+          "jwt.test.ts"
+        ]
+      }
+    },
+    {
+      "id": "error-class",
+      "category": "lookup",
+      "ask": "When an action is rejected because the CSRF token is missing, which error class is thrown, and in which file is that class defined?",
+      "reference": "validateCSRF (packages/core/src/lib/actions/callback/oauth/csrf-token.ts) throws MissingCSRF, which is defined in packages/core/src/errors.ts and extends SignInError.",
+      "expected": {
+        "all": [
+          "MissingCSRF",
+          "errors.ts"
+        ]
+      }
+    },
+    {
+      "id": "entry-point",
+      "category": "lookup",
+      "ask": "What's the main entry point of the @auth/core package?",
+      "reference": "packages/core/package.json exports \".\" as ./index.js (types ./index.d.ts), built from packages/core/src/index.ts, whose main export is Auth.",
+      "expected": {
+        "any": [
+          "index.js",
+          "index.ts"
+        ]
+      }
+    },
+    {
+      "id": "type-def",
+      "category": "lookup",
+      "ask": "Where is the `Session` type defined? Show me the file and signature.",
+      "reference": "packages/core/src/types.ts: `export interface Session extends DefaultSession {}`; DefaultSession has `user?: User` and `expires: ISODateString`.",
+      "expected": {
+        "all": [
+          "types.ts",
+          "DefaultSession"
+        ]
+      }
+    },
+    {
+      "id": "nl-session-refresh",
+      "category": "natural",
+      "ask": "Where do we push back a session's expiry date when the user keeps using the app?",
+      "reference": "session() in packages/core/src/lib/actions/session.ts. With JWT sessions it re-encodes the token with a new expiry (fromDate(maxAge)) and re-sets the cookie; with database sessions it calls adapter.updateSession once the session is older than session.updateAge.",
+      "expected": {
+        "all": [
+          "/actions\\/session/"
+        ],
+        "any": [
+          "updateSession",
+          "updateAge",
+          "jwt.encode",
+          "fromDate",
+          "sessionIsDueToBeUpdatedDate",
+          "/re-?(en)?cod|re-?sign/i"
+        ]
+      }
+    },
+    {
+      "id": "nl-csrf",
+      "category": "natural",
+      "ask": "How do we stop another website from submitting our sign-in form on a user's behalf?",
+      "reference": "A double-submit CSRF token: createCSRFToken and validateCSRF in packages/core/src/lib/actions/callback/oauth/csrf-token.ts. init.ts sets options.csrfTokenVerified and lib/index.ts calls validateCSRF on POSTs to signin, signout, callback and session.",
+      "expected": {
+        "all": [
+          "csrf"
+        ],
+        "any": [
+          "csrf-token.ts",
+          "createCSRFToken",
+          "validateCSRF"
+        ]
+      }
+    },
+    {
+      "id": "nl-magic-link",
+      "category": "natural",
+      "ask": "When someone signs in with just their email address, where is the one-time login link created, and how is its token stored?",
+      "reference": "sendToken in packages/core/src/lib/actions/signin/send-token.ts makes a random token, builds the callback URL, calls provider.sendVerificationRequest, and stores a hash of token + secret through adapter.createVerificationToken.",
+      "expected": {
+        "all": [
+          "send-token",
+          "createVerificationToken"
+        ],
+        "any": [
+          "hash"
+        ]
+      }
+    },
+    {
+      "id": "nl-cookie-size",
+      "category": "natural",
+      "ask": "What happens when the login cookie gets too big for the browser?",
+      "reference": "SessionStore in packages/core/src/lib/utils/cookie.ts splits the value into numbered chunks (name.0, name.1, …) of CHUNK_SIZE = 4096 − 160 bytes and joins them again when reading.",
+      "expected": {
+        "all": [
+          "cookie.ts",
+          "chunk"
+        ],
+        "any": [
+          "SessionStore",
+          "CHUNK_SIZE",
+          "4096"
+        ]
+      }
+    },
+    {
+      "id": "nl-redirect",
+      "category": "natural",
+      "ask": "After someone logs in, how do we decide which page they land on, and what stops us from sending them to another website?",
+      "reference": "callbacks.redirect. The default (defaultCallbacks.redirect in packages/core/src/lib/init.ts) allows relative URLs and same-origin URLs and otherwise falls back to baseUrl; createCallbackUrl in lib/utils/callback-url.ts runs it on the callbackUrl parameter or cookie.",
+      "expected": {
+        "all": [
+          "redirect",
+          "/baseUrl|origin/i"
+        ],
+        "any": [
+          "init.ts",
+          "callback-url",
+          "defaultCallbacks",
+          "createCallbackUrl"
+        ]
+      }
+    },
+    {
+      "id": "nl-oauth-checks",
+      "category": "natural",
+      "ask": "How do we make sure the response coming back from the OAuth provider belongs to the login we started?",
+      "reference": "packages/core/src/lib/actions/callback/oauth/checks.ts: state, PKCE (code_verifier) and nonce checks, each sealed in a short-lived encrypted cookie (sealCookie) and verified on the callback (useCookie/parseCookie), called from handleOAuth in callback.ts.",
+      "expected": {
+        "all": [
+          "checks.ts"
+        ],
+        "any": [
+          "/\\bstate\\b/i",
+          "/pkce|code.?verifier/i",
+          "nonce"
+        ],
+        "any_min": 2
+      }
+    }
+  ],
+  "results": [
+    {
+      "query_id": "dep-version",
+      "arm": "baseline",
+      "trial": 0,
+      "prompt_tokens": 2440,
+      "completion_tokens": 435,
+      "cost_usd": 0.0004615,
+      "model_calls": 2,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rg": 52,
+        "list_dir": 1281
+      },
+      "stop": "answer",
+      "final_text": "`@auth/core` declares `\"jose\": \"^6.0.6\"` in `packages/core/package.json` (line 75). That is a caret range, so it accepts `>=6.0.6 <7.0.0`. I didn't open the file to confirm its `name` field, but `packages/core` is the only `package.json` in the repo that mentions `jose`.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 5712,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "dep-version",
+      "arm": "grep+rig",
+      "trial": 0,
+      "prompt_tokens": 7394,
+      "completion_tokens": 531,
+      "cost_usd": 0.0010049,
+      "model_calls": 4,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 78,
+        "read_file": 339
+      },
+      "stop": "answer",
+      "final_text": "The `@auth/core` package (at `packages/core/package.json`) declares `\"jose\": \"^6.0.6\"` under `dependencies`. That is a caret range, so it accepts any `6.x.y` release from 6.0.6 up to, but not including, 7.0.0.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 7059,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "dep-version",
+      "arm": "baseline",
+      "trial": 1,
+      "prompt_tokens": 4257,
+      "completion_tokens": 356,
+      "cost_usd": 0.0006037,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 78,
+        "list_dir": 1281
+      },
+      "stop": "answer",
+      "final_text": "The `@auth/core` package (at `packages/core/package.json`) declares `jose` as a dependency with the range `^6.0.6`. That means any version `>=6.0.6 <7.0.0`.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 5209,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "dep-version",
+      "arm": "grep+rig",
+      "trial": 1,
+      "prompt_tokens": 5660,
+      "completion_tokens": 321,
+      "cost_usd": 0.0007264999999999999,
+      "model_calls": 3,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rg": 52,
+        "read_file": 784
+      },
+      "stop": "answer",
+      "final_text": "The @auth/core package (at `packages/core/package.json`) declares `jose` as a runtime dependency with the range `^6.0.6`. That means any 6.x version from 6.0.6 upward, but below 7.0.0.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 4656,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "dep-version",
+      "arm": "baseline",
+      "trial": 2,
+      "prompt_tokens": 6341,
+      "completion_tokens": 317,
+      "cost_usd": 0.0007926000000000001,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 392,
+        "list_dir": 1281,
+        "read_file": 3813
+      },
+      "stop": "answer",
+      "final_text": "The `@auth/core` package (at `packages/core/package.json`) declares `\"jose\": \"^6.0.6\"` as a regular dependency. That's the caret range: any 6.x release from 6.0.6 up to, but not including, 7.0.0.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 4680,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "dep-version",
+      "arm": "grep+rig",
+      "trial": 2,
+      "prompt_tokens": 7768,
+      "completion_tokens": 556,
+      "cost_usd": 0.0010548,
+      "model_calls": 4,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 52,
+        "read_file": 778
+      },
+      "stop": "answer",
+      "final_text": "The `@auth/core` package (version 0.41.3, in `packages/core/package.json`) declares `\"jose\": \"^6.0.6\"` under `dependencies`. That is a caret range, so it accepts any `6.x.y` release at or above 6.0.6, but not 7.x.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 7189,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "where-handled",
+      "arm": "baseline",
+      "trial": 0,
+      "prompt_tokens": 17709,
+      "completion_tokens": 373,
+      "cost_usd": 0.0019573999999999998,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 16491
+      },
+      "stop": "answer",
+      "final_text": "The GitHub OAuth provider is implemented in **`packages/core/src/providers/github.ts`**. It's the only file under `packages/core/src/providers` that declares `id: \"github\"`.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 5019,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "where-handled",
+      "arm": "grep+rig",
+      "trial": 0,
+      "prompt_tokens": 9101,
+      "completion_tokens": 196,
+      "cost_usd": 0.0010081,
+      "model_calls": 2,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rig_search": 3853,
+        "rg": 8334
+      },
+      "stop": "answer",
+      "final_text": "The GitHub OAuth provider is implemented in `packages/core/src/providers/github.ts`. It defines the `GitHub` provider function, along with the `GitHubProfile` and `GitHubEmail` interfaces.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 3109,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "where-handled",
+      "arm": "baseline",
+      "trial": 1,
+      "prompt_tokens": 13836,
+      "completion_tokens": 251,
+      "cost_usd": 0.0015091,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 7906,
+        "list_dir": 6331
+      },
+      "stop": "answer",
+      "final_text": "The GitHub OAuth provider is implemented in `packages/core/src/providers/github.ts`.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 4493,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "where-handled",
+      "arm": "grep+rig",
+      "trial": 1,
+      "prompt_tokens": 8826,
+      "completion_tokens": 207,
+      "cost_usd": 0.0009861,
+      "model_calls": 2,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rig_search": 3853,
+        "rg": 7716
+      },
+      "stop": "answer",
+      "final_text": "The GitHub OAuth provider is implemented in `packages/core/src/providers/github.ts`. It defines the `GitHub` provider function, along with the `GitHubProfile` and `GitHubEmail` interfaces.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 2858,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "where-handled",
+      "arm": "baseline",
+      "trial": 2,
+      "prompt_tokens": 4692,
+      "completion_tokens": 373,
+      "cost_usd": 0.0006557,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 1610,
+        "read_file": 1393
+      },
+      "stop": "answer",
+      "final_text": "The GitHub OAuth provider is implemented in `packages/core/src/providers/github.ts`. It defines the `GitHubProfile` and `GitHubEmail` types and the provider config, and it builds on the generic OAuth base in `packages/core/src/providers/oauth.ts`.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 4577,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "where-handled",
+      "arm": "grep+rig",
+      "trial": 2,
+      "prompt_tokens": 5728,
+      "completion_tokens": 205,
+      "cost_usd": 0.0006753,
+      "model_calls": 2,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rig_search": 3853,
+        "rg": 880
+      },
+      "stop": "answer",
+      "final_text": "The GitHub OAuth provider is implemented in `packages/core/src/providers/github.ts`. It defines the `GitHub` provider function, plus the `GitHubProfile` and `GitHubEmail` interfaces.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 3427,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "callers-of",
+      "arm": "baseline",
+      "trial": 0,
+      "prompt_tokens": 12440,
+      "completion_tokens": 1261,
+      "cost_usd": 0.0018745,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 3881,
+        "read_file": 7714
+      },
+      "stop": "answer",
+      "final_text": "Direct callers of `encode` from `packages/core/src/jwt.ts` (5 of them):\n\n1. `sealCookie()` in `packages/core/src/lib/actions/callback/oauth/checks.ts:46`\n2. `state.<method>` in `packages/core/src/lib/actions/callback/oauth/checks.ts:174`\n3. `webauthnChallenge.<method>` in `packages/core/src/lib/actions/callback/oauth/checks.ts:241`\n4. `callback()` in `packages/core/src/lib/actions/callback/index.ts:162`\n5. `session()` in `packages/core/src/lib/actions/session.ts:72`\n\nTwo notes:\n- The `callback()` function in `index.ts` also calls `jwt.encode` at lines 286, 375, and 483. Those go through the `jwt` option object, not a direct import. `packages/core/src/lib/init.ts:127` wires that option to the module's `encode`, so they reach it indirectly.\n- I did not open the enclosing function bodies in `checks.ts` to confirm the exact method names for `state` and `webauthnChallenge`. I inferred them from where the `export const` blocks start.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 8579,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "webauthnChallenge",
+          "actions/session",
+          "callback/index"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "callers-of",
+      "arm": "grep+rig",
+      "trial": 0,
+      "prompt_tokens": 10877,
+      "completion_tokens": 1334,
+      "cost_usd": 0.0017547,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rig_search": 3915,
+        "rg": 1126,
+        "rig_callers": 1352
+      },
+      "stop": "answer",
+      "final_text": "The `encode` function in `packages/core/src/jwt.ts` has at least 8 production call sites. Here are 5:\n\n1. `packages/core/src/lib/actions/session.ts:72`: `jwt.encode({ ...jwt, token, salt })`. This is in the `session` function, per the call graph.\n2. `packages/core/src/lib/actions/callback/index.ts:162`: `jwt.encode({ ...jwt, token, salt })`, in the `callback` function, per the call graph.\n3. `packages/core/src/lib/actions/callback/index.ts:286`: same pattern, in `callback`.\n4. `packages/core/src/lib/actions/callback/index.ts:375`: same pattern, in `callback`.\n5. `packages/core/src/lib/actions/callback/oauth/checks.ts:46`: `encode({...})`, in the `sealCookie` area per the call graph.\n\nTwo caveats:\n- The call graph also lists `decode`, `createHash`, and two `create` methods in `checks.ts` as callers. My text search found no direct `encode(` call in those, so the graph may be over-linking. I haven't read those functions to confirm.\n- I didn't check the enclosing function for each line individually. The attributions above come from the graph, not from reading the code.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 9288,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "actions/session",
+          "callback/index"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "callers-of",
+      "arm": "baseline",
+      "trial": 1,
+      "prompt_tokens": 10192,
+      "completion_tokens": 1462,
+      "cost_usd": 0.0017502,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 6650,
+        "read_file": 3413
+      },
+      "stop": "answer",
+      "final_text": "Direct calls to `jwt.encode` / `encode` from `jwt.ts` exist at 8 sites. Here are five:\n\n1. **`session()`**, `packages/core/src/lib/actions/session.ts:72`: re-issues the session JWT (`jwt.encode({ ...jwt, token, salt })`).\n2. **`callback()`**, `packages/core/src/lib/actions/callback/index.ts:162`: issues a JWT on the JWT-session path.\n3. **`callback()`**, `packages/core/src/lib/actions/callback/index.ts:286`: same pattern, another branch of `callback()`.\n4. **`sealCookie()`**, `packages/core/src/lib/actions/callback/oauth/checks.ts:46`: encrypts OAuth check cookie data.\n5. **The `create` method in `checks.ts`** (around line 158), `checks.ts:174`: encodes the OAuth state value.\n\nThe other direct calls are `index.ts:375` and `index.ts:483` (both in `callback()`) and `checks.ts:241` (inside a `create` method around line 233). `packages/core/src/lib/init.ts:127` references `jwt.encode` as a value (`encode: jwt.encode`) rather than calling it, so it's a default config, not a call site.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 9289,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "actions/session",
+          "callback/index"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "callers-of",
+      "arm": "grep+rig",
+      "trial": 1,
+      "prompt_tokens": 14723,
+      "completion_tokens": 1254,
+      "cost_usd": 0.0020993,
+      "model_calls": 4,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rig_search": 3915,
+        "rig_callers": 1352,
+        "rg": 1315
+      },
+      "stop": "answer",
+      "final_text": "Five call sites, taken from the call graph and confirmed by grep for `encode(` in the source:\n\n1. `session` in `packages/core/src/lib/actions/session.ts:72`: `jwt.encode({ ...jwt, token, salt })`\n2. `callback` in `packages/core/src/lib/actions/callback/index.ts:162`: `jwt.encode({ ...jwt, token, salt })`\n3. `sealCookie` in `packages/core/src/lib/actions/callback/oauth/checks.ts:46`\n4. `create` (method) in `packages/core/src/lib/actions/callback/oauth/checks.ts:174`\n5. `create` (method) in `packages/core/src/lib/actions/callback/oauth/checks.ts:241`\n\nThe graph also lists `decode` and `createHash` as callers, but grep finds no `encode(` call from `jwt.ts` in either. The `createHash` match is `TextEncoder().encode` in `web.ts:101`, so those two look like false positives. The `checks.ts` enclosing names come from the graph and I did not open those lines to confirm them. Test files (`session.test.ts`, `jwt.test.ts`) also call `encode`, but I left them out of the five.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 9772,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "actions/session",
+          "callback/index"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "callers-of",
+      "arm": "baseline",
+      "trial": 2,
+      "prompt_tokens": 12847,
+      "completion_tokens": 1420,
+      "cost_usd": 0.0019947000000000003,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 13399,
+        "read_file": 3413
+      },
+      "stop": "answer",
+      "final_text": "Five call sites of `encode` from `packages/core/src/jwt.ts`:\n\n1. **`callback`** in `packages/core/src/lib/actions/callback/index.ts:162`, calling `jwt.encode(...)` for the JWT-session credential path.\n2. **`callback`** in `packages/core/src/lib/actions/callback/index.ts:286`, same function, the email path.\n3. **`session`** in `packages/core/src/lib/actions/session.ts:72`, which re-encodes the session token when it is refreshed.\n4. **`sealCookie`** in `packages/core/src/lib/actions/callback/oauth/checks.ts:46`, which encrypts cookie payloads through the directly imported `encode`.\n5. **The `state` helper object's method** in `packages/core/src/lib/actions/callback/oauth/checks.ts:174`, which encodes the OAuth state value. I didn't read the method's name.\n\nThere are more calls: `callback/index.ts:375` and `:483`, and `checks.ts:241` in `webauthnChallenge`. `packages/core/src/lib/init.ts:127` references `jwt.encode` as a default value but doesn't call it.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 9623,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "webauthnChallenge",
+          "actions/session",
+          "callback/index"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "callers-of",
+      "arm": "grep+rig",
+      "trial": 2,
+      "prompt_tokens": 15436,
+      "completion_tokens": 1231,
+      "cost_usd": 0.0021591,
+      "model_calls": 4,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rig_search": 3915,
+        "rig_files": 110,
+        "rig_callers": 1352,
+        "rg": 1784
+      },
+      "stop": "answer",
+      "final_text": "Five direct call sites to `encode` in `packages/core/src/jwt.ts`, all in `packages/core/src`:\n\n1. `session` in `lib/actions/session.ts:72` (calls `jwt.encode`)\n2. `sealCookie` in `lib/actions/callback/oauth/checks.ts:46`\n3. A `create` method in `lib/actions/callback/oauth/checks.ts:174`\n4. A `create` method in `lib/actions/callback/oauth/checks.ts:241`\n5. `callback` in `lib/actions/callback/index.ts:162` (the same pattern also appears at lines 286, 375, and 483 of that file)\n\nThe `encode` call sites in `packages/core/test` (`jwt.test.ts`, `actions/session.test.ts`) are excluded from this list.\n\nThe graph's caller query for `encode` also returned `decode`, `createHash`, and a few other functions. A text search shows none of them call `encode`, so I left them out. I matched the enclosing function names for checks.ts and index.ts by line position rather than by reading the file, so those names are less certain than the line numbers.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 9646,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "actions/session",
+          "callback/index"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "routes",
+      "arm": "baseline",
+      "trial": 0,
+      "prompt_tokens": 4730,
+      "completion_tokens": 730,
+      "cost_usd": 0.000838,
+      "model_calls": 3,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rg": 1652,
+        "read_file": 1089
+      },
+      "stop": "answer",
+      "final_text": "`@auth/core` recognizes nine auth actions, defined in `AuthAction` in `packages/core/src/types.ts` (lines 322-331) and listed in `isAuthAction` in `packages/core/src/lib/utils/actions.ts`:\n\n1. `providers`\n2. `session`\n3. `csrf`\n4. `signin`\n5. `signout`\n6. `callback`\n7. `verify-request`\n8. `error`\n9. `webauthn-options`\n\n`isAuthAction` is the check that `packages/core/src/lib/utils/web.ts` (around line 138) uses to accept or reject the action segment of an incoming request. I did not read the routing code itself, so I'm relying on that check to confirm which actions get dispatched.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 6525,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "verify-request",
+          "webauthn-options"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "routes",
+      "arm": "grep+rig",
+      "trial": 0,
+      "prompt_tokens": 7896,
+      "completion_tokens": 712,
+      "cost_usd": 0.0011456,
+      "model_calls": 3,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rg": 1640,
+        "read_file": 2068
+      },
+      "stop": "answer",
+      "final_text": "@auth/core accepts nine auth actions, all defined in `packages/core/src/lib/utils/actions.ts` and the `AuthAction` type in `packages/core/src/types.ts`:\n\n1. `providers`\n2. `session`\n3. `csrf`\n4. `signin`\n5. `signout`\n6. `callback`\n7. `verify-request`\n8. `error`\n9. `webauthn-options`\n\nThe parser in `lib/utils/web.ts` takes the first path segment after the base path as the action. It rejects any segment not in this list with `UnknownAction`. An optional second segment is treated as a provider ID, but only `signin`, `callback`, and `webauthn-options` accept one.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 6007,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "verify-request",
+          "webauthn-options"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "routes",
+      "arm": "baseline",
+      "trial": 1,
+      "prompt_tokens": 9897,
+      "completion_tokens": 923,
+      "cost_usd": 0.0014512000000000001,
+      "model_calls": 4,
+      "tool_turns": 5,
+      "tool_chars": {
+        "rg": 1640,
+        "read_file": 5159
+      },
+      "stop": "answer",
+      "final_text": "`@auth/core` routes nine auth actions, defined in `packages/core/src/lib/utils/actions.ts` and typed as `AuthAction` in `packages/core/src/types.ts`:\n\n1. `providers`\n2. `session`\n3. `csrf`\n4. `signin`\n5. `signout`\n6. `callback`\n7. `verify-request`\n8. `error`\n9. `webauthn-options`\n\nThe path parser in `packages/core/src/lib/utils/web.ts` takes the segment after the base path. It accepts one or two segments, and the second is a provider ID. A provider ID is only allowed after `signin`, `callback`, or `webauthn-options`. Any other path, including an unknown action name, throws `UnknownAction`.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 7748,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "verify-request",
+          "webauthn-options"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "routes",
+      "arm": "grep+rig",
+      "trial": 1,
+      "prompt_tokens": 9377,
+      "completion_tokens": 917,
+      "cost_usd": 0.0013962,
+      "model_calls": 3,
+      "tool_turns": 5,
+      "tool_chars": {
+        "rg": 1985,
+        "read_file": 4789
+      },
+      "stop": "answer",
+      "final_text": "@auth/core recognizes nine action path segments. The list is in `packages/core/src/lib/utils/actions.ts`, and `AuthAction` in `packages/core/src/types.ts` matches it:\n\n1. `providers`\n2. `session`\n3. `csrf`\n4. `signin`\n5. `signout`\n6. `callback`\n7. `verify-request`\n8. `error`\n9. `webauthn-options`\n\nRouting in `packages/core/src/lib/index.ts` (`AuthInternal`) depends on the HTTP method:\n\n- **GET:** `callback`, `csrf`, `error`, `providers`, `session`, `signin`, `signout`, `verify-request`, `webauthn-options`\n- **POST:** `callback`, `session`, `signin`, `signout` (these also check CSRF, except `callback` for non-credentials providers)\n\nAny other action throws `UnknownAction`.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 6654,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "verify-request",
+          "webauthn-options"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "routes",
+      "arm": "baseline",
+      "trial": 2,
+      "prompt_tokens": 17865,
+      "completion_tokens": 1385,
+      "cost_usd": 0.002479,
+      "model_calls": 5,
+      "tool_turns": 8,
+      "tool_chars": {
+        "rg": 3052,
+        "read_file": 9014
+      },
+      "stop": "answer",
+      "final_text": "`@auth/core` recognizes nine actions, each a URL path segment after the base path (default `/api/auth`):\n\n1. `providers`\n2. `session`\n3. `csrf`\n4. `signin`\n5. `signout`\n6. `callback`\n7. `verify-request`\n8. `error`\n9. `webauthn-options`\n\nThe list is defined in `packages/core/src/lib/utils/actions.ts` and matches the `AuthAction` type in `packages/core/src/types.ts`. `web.ts` parses the path into one or two segments, and any other segment throws `UnknownAction`. A second segment is accepted as a provider ID only for `signin`, `callback`, and `webauthn-options`.\n\nI did not inspect the internal dispatcher that maps each action to its handler, so this answers which actions are recognized, not every branch they take.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 10958,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "verify-request",
+          "webauthn-options"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "routes",
+      "arm": "grep+rig",
+      "trial": 2,
+      "prompt_tokens": 12056,
+      "completion_tokens": 800,
+      "cost_usd": 0.0016056,
+      "model_calls": 3,
+      "tool_turns": 5,
+      "tool_chars": {
+        "rg": 5153,
+        "rig_search": 4227
+      },
+      "stop": "answer",
+      "final_text": "@auth/core recognizes nine actions, defined in the `AuthAction` type in `packages/core/src/types.ts` and dispatched in `packages/core/src/lib/index.ts`:\n\n1. `/callback`\n2. `/csrf`\n3. `/error`\n4. `/providers`\n5. `/session`\n6. `/signin`\n7. `/signout`\n8. `/verify-request`\n9. `/webauthn-options`\n\nAny other path segment throws `UnknownAction`. I did not check the runtime `actions` array in `packages/core/src/lib/utils/actions.ts` against this type, so this list is based on the type definition and the switch statements.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 6483,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "verify-request",
+          "webauthn-options"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "file-summary",
+      "arm": "baseline",
+      "trial": 0,
+      "prompt_tokens": 9702,
+      "completion_tokens": 417,
+      "cost_usd": 0.0011787,
+      "model_calls": 2,
+      "tool_turns": 1,
+      "tool_chars": {
+        "read_file": 21491
+      },
+      "stop": "answer",
+      "final_text": "`packages/core/src/index.ts` is the entry point for `@auth/core`: it re-exports helpers (`raw`, `skipCSRFCheck`, `setEnvDefaults`, `createActionURL`, `isAuthAction`, `customFetch`) and defines the `AuthConfig` interface that configures the library. Its main export is `Auth`, which takes a standard Web `Request` and an `AuthConfig` and returns a `Promise<Response>`. Internally it parses the request, validates the config, and dispatches to `AuthInternal`, converting errors into redirects or JSON responses. Overloads also let callers pass `raw` to get the internal `ResponseInternal` instead.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 4279,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "AuthConfig",
+          "config"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "file-summary",
+      "arm": "grep+rig",
+      "trial": 0,
+      "prompt_tokens": 11598,
+      "completion_tokens": 404,
+      "cost_usd": 0.0013617999999999998,
+      "model_calls": 2,
+      "tool_turns": 1,
+      "tool_chars": {
+        "read_file": 21491
+      },
+      "stop": "answer",
+      "final_text": "`packages/core/src/index.ts` is the entry point for `@auth/core`, re-exporting helpers like `skipCSRFCheck`, `raw`, `setEnvDefaults`, `createActionURL`, and `isAuthAction`, and defining the `AuthConfig` interface. Its main export is `Auth`, an async function that takes a standard web `Request` and an `AuthConfig` (providers, secret, session, pages, callbacks, events). It returns a `Promise<Response>`, though the overloads return `ResponseInternal` when the config includes the `raw` marker. Internally, it validates config, handles errors by redirecting to error pages or returning JSON, and delegates the actual auth logic to `AuthInternal`.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 3813,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "AuthConfig",
+          "config"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "file-summary",
+      "arm": "baseline",
+      "trial": 1,
+      "prompt_tokens": 9702,
+      "completion_tokens": 353,
+      "cost_usd": 0.0011467,
+      "model_calls": 2,
+      "tool_turns": 1,
+      "tool_chars": {
+        "read_file": 21491
+      },
+      "stop": "answer",
+      "final_text": "`packages/core/src/index.ts` is the entry point for `@auth/core`. It re-exports helpers (`customFetch`, `skipCSRFCheck`, `raw`, `setEnvDefaults`, `createActionURL`, `isAuthAction`) and defines the `AuthConfig` interface, which covers providers, secrets, session, JWT, pages, callbacks, and events. Its main export is `Auth(request: Request, config: AuthConfig)`, an async function that returns `Promise<Response>`, or `Promise<ResponseInternal>` when `config.raw` is set. Internally it validates the config, converts the request, runs `AuthInternal`, and turns errors into redirects or JSON error responses.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 3806,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "AuthConfig",
+          "config"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "file-summary",
+      "arm": "grep+rig",
+      "trial": 1,
+      "prompt_tokens": 11598,
+      "completion_tokens": 404,
+      "cost_usd": 0.0013617999999999998,
+      "model_calls": 2,
+      "tool_turns": 1,
+      "tool_chars": {
+        "read_file": 21491
+      },
+      "stop": "answer",
+      "final_text": "`packages/core/src/index.ts` is the entry point for `@auth/core`. It re-exports helpers such as `skipCSRFCheck`, `raw`, `setEnvDefaults`, `createActionURL`, and `isAuthAction`, and defines the `AuthConfig` interface with its providers, session, JWT, pages, callbacks, and events options.\n\nThe main exported function is `Auth`. It takes a standard Web `Request` and an `AuthConfig` object, and returns a `Promise<Response>`. When the config is passed the `raw` marker, it returns a `ResponseInternal` instead.\n\nInternally, it converts the request, validates the config (returning a 400 or 500 or an error page on failure), and then delegates to `AuthInternal`, converting any thrown error into a redirect to the configured error page.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 3946,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "AuthConfig",
+          "config"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "file-summary",
+      "arm": "baseline",
+      "trial": 2,
+      "prompt_tokens": 9702,
+      "completion_tokens": 431,
+      "cost_usd": 0.0011857,
+      "model_calls": 2,
+      "tool_turns": 1,
+      "tool_chars": {
+        "read_file": 21491
+      },
+      "stop": "answer",
+      "final_text": "`packages/core/src/index.ts` is the entry point for `@auth/core`: it contains the module docs and re-exports helpers such as `raw`, `skipCSRFCheck`, `setEnvDefaults`, `createActionURL`, and `isAuthAction`. It also defines the `AuthConfig` interface (providers, secret, session, JWT, pages, callbacks, events). The main export is `Auth(request: Request, config: AuthConfig)`, which takes a standard Web `Request` and returns a `Promise<Response>`. The function parses the request, validates config (returning 400, 500, or an error-page redirect on failure), runs `AuthInternal`, and converts the result to a `Response`; if `config.raw` is set to `raw`, it returns the internal response object (`ResponseInternal`) instead.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 3956,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "AuthConfig",
+          "config"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "file-summary",
+      "arm": "grep+rig",
+      "trial": 2,
+      "prompt_tokens": 11598,
+      "completion_tokens": 424,
+      "cost_usd": 0.0013717999999999998,
+      "model_calls": 2,
+      "tool_turns": 1,
+      "tool_chars": {
+        "read_file": 21491
+      },
+      "stop": "answer",
+      "final_text": "`packages/core/src/index.ts` is the main entry point for `@auth/core`. It re-exports helpers (`skipCSRFCheck`, `raw`, `setEnvDefaults`, `createActionURL`, `isAuthAction`, `customFetch`) and defines the `AuthConfig` interface that configures providers, session, JWT, pages, callbacks, and events. Its main export is `Auth`, which takes a standard Web `Request` and an `AuthConfig`, and returns a Promise of a `Response`. If the config includes the `raw` marker, it returns the internal `ResponseInternal` instead. Errors are converted into redirects or JSON responses, and invalid config returns a 500 or an error page.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 3749,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "AuthConfig",
+          "config"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "db-init",
+      "arm": "baseline",
+      "trial": 0,
+      "prompt_tokens": 5431,
+      "completion_tokens": 592,
+      "cost_usd": 0.0008391,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 2071,
+        "list_dir": 1281
+      },
+      "stop": "answer",
+      "final_text": "The main database adapter interface is `Adapter` in **`packages/core/src/adapters.ts`**, at line 282. It's an `export interface`, and the file also defines the related types it uses, such as `AdapterUser`, `AdapterAccount`, `AdapterSession`, and `AdapterAuthenticator`.\n\nEach database adapter package (for example `packages/adapter-prisma`-style packages like `adapter-mongodb`, `adapter-typeorm`, and `adapter-sequelize`) implements this interface in its own `src/index.ts`.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 5593,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "db-init",
+      "arm": "grep+rig",
+      "trial": 0,
+      "prompt_tokens": 13167,
+      "completion_tokens": 367,
+      "cost_usd": 0.0015002,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rig_search": 7690,
+        "rig_node": 917
+      },
+      "stop": "answer",
+      "final_text": "The database adapter interface is the `Adapter` interface, defined in `packages/core/src/adapters.ts`. It's the common contract that every database adapter (Kysely, MongoDB, Prisma-style, etc.) implements. Its methods cover creating/updating/deleting users, linking/unlinking accounts, and managing sessions and passwordless auth.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 4624,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "db-init",
+      "arm": "baseline",
+      "trial": 1,
+      "prompt_tokens": 3284,
+      "completion_tokens": 385,
+      "cost_usd": 0.0005209,
+      "model_calls": 2,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rg": 1975,
+        "list_dir": 1281
+      },
+      "stop": "answer",
+      "final_text": "The database adapter interface is the `Adapter` interface, defined in `packages/core/src/adapters.ts` at line 282. The per-adapter packages (e.g. `adapter-kysely`, `adapter-mongodb`) implement it, and the related types it uses (`AdapterUser`, `AdapterSession`, `AdapterAccount`, `AdapterAuthenticator`) are in the same file.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 3799,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "db-init",
+      "arm": "grep+rig",
+      "trial": 1,
+      "prompt_tokens": 7201,
+      "completion_tokens": 332,
+      "cost_usd": 0.0008861,
+      "model_calls": 2,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rig_search": 7689
+      },
+      "stop": "answer",
+      "final_text": "The database adapter interface is `Adapter` in `packages/core/src/adapters.ts`. It's an interface, and the per-database packages (e.g. `packages/adapter-kysely`, `adapter-mongodb`, `adapter-supabase`) implement it. I didn't open the file, so I haven't confirmed its exact line number or the methods it declares.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 3698,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "db-init",
+      "arm": "baseline",
+      "trial": 2,
+      "prompt_tokens": 6355,
+      "completion_tokens": 464,
+      "cost_usd": 0.0008675,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 4093
+      },
+      "stop": "answer",
+      "final_text": "The database adapter interface is the `Adapter` interface, defined in `packages/core/src/adapters.ts` at line 282. It's exported from the core package's `adapters.ts` file, and it's built on supporting types like `AdapterUser`, `AdapterAccount`, `AdapterSession`, and `AdapterAuthenticator` in the same file.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 4980,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "db-init",
+      "arm": "grep+rig",
+      "trial": 2,
+      "prompt_tokens": 7201,
+      "completion_tokens": 341,
+      "cost_usd": 0.0008906,
+      "model_calls": 2,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rig_search": 7689
+      },
+      "stop": "answer",
+      "final_text": "The database adapter interface is `Adapter`, defined in `packages/core/src/adapters.ts`. It's an interface, not a class, and the per-database packages (e.g. `adapter-kysely`, `adapter-mongodb`, `adapter-drizzle`) implement it. I didn't open the file to confirm the exact line or its members.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 3734,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "tests-for",
+      "arm": "baseline",
+      "trial": 0,
+      "prompt_tokens": 4161,
+      "completion_tokens": 1051,
+      "cost_usd": 0.0009415999999999999,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 2528
+      },
+      "stop": "answer",
+      "final_text": "The JWT encode/decode flow is covered mainly by these test files, all in `packages/core/test/`:\n\n- **`jwt.test.ts`** is the direct unit test. It covers `encode` and `decode` and `getToken` (which reads the token from the Authorization header). One thing to check: it imports `encode, decode` from `\"../jwt\"`, but `getToken` from `\"../src/jwt\"`. The `\"../jwt\"` path may be stale, so I didn't confirm it resolves.\n- **`actions/session.test.ts`** covers decoding through the session action. It exercises `encode` and `decode` from `src/jwt.js` and tests the JWT strategy: a valid session, a missing cookie returning null, an invalid session returning null, and an invalid salt throwing an error.\n- **`actions/callback.test.ts`** covers encoding through the login callback. It passes `jwt: { secret }` config and checks that the callback path works with the configured secret, including a mismatched secret.\n\nThe source side is `packages/core/src/jwt.ts`, which the tests import, plus the callers in `src/lib/actions/session.ts`, `src/lib/actions/callback/`, and `src/lib/utils/session.ts`.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 7834,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "tests-for",
+      "arm": "grep+rig",
+      "trial": 0,
+      "prompt_tokens": 11767,
+      "completion_tokens": 631,
+      "cost_usd": 0.0014922,
+      "model_calls": 2,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rig_search": 5763,
+        "rg": 239,
+        "rig_files": 11225
+      },
+      "stop": "answer",
+      "final_text": "The main test file is **`packages/core/test/jwt.test.ts`**. It sits next to the implementation in `packages/core/src/jwt.ts`, which defines `encode`, `decode`, and the `JWTEncodeParams`/`JWTDecodeParams` interfaces.\n\nOther test files mention JWT, but probably only as one session strategy among several, so they are secondary coverage:\n- `packages/core/test/actions/session.test.ts`\n- `packages/core/test/actions/callback.test.ts`\n\nI did not open the test files to confirm which assertions exercise the encode/decode round trip, so the first one is an inference from its name and location.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 5054,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "tests-for",
+      "arm": "baseline",
+      "trial": 1,
+      "prompt_tokens": 3838,
+      "completion_tokens": 927,
+      "cost_usd": 0.0008473,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 2370
+      },
+      "stop": "answer",
+      "final_text": "The main file is **`packages/core/test/jwt.test.ts`**, which imports `encode` and `decode` from `../jwt` and `getToken` from `../src/jwt`, and exercises them directly.\n\nTwo other files touch the flow indirectly:\n- **`packages/core/test/actions/session.test.ts`** imports `encode` and `decode` from `src/jwt.js` and covers the JWT session paths: valid session, missing or invalid cookie, and invalid salt.\n- **`packages/core/test/actions/callback.test.ts`** only sets `jwt: { secret }` in its config. It doesn't call encode or decode itself.\n\n`packages/adapter-dgraph/test/index.test.ts` passes a `jwtSecret` and `RS256` algorithm to the adapter, but it isn't a direct encode/decode test.\n\nI matched on keywords and imports, so I haven't read the full test bodies to confirm the assertion depth.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 7062,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "tests-for",
+      "arm": "grep+rig",
+      "trial": 1,
+      "prompt_tokens": 21907,
+      "completion_tokens": 978,
+      "cost_usd": 0.0026797,
+      "model_calls": 3,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rig_search": 3847,
+        "rg": 4375,
+        "rig_files": 11224
+      },
+      "stop": "answer",
+      "final_text": "Two test files cover the JWT encode/decode flow directly:\n\n- **`packages/core/test/jwt.test.ts`** is the main one. It unit-tests `encode` and `decode` from `src/jwt.ts`: decoding tokens encoded with different secrets, always encoding with the leftmost secret, rejecting a non-matching secret, and `getToken` reading a Bearer token.\n- **`packages/core/test/actions/session.test.ts`** exercises the round trip through the session action. It builds cookies with `encode`, reads them back with `decode`, and checks the invalid-token and invalid-salt error paths.\n\n`packages/core/test/actions/callback.test.ts` touches JWT secrets, but only for OAuth state decoding, so it's tangential. The dgraph adapter test mentions `jwtAlgorithm` only as configuration.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 7253,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "tests-for",
+      "arm": "baseline",
+      "trial": 2,
+      "prompt_tokens": 4830,
+      "completion_tokens": 837,
+      "cost_usd": 0.0009015,
+      "model_calls": 3,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rg": 1706,
+        "read_file": 2885
+      },
+      "stop": "answer",
+      "final_text": "The main test file is **`packages/core/test/jwt.test.ts`**. It imports `encode` and `decode` and covers secret rotation (decoding with any secret in a list, always encoding with the leftmost one, and rejecting non-matching secrets). It also tests `getToken` for malformed and valid Bearer tokens.\n\nOther files that exercise the JWT flow indirectly:\n\n- **`packages/core/test/actions/session.test.ts`** imports `encode` and `decode` from `src/jwt.js`. It covers the JWT session strategy: valid sessions, missing or invalid cookies, and an invalid-salt error.\n- **`packages/core/test/actions/callback.test.ts`** sets `jwt.secret` in its config. It doesn't test encoding directly.\n\n`packages/adapter-dgraph/test/index.test.ts` matched my search for \"jwt\", but I didn't open it, so I can't say whether it covers the encode/decode flow.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 6646,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "tests-for",
+      "arm": "grep+rig",
+      "trial": 2,
+      "prompt_tokens": 22371,
+      "completion_tokens": 886,
+      "cost_usd": 0.0026800999999999995,
+      "model_calls": 3,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rig_search": 5762,
+        "rig_files": 11225,
+        "rig_callers": 1379
+      },
+      "stop": "answer",
+      "final_text": "The main test file is **`packages/core/test/jwt.test.ts`**. It is the only test file that directly calls the JWT `encode` function in `packages/core/src/jwt.ts`.\n\n`packages/core/test/actions/session.test.ts` also reaches the flow indirectly, because it calls `encode`'s caller chain through the session action.\n\nI didn't find any test file that directly calls `decode`. The caller lookup for `decode` returned nothing, so its coverage is unclear. Its only likely test coverage is through `jwt.test.ts`, which I haven't opened to confirm.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 7307,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "error-class",
+      "arm": "baseline",
+      "trial": 0,
+      "prompt_tokens": 4148,
+      "completion_tokens": 385,
+      "cost_usd": 0.0006073,
+      "model_calls": 3,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rg": 2302
+      },
+      "stop": "answer",
+      "final_text": "The error is **`MissingCSRF`**, defined in **`packages/core/src/errors.ts`** (around line 482). It extends `SignInError`.\n\nIt's thrown in `packages/core/src/lib/actions/callback/oauth/csrf-token.ts` (line 59) by `validateCSRF`, with the message \"CSRF token was missing during an action ...\".",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 4871,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "error-class",
+      "arm": "grep+rig",
+      "trial": 0,
+      "prompt_tokens": 12907,
+      "completion_tokens": 368,
+      "cost_usd": 0.0014747,
+      "model_calls": 2,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rg": 16435,
+        "rig_search": 3969
+      },
+      "stop": "answer",
+      "final_text": "A missing CSRF token raises **`MissingCSRF`**, defined in **`packages/core/src/errors.ts`** (line 482). It extends `SignInError`.\n\nIt is thrown by `validateCSRF` in `packages/core/src/lib/actions/callback/oauth/csrf-token.ts` (line 59), with the message \"CSRF token was missing during an action …\". `validateCSRF` is called from `packages/core/src/lib/index.ts` for the protected actions.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 3659,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "error-class",
+      "arm": "baseline",
+      "trial": 1,
+      "prompt_tokens": 3911,
+      "completion_tokens": 342,
+      "cost_usd": 0.0005621000000000001,
+      "model_calls": 3,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rg": 1845
+      },
+      "stop": "answer",
+      "final_text": "The error is **`MissingCSRF`**, defined in `packages/core/src/errors.ts` (line 482). It extends `SignInError`, and its static `type` is `\"MissingCSRF\"`.\n\nIt is thrown in `packages/core/src/lib/actions/callback/oauth/csrf-token.ts` (line 59), with the message \"CSRF token was missing during an action ...\".",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 5002,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "error-class",
+      "arm": "grep+rig",
+      "trial": 1,
+      "prompt_tokens": 12907,
+      "completion_tokens": 322,
+      "cost_usd": 0.0014517,
+      "model_calls": 2,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rg": 16435,
+        "rig_search": 3968
+      },
+      "stop": "answer",
+      "final_text": "The error is **`MissingCSRF`**, defined in **`packages/core/src/errors.ts`** (line 482, as `class MissingCSRF extends SignInError`).\n\nIt is thrown by `validateCSRF` in `packages/core/src/lib/actions/callback/oauth/csrf-token.ts` (line 59), which is called from `packages/core/src/lib/index.ts` for the protected actions.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 3944,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "error-class",
+      "arm": "baseline",
+      "trial": 2,
+      "prompt_tokens": 3900,
+      "completion_tokens": 276,
+      "cost_usd": 0.000528,
+      "model_calls": 3,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rg": 1845
+      },
+      "stop": "answer",
+      "final_text": "When an action is rejected for a missing CSRF token, the error thrown is `MissingCSRF`. It's defined in `packages/core/src/errors.ts` (line 482), where it extends `SignInError`. It's thrown from `packages/core/src/lib/actions/callback/oauth/csrf-token.ts` (line 59).",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 4267,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "error-class",
+      "arm": "grep+rig",
+      "trial": 2,
+      "prompt_tokens": 12907,
+      "completion_tokens": 351,
+      "cost_usd": 0.0014662,
+      "model_calls": 2,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rg": 16435,
+        "rig_search": 3969
+      },
+      "stop": "answer",
+      "final_text": "The error is **`MissingCSRF`**, defined in **`packages/core/src/errors.ts`** (line 482). It extends `SignInError`.\n\nIt's thrown by `validateCSRF` in `packages/core/src/lib/actions/callback/oauth/csrf-token.ts` (line 59), which is called from `packages/core/src/lib/index.ts` for the protected actions.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 3470,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "entry-point",
+      "arm": "baseline",
+      "trial": 0,
+      "prompt_tokens": 8126,
+      "completion_tokens": 664,
+      "cost_usd": 0.0011446,
+      "model_calls": 5,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rg": 617,
+        "read_file": 2330
+      },
+      "stop": "answer",
+      "final_text": "The main entry point is the `Auth` function in `packages/core/src/index.ts`. The package's `\".\"` export resolves to `./index.js`, which is the built output of that source file. I didn't check the build config to confirm the mapping.\n\n`Auth` is overloaded (lines 73–101) and takes a request plus an `AuthConfig` (defined at line 216). The file also re-exports helpers such as `customFetch`, `skipCSRFCheck`, `raw`, `setEnvDefaults`, `createActionURL`, and `isAuthAction`.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 8624,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "index.js",
+          "index.ts"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "entry-point",
+      "arm": "grep+rig",
+      "trial": 0,
+      "prompt_tokens": 15653,
+      "completion_tokens": 679,
+      "cost_usd": 0.0019048000000000001,
+      "model_calls": 3,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rig_files": 224,
+        "read_file": 25304
+      },
+      "stop": "answer",
+      "final_text": "The main entry point is `Auth(request, config)`, exported from `packages/core/src/index.ts`. The package's `exports[\".\"]` in `package.json` resolves to the compiled `./index.js`.\n\n`Auth` takes a standard Web `Request` and an `AuthConfig`, and returns a `Response`. Internally it:\n1. Calls `setLogger(config)` and converts the request with `toInternalRequest`.\n2. Validates the config with `assertConfig`. On a config error it returns a 500 JSON response, or an error page for GET requests to HTML pages.\n3. Delegates to `AuthInternal` (from `./lib/index.js`) to do the actual work.\n4. Converts the internal result with `toResponse`. Errors are mapped to redirects to the configured error page, or to a JSON `{ url }` when the `X-Auth-Return-Redirect` header is set.\n\nIf `config.raw` is passed (the `raw` symbol), `Auth` returns the internal response object instead, which framework integrations use. Framework packages are the usual callers; `Auth` can also be used directly.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 7005,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "index.js",
+          "index.ts"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "entry-point",
+      "arm": "baseline",
+      "trial": 1,
+      "prompt_tokens": 13505,
+      "completion_tokens": 798,
+      "cost_usd": 0.0017494999999999998,
+      "model_calls": 5,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rg": 1819,
+        "read_file": 5915
+      },
+      "stop": "answer",
+      "final_text": "The main entry point of `@auth/core` is the `Auth` function in `packages/core/src/index.ts`, at line 101.\n\n- **Signature:** `Auth(request: Request, config: AuthConfig): Promise<Response | ResponseInternal>`. It takes a standard Web `Request` and returns a Web `Response`. Two overloads sit above it: one returns `ResponseInternal` when `config` includes `raw`, and one returns `Response` otherwise.\n- **Package export:** The `\".\"` export in `packages/core/package.json` maps to `index.js`, which is the build output of that source file.\n- **Flow:** It sets up the logger, converts the request with `toInternalRequest`, and validates the config with `assertConfig`. If the config is invalid, it returns an error response, and it returns a 400 if the request can't be parsed.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 11076,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "index.js",
+          "index.ts"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "entry-point",
+      "arm": "grep+rig",
+      "trial": 1,
+      "prompt_tokens": 17852,
+      "completion_tokens": 687,
+      "cost_usd": 0.0021287,
+      "model_calls": 3,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rig_files": 111,
+        "rig_search": 3969,
+        "read_file": 21491,
+        "rig_node": 707
+      },
+      "stop": "answer",
+      "final_text": "The main entry point is the `Auth` function, exported from `packages/core/src/index.ts`.\n\nIts signature is `Auth(request: Request, config: AuthConfig): Promise<Response | ResponseInternal>`. It takes a standard Web `Request` and returns a Web `Response`, so it works across frameworks. Internally it:\n\n1. Converts the request to an internal request (`toInternalRequest`). A parse failure returns a 400.\n2. Validates the config (`assertConfig`). A config error returns a 500 for API calls, or renders a configuration error page / redirects to the configured error page for HTML pages.\n3. Delegates to `AuthInternal` (from `lib/index.js`) to do the actual auth work.\n4. Converts the result to a `Response`. Errors are caught and turned into redirects to the error page, or JSON for `X-Auth-Return-Redirect` requests.\n\nThe file also exports `AuthConfig` (the configuration type), plus helpers such as `raw`, `skipCSRFCheck`, `setEnvDefaults`, `createActionURL`, and `isAuthAction`. Framework packages like `next-auth` and the `frameworks-*` packages depend on `@auth/core` and call this function.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 6133,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "index.js",
+          "index.ts"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "entry-point",
+      "arm": "baseline",
+      "trial": 2,
+      "prompt_tokens": 5554,
+      "completion_tokens": 703,
+      "cost_usd": 0.0009069000000000001,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "read_file": 2330,
+        "list_dir": 558,
+        "rg": 224
+      },
+      "stop": "answer",
+      "final_text": "The main entry point is the `Auth` function in `packages/core/src/index.ts`. The package's `\".\"` export maps to `index.js`, which is built from that file.\n\n`Auth` is declared as an async function with overloads at lines 73, 78, and 101. It takes a `Request` and config and returns a `Response`. The file also re-exports helpers such as `skipCSRFCheck`, `raw`, `setEnvDefaults`, `createActionURL`, and `isAuthAction`.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 6362,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "index.js",
+          "index.ts"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "entry-point",
+      "arm": "grep+rig",
+      "trial": 2,
+      "prompt_tokens": 29711,
+      "completion_tokens": 656,
+      "cost_usd": 0.0032991,
+      "model_calls": 3,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rig_files": 16521,
+        "rg": 41,
+        "read_file": 23222
+      },
+      "stop": "answer",
+      "final_text": "The main entry point is `Auth()` in `packages/core/src/index.ts`. It's the package's root export (`\".\"` in `package.json`, which resolves to `index.js`).\n\n`Auth(request, config)` takes a standard Web `Request` and returns a `Response`. Internally it:\n\n1. Calls `setLogger(config)` and converts the request with `toInternalRequest`.\n2. Validates the config with `assertConfig`. On failure, it returns a 500 JSON response or renders an error page, depending on the action.\n3. Delegates the real work to `AuthInternal` (from `lib/index.js`).\n4. Converts the internal result to a `Response`, or throws/redirects to an error page if something fails.\n\nThe file also exports the `AuthConfig` interface, which holds providers, secret, session, callbacks, and pages. It's designed to be wrapped by framework-specific packages, but it can be called directly.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 5994,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "index.js",
+          "index.ts"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "type-def",
+      "arm": "baseline",
+      "trial": 0,
+      "prompt_tokens": 3648,
+      "completion_tokens": 520,
+      "cost_usd": 0.0006248,
+      "model_calls": 3,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rg": 2117
+      },
+      "stop": "answer",
+      "final_text": "The core definition is in `packages/core/src/types.ts`, line 250:\n\n```ts\nexport interface Session extends DefaultSession {}\n```\n\nIt's an interface that extends `DefaultSession`. Other matches in the repo are either module augmentations (`interface Session { ... }` inside `declare module`, in examples and docs), the mikro-orm adapter's `export class Session implements AdapterSession` in `packages/adapter-mikro-orm/src/lib/entities.ts:60`, or GraphQL/Neo4j schema references.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 5626,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "type-def",
+      "arm": "grep+rig",
+      "trial": 0,
+      "prompt_tokens": 14982,
+      "completion_tokens": 775,
+      "cost_usd": 0.0018857000000000001,
+      "model_calls": 4,
+      "tool_turns": 5,
+      "tool_chars": {
+        "rig_search": 4862,
+        "rig_node": 230,
+        "read_file": 2351
+      },
+      "stop": "answer",
+      "final_text": "`Session` is defined in `packages/adapter-mikro-orm/src/lib/entities.ts` at line 60:\n\n```ts\n@Entity()\nexport class Session implements AdapterSession {\n```\n\nIt's a MikroORM entity that implements the `AdapterSession` interface from `@auth/core/adapters`. Its fields include `id`, `user`, `userId`, and `expires`.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 7503,
+      "check": {
+        "pass": false,
+        "missing": [
+          "types.ts",
+          "DefaultSession"
+        ],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "type-def",
+      "arm": "baseline",
+      "trial": 1,
+      "prompt_tokens": 5864,
+      "completion_tokens": 627,
+      "cost_usd": 0.0008998999999999999,
+      "model_calls": 4,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 2105,
+        "read_file": 710
+      },
+      "stop": "answer",
+      "final_text": "The core `Session` type is defined in `packages/core/src/types.ts`, line 250:\n\n```ts\n/** The active session of the logged in user. */\nexport interface Session extends DefaultSession {}\n```\n\nIt extends `DefaultSession` (lines 244–247), which has `user?: User` and `expires: ISODateString`.\n\nThe other matches are either module-augmentation declarations (`interface Session { ... }` inside `declare module \"@auth/core/types\"` in example and docs apps), a Mikro-ORM entity class at `packages/adapter-mikro-orm/src/lib/entities.ts:60`, or the Neo4j driver's `Session` import. The core definition is the one that matters.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 7374,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "type-def",
+      "arm": "grep+rig",
+      "trial": 1,
+      "prompt_tokens": 22749,
+      "completion_tokens": 1081,
+      "cost_usd": 0.0028154,
+      "model_calls": 5,
+      "tool_turns": 7,
+      "tool_chars": {
+        "rig_search": 7493,
+        "rig_node": 230,
+        "rig_files": 112,
+        "rg": 55
+      },
+      "stop": "answer",
+      "final_text": "The core `Session` type is an interface in `packages/core/src/types.ts`, at line 250:\n\n```ts\nexport interface Session extends DefaultSession {}\n```\n\nIt extends `DefaultSession`, defined in the same file. The index also contains other `Session` declarations: a class in `packages/adapter-mikro-orm/src/lib/entities.ts` and several interfaces in example and dev apps. Those are separate types, not the core one.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 10272,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "type-def",
+      "arm": "baseline",
+      "trial": 2,
+      "prompt_tokens": 5678,
+      "completion_tokens": 621,
+      "cost_usd": 0.0008782999999999999,
+      "model_calls": 4,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 2047,
+        "read_file": 403
+      },
+      "stop": "answer",
+      "final_text": "The core `Session` type is defined in `packages/core/src/types.ts`, line 250:\n\n```ts\nexport interface Session extends DefaultSession {}\n```\n\nIt extends `DefaultSession` (lines 244–247), which has `user?: User` and `expires: ISODateString`. Apps can augment it via module declaration merging, which is why you see many `interface Session { ... }` blocks in the docs and examples.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 6948,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "type-def",
+      "arm": "grep+rig",
+      "trial": 2,
+      "prompt_tokens": 17580,
+      "completion_tokens": 873,
+      "cost_usd": 0.0021945,
+      "model_calls": 4,
+      "tool_turns": 6,
+      "tool_chars": {
+        "rig_search": 7581,
+        "rig_node": 230,
+        "rg": 435
+      },
+      "stop": "answer",
+      "final_text": "`Session` is defined in `packages/core/src/types.ts`, line 250:\n\n```ts\nexport interface Session extends DefaultSession {}\n```\n\nIt's an interface that extends `DefaultSession`, which is also in that file. This is the core Auth.js session type.\n\nThere are other `Session` declarations in the repo, but they're app-level or adapter-specific. The `class Session` in `packages/adapter-mikro-orm/src/lib/entities.ts` is an ORM entity, not the public type.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 7989,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-session-refresh",
+      "arm": "baseline",
+      "trial": 0,
+      "prompt_tokens": 17232,
+      "completion_tokens": 623,
+      "cost_usd": 0.0020347,
+      "model_calls": 3,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rg": 16813,
+        "read_file": 4274
+      },
+      "stop": "answer",
+      "final_text": "The expiry is pushed back in `packages/core/src/lib/actions/session.ts`, in the `session()` function that serves the session endpoint.\n\n- **Database sessions (lines ~95–129):** It loads the session, then computes `newExpires = now + sessionMaxAge`. It only writes to the DB via `updateSession({ sessionToken, expires: newExpires })` when the session is due for an update. That check is `session.expires - sessionMaxAge + updateAge <= now`, so writes are throttled by `session.updateAge`. The cookie is then re-set with the new expiry (lines ~145–153).\n- **JWT sessions (lines ~50–79):** There's no DB write. It re-signs the token with a new expiry via `jwt.encode`, and updates the cookie's `expires` to match.\n\nThe default max age is 30 days (`packages/core/src/lib/init.ts:71`). The `session.maxAge` and `session.updateAge` options control the window and throttle.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 6259,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "updateSession",
+          "updateAge",
+          "jwt.encode",
+          "/re-?(en)?cod|re-?sign/i"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-session-refresh",
+      "arm": "grep+rig",
+      "trial": 0,
+      "prompt_tokens": 28691,
+      "completion_tokens": 860,
+      "cost_usd": 0.0032991,
+      "model_calls": 4,
+      "tool_turns": 5,
+      "tool_chars": {
+        "rig_search": 15732,
+        "read_file": 6441
+      },
+      "stop": "answer",
+      "final_text": "The sliding expiry is in `session()` in `packages/core/src/lib/actions/session.ts`. It runs on each session fetch, and it handles the two strategies differently:\n\n- **JWT strategy** (lines 42–92): every call computes `newExpires = fromDate(sessionMaxAge)`, re-signs the token with `jwt.encode`, and sets the cookie with the new expiry (lines 56–79). Nothing is written to the database.\n- **Database strategy** (lines 95–161): the cookie expiry is always reset (lines 146–153). The database row is only updated when `updateAge` has elapsed. Line 116 computes `session.expires - sessionMaxAge + updateAge`, and `updateSession({ sessionToken, expires: newExpires })` runs only if that time has passed (lines 124–129). This throttles writes.\n\n`updateAge` comes from `options.session.updateAge`. Expired sessions are deleted at lines 101–107.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 7907,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "updateSession",
+          "updateAge",
+          "jwt.encode",
+          "fromDate",
+          "/re-?(en)?cod|re-?sign/i"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-session-refresh",
+      "arm": "baseline",
+      "trial": 1,
+      "prompt_tokens": 34028,
+      "completion_tokens": 894,
+      "cost_usd": 0.0038498,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 34407,
+        "read_file": 4642
+      },
+      "stop": "answer",
+      "final_text": "The expiry is pushed back in `packages/core/src/lib/actions/session.ts`, in the session handler that runs on each session read (`GET /session`, `auth()`, and similar calls). It branches on strategy:\n\n- **JWT strategy (lines 42–92):** Each call computes `newExpires = now + maxAge` (line 56), re-signs the token with `jwt.encode` (line 72), and sets the session cookie with the new `expires` (lines 75–79). Every request refreshes both the token and the cookie.\n- **Database strategy (lines 94–129):** The new expiry is written with `updateSession` (lines 125–128), but only when the stored session is due for an update. The check at lines 116–124 compares `session.expires - maxAge + updateAge` against now, so writes are throttled to once per `session.updateAge`.\n\nAlso, `session.maxAge` and `session.updateAge` are defaulted in `packages/core/src/lib/init.ts` (line 71 sets 30 days). The docs say the proxy/middleware also bumps the cookie expiry, but I didn't trace that path.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 10369,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "updateSession",
+          "updateAge",
+          "jwt.encode",
+          "/re-?(en)?cod|re-?sign/i"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-session-refresh",
+      "arm": "grep+rig",
+      "trial": 1,
+      "prompt_tokens": 42010,
+      "completion_tokens": 1022,
+      "cost_usd": 0.004712,
+      "model_calls": 5,
+      "tool_turns": 8,
+      "tool_chars": {
+        "rig_search": 19207,
+        "rig_files": 251,
+        "read_file": 6441
+      },
+      "stop": "answer",
+      "final_text": "The expiry is pushed back in `session()` in `packages/core/src/lib/actions/session.ts`. It runs on each session fetch and handles two strategies differently:\n\n- **Database sessions (lines 109–153):** It computes `newExpires` from `sessionMaxAge`. It writes that to the database through `adapter.updateSession(...)`, but only when the stored expiry is within `updateAge` of the window's end (the throttle check at lines 116–124). It also resets the cookie's `expires` to match (lines 146–153).\n- **JWT sessions (lines 42–92):** There is no database write. Every call re-encodes the token (`jwt.encode`, line 72) and sets the cookie with the new expiry (lines 75–79).",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 10051,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "updateSession",
+          "updateAge",
+          "jwt.encode",
+          "/re-?(en)?cod|re-?sign/i"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-session-refresh",
+      "arm": "baseline",
+      "trial": 2,
+      "prompt_tokens": 32761,
+      "completion_tokens": 855,
+      "cost_usd": 0.0037035999999999996,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 32956,
+        "read_file": 4972
+      },
+      "stop": "answer",
+      "final_text": "The expiry is pushed back in `packages/core/src/lib/actions/session.ts`, in the session-fetch handler. Every call to the session endpoint (`/api/auth/session`, or `auth()` on the server) runs it. It has two branches:\n\n- **JWT strategy (lines 42–92):** the token is re-encoded with a new expiry (`fromDate(sessionMaxAge)`, line 56). The session cookie is then set again with the new `expires` (lines 75–79). Nothing is written to the database.\n- **Database strategy (lines 94–145):** `updateSession({ sessionToken, expires: newExpires })` runs at line 125. It is throttled: it only fires when `session.expires - maxAge + updateAge` has passed, so the database is not written on every request. The cookie is then refreshed as well.\n\nThe window length comes from `session.maxAge`, which defaults to 30 days (`packages/core/src/lib/init.ts:71`). The throttle comes from `session.updateAge`, which I did not check for its default value.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 8821,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "updateSession",
+          "updateAge",
+          "fromDate",
+          "/re-?(en)?cod|re-?sign/i"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-session-refresh",
+      "arm": "grep+rig",
+      "trial": 2,
+      "prompt_tokens": 28298,
+      "completion_tokens": 842,
+      "cost_usd": 0.0032508,
+      "model_calls": 4,
+      "tool_turns": 5,
+      "tool_chars": {
+        "rig_search": 11676,
+        "rig_explore": 4134,
+        "read_file": 6441
+      },
+      "stop": "answer",
+      "final_text": "The expiry is pushed back in `session()` in `packages/core/src/lib/actions/session.ts`. It runs whenever the session is read, so each call to the session endpoint can extend it.\n\n- **Database sessions** (lines 109–129): it loads the session, computes `newExpires = now + maxAge`, and calls `adapter.updateSession` to write the new expiry. The write is throttled by `session.updateAge`: it only happens once the stored expiry is within the update window, so it doesn't write on every request.\n- **Cookie** (lines 145–153): the session cookie is re-set with the new expiry in both strategies.\n- **JWT sessions** (lines 56–79): there's no database write. It re-signs the token with the new expiry and sets a new cookie.\n\nI didn't trace which route calls `session()`, so I can't confirm the exact request path that triggers it.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 9845,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "updateSession",
+          "updateAge",
+          "/re-?(en)?cod|re-?sign/i"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-csrf",
+      "arm": "baseline",
+      "trial": 0,
+      "prompt_tokens": 22775,
+      "completion_tokens": 1628,
+      "cost_usd": 0.0030915,
+      "model_calls": 4,
+      "tool_turns": 6,
+      "tool_chars": {
+        "rg": 10510,
+        "list_dir": 1714,
+        "read_file": 6388
+      },
+      "stop": "answer",
+      "final_text": "The library already defends against this with a CSRF check. You don't need to add one for the built-in sign-in flow, as long as you keep it enabled.\n\n- **Double-submit token:** On each request, `init.ts` calls `createCSRFToken` (`packages/core/src/lib/actions/callback/oauth/csrf-token.ts`). It sets an `authjs.csrf-token` cookie holding `token|hash`, where the hash is derived from the token and `secret`. A POST is verified only when the hash checks out and the `csrfToken` form field equals the token in the cookie.\n- **Enforced on sign-in:** `packages/core/src/lib/index.ts` calls `validateCSRF` before the `signin`, `signout`, and `session` POST actions. For `callback`, it is enforced only for `credentials` providers. A cross-site form can't read the cookie or supply the matching body value, so its POST fails with `MissingCSRF`.\n- **Cookie settings:** The CSRF cookie uses `sameSite: \"lax\"` and gets the `__Host-` prefix when secure cookies are on (`packages/core/src/lib/utils/cookie.ts`, around lines 81–87). That further limits cross-site requests.\n\nWhat to check in your app:\n- Don't set `skipCSRFCheck` in your config. Passing `skipCSRFCheck` disables this protection.\n- If you build your own sign-in form, include the `csrfToken` hidden field, which the built-in `/api/auth/csrf` endpoint provides. Credentials sign-in fails without it.\n- Clickjacking (another site framing your login page) is a separate issue. I found no `X-Frame-Options` or `frame-ancestors` headers in the core library, so set them in your framework or CDN config.\n\nI checked the code paths but did not run the test suite.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 11877,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "csrf-token.ts",
+          "createCSRFToken",
+          "validateCSRF"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-csrf",
+      "arm": "grep+rig",
+      "trial": 0,
+      "prompt_tokens": 13795,
+      "completion_tokens": 981,
+      "cost_usd": 0.00187,
+      "model_calls": 2,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rig_explore": 3462,
+        "rg": 19010
+      },
+      "stop": "answer",
+      "final_text": "The sign-in form is protected by a CSRF token using the double-submit cookie pattern. Auth.js does this for you, as long as you don't turn it off.\n\n- **Token issuance:** `createCSRFToken` in `packages/core/src/lib/actions/callback/oauth/csrf-token.ts` generates a random token and sets a cookie holding `token|hash`, where the hash is derived from the token and your `secret`.\n- **Form field:** The sign-in page (`packages/core/src/lib/pages/signin.tsx`) includes a hidden `csrfToken` input. Client helpers like `signIn` fetch it via `getCsrfToken()` and send it in the POST body.\n- **Verification:** On POST, the token must match the signed cookie value. `validateCSRF` in `packages/core/src/lib/actions/callback/oauth/csrf-token.ts` throws `MissingCSRF` otherwise. `packages/core/src/lib/index.ts` enforces this for sign-in actions, and for credentials providers in particular.\n- **Cookie settings:** The CSRF cookie is `authjs.csrf-token` with `sameSite: \"lax\"`. With secure cookies it gets the `__Host-` prefix (`packages/core/src/lib/utils/cookie.ts`).\n\nA cross-site attacker can't read the token, so they can't include a valid one in a forged POST. Their form also won't carry the victim's CSRF cookie.\n\nThings to watch:\n- Don't enable `skipCSRFCheck` unless your framework already provides CSRF protection. The framework adapters use it for that reason.\n- If you have a custom sign-in form or call the endpoints yourself, you must send the `csrfToken` from `/api/auth/csrf` along with the cookie.\n- Your own non-Auth.js POST routes need their own protection. This only covers Auth.js routes.\n\nI didn't trace every code path in detail, so check `validateCSRF` and `lib/index.ts` if you need to confirm the exact enforcement rules for your provider type.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 6298,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "csrf-token.ts",
+          "createCSRFToken",
+          "validateCSRF"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-csrf",
+      "arm": "baseline",
+      "trial": 1,
+      "prompt_tokens": 56015,
+      "completion_tokens": 1716,
+      "cost_usd": 0.0064595,
+      "model_calls": 6,
+      "tool_turns": 7,
+      "tool_chars": {
+        "rg": 23523,
+        "list_dir": 1281,
+        "read_file": 7786
+      },
+      "stop": "answer",
+      "final_text": "This repo is the Auth.js monorepo, so the protection is built into the library. Auth.js guards sign-in with a **double-submit CSRF token** that is checked on every state-changing request.\n\n**How it works** (`packages/core/src/lib/actions/callback/oauth/csrf-token.ts`, `packages/core/src/lib/init.ts`):\n- On each request, the server sets a `csrf-token` cookie containing `token|hash`, where `hash = H(token + secret)`.\n- The hash is recomputed on each request. The token is only trusted if the hash matches, which means the server issued it and an attacker can't forge it without the secret.\n- A POST is marked verified only when the body's `csrfToken` equals the cookie's token. A cross-site page can make the browser send the cookie, but it can't read the token to put in the body.\n- `packages/core/src/lib/index.ts` enforces this. For POST `signin`, `signout`, `session`, and credentials `callback`, it calls `validateCSRF` and throws `MissingCSRF` if verification fails.\n- The cookie is set with `sameSite: \"lax\"` (`packages/core/src/lib/utils/cookie.ts`), which adds another layer of protection.\n\n**What you need to do:**\n1. Keep `secret` set (`AUTH_SECRET`), since the hash depends on it.\n2. Don't pass `skipCSRFCheck` in your config. That symbol disables the check entirely.\n3. Use the library's `signIn()` / `<SignIn>` helpers, or include the `csrfToken` from `GET /api/auth/csrf` in any custom form you POST to `/api/auth/signin` or `/api/auth/callback/credentials`. Frameworks such as SvelteKit, Solid Start, and Qwik do this for you.\n\nIf you meant a sign-in form in an app that doesn't use Auth.js, tell me the stack and I'll look at how it handles CSRF.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 14904,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "csrf-token.ts",
+          "validateCSRF"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-csrf",
+      "arm": "grep+rig",
+      "trial": 1,
+      "prompt_tokens": 11625,
+      "completion_tokens": 1384,
+      "cost_usd": 0.0018544999999999998,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rig_explore": 3477,
+        "rg": 4685
+      },
+      "stop": "answer",
+      "final_text": "This codebase (Auth.js / NextAuth) already has CSRF protection on the sign-in form. Here's how it works:\n\n1. **Token issuance:** `packages/core/src/lib/actions/callback/oauth/csrf-token.ts` generates a random token and sets a cookie containing `token|HMAC(token + secret)`. The client gets the raw token from the `csrf` endpoint (`packages/core/src/lib/pages/index.ts`, `getCsrfToken()` in `packages/next-auth/src/react.tsx`).\n\n2. **Verification:** In `init.ts` (around lines 140–170), the server checks that the request body's `csrfToken` matches the token in the cookie. It also checks the cookie's hash against the secret, so an attacker can't forge a cookie. `csrfTokenVerified` is only true for POST requests.\n\n3. **Enforcement:** `validateCSRF` in `packages/core/src/lib/index.ts` (lines 70–91) runs on state-changing actions. If the check fails, it throws `MissingCSRF` (`packages/core/src/errors.ts`).\n\n4. **Cookie hardening:** The CSRF cookie uses `sameSite: \"lax\"` (`packages/core/src/lib/utils/cookie.ts`, around line 81), so browsers generally don't send it on cross-site POSTs.\n\nA malicious site can't read the token (same-origin policy blocks it), and it can't send the cookie along with a cross-site POST, so its forged submission fails.\n\nTo make sure this protection is active in your app:\n- Don't disable it. The `csrf` page returns 404 when `skip` is set, and that flag should stay off.\n- Keep your sign-in form using the library's `signIn()` or a form that includes the `csrfToken` hidden field.\n- Set a strong `AUTH_SECRET`, since the token hash depends on it.\n- If you add your own sign-in endpoints or wrap the handlers, make sure they go through this validation.\n\nI didn't look at your app's own code or deployment config, so this covers the library's behavior only. Clickjacking (embedding your sign-in page in an iframe) is a separate risk. I searched for `X-Frame-Options` and `frame-ancestors` and found nothing in the core library, so you'd need to set those headers in your app or proxy.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 9916,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "csrf-token.ts",
+          "validateCSRF"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-csrf",
+      "arm": "baseline",
+      "trial": 2,
+      "prompt_tokens": 15174,
+      "completion_tokens": 1425,
+      "cost_usd": 0.0022299,
+      "model_calls": 2,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rg": 29090
+      },
+      "stop": "answer",
+      "final_text": "This is an Auth.js codebase, and the sign-in form is already protected by a CSRF token (double-submit cookie pattern). You shouldn't need to add anything for form-submission attacks, as long as you don't disable it.\n\n**How it works**\n- A CSRF token is generated and stored in a cookie (`authjs.csrf-token`, or `__Host-` prefixed with secure cookies). The cookie value is `token|hash`, where the hash is derived from the token and `secret`. See `packages/core/src/lib/actions/callback/oauth/csrf-token.ts`.\n- The sign-in form includes a hidden `csrfToken` field (`packages/core/src/lib/pages/signin.tsx`).\n- On POST, `csrfTokenVerified` is true only if the body token matches the cookie token and the cookie's hash is valid (`csrf-token.ts`, line 43).\n- `validateCSRF` rejects unverified POSTs with a `MissingCSRF` error. Credentials and email sign-in require the token (`packages/core/src/lib/actions/callback/index.ts` and `packages/core/src/lib/index.ts`).\n- Cookies are `sameSite: \"lax\"` by default (`packages/core/src/lib/utils/cookie.ts`), so cross-site POSTs don't send them.\n\n**What to check in your setup**\n- Don't set `skipCSRFCheck`. It disables this check. Some framework integrations (SvelteKit, Qwik, Solid Start, Express docs) use it because their own protection is supposed to replace it. If you use one of those, confirm the framework's protection is actually active.\n- Clickjacking (another site framing your login page) is not covered by the CSRF token. I found no `frame-ancestors` or `X-Frame-Options` header in the core library. The only one is `X-Frame-Options: DENY` in `docs/vercel.json`, which applies to the docs site. If you self-host, add `X-Frame-Options: DENY` or `Content-Security-Policy: frame-ancestors 'none'` to your sign-in pages at the server or proxy level.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 8921,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "csrf-token.ts",
+          "validateCSRF"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-csrf",
+      "arm": "grep+rig",
+      "trial": 2,
+      "prompt_tokens": 15501,
+      "completion_tokens": 1417,
+      "cost_usd": 0.0022586000000000004,
+      "model_calls": 3,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rig_search": 3986,
+        "rg": 8374,
+        "rig_explore": 2859
+      },
+      "stop": "answer",
+      "final_text": "The main defense is a CSRF token that Auth.js (next-auth core) checks on every state-changing request. The sign-in form has to send that token back, and the server rejects requests that don't.\n\n**How it works** (`packages/core/src/lib/actions/callback/oauth/csrf-token.ts`, `packages/core/src/lib/init.ts`):\n\n- On the first request, `createCSRFToken` generates a random 32-character token and sets a cookie containing `token|hash`. The hash is computed over the token plus `options.secret`.\n- The sign-in page embeds the token in the form as `csrfToken`. The `csrf` endpoint (`packages/core/src/lib/pages/index.ts`) also returns it.\n- On POST, the server checks that the cookie's hash matches (so the cookie wasn't forged) and that the body's `csrfToken` equals the token in the cookie. Only then is `csrfTokenVerified` true.\n- `validateCSRF` (called from `packages/core/src/lib/index.ts`) throws `MissingCSRF` when verification fails for actions that need it.\n\nA malicious site can make the victim's browser send a POST, and the cookie will ride along. But it can't read your page to learn the token, so it can't put the correct value in the body. The request fails.\n\n**Cookie settings** (`packages/core/src/lib/utils/cookie.ts`): the CSRF cookie is `sameSite: \"lax\"`. Under secure cookies it is named `__Host-authjs.csrf-token`, which adds origin and path restrictions. Lax blocks the cookie on cross-site POSTs, which is a second layer.\n\n**Things to check on your side:**\n\n- Don't set `skipCSRFCheck` in your config. That disables this protection.\n- Set `AUTH_SECRET` (or `secret`) to a strong value. The token hash depends on it.\n- Use `getCsrfToken()` from `packages/next-auth/src/react.tsx` if you build a custom sign-in form, and include the token in the POST.\n- To stop your sign-in page from being framed (clickjacking, where a hidden iframe is overlaid on a fake page), add `X-Frame-Options: DENY` or `Content-Security-Policy: frame-ancestors 'none'` in your app's headers. I didn't find that in the core library, so it probably belongs in your framework or hosting config.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 9533,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "csrf-token.ts",
+          "createCSRFToken",
+          "validateCSRF"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-magic-link",
+      "arm": "baseline",
+      "trial": 0,
+      "prompt_tokens": 12107,
+      "completion_tokens": 865,
+      "cost_usd": 0.0016432,
+      "model_calls": 5,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rg": 2319,
+        "read_file": 4879
+      },
+      "stop": "answer",
+      "final_text": "The link is created in `packages/core/src/lib/actions/signin/send-token.ts`, in `sendToken()`.\n\n1. **Token generation:** It uses `provider.generateVerificationToken()` if the provider defines one. Otherwise it calls `randomString(32)`.\n2. **Expiry:** `expires` is `now + provider.maxAge`, defaulting to 86400 seconds (one day).\n3. **Link:** The URL is `{baseUrl}/callback/{provider.id}?callbackUrl=…&token=<raw token>&email=…`. It is passed to `provider.sendVerificationRequest()` along with the raw token.\n4. **Storage:** The raw token is never stored. The adapter's `createVerificationToken({ identifier: email, token: hash, expires })` receives `SHA-256(token + secret)`, where `secret` is `provider.secret ?? options.secret`. The hash is computed by `createHash()` in `packages/core/src/lib/utils/web.ts`, which returns a hex digest.\n\nWhen the user clicks the link, the callback handler is expected to hash the incoming token the same way and call `useVerificationToken`. That verification step is in `lib/actions/callback/index.ts`, and I did not read it.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 8638,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "hash"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-magic-link",
+      "arm": "grep+rig",
+      "trial": 0,
+      "prompt_tokens": 17059,
+      "completion_tokens": 757,
+      "cost_usd": 0.0020844,
+      "model_calls": 2,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rig_explore": 18258,
+        "rg": 13482
+      },
+      "stop": "answer",
+      "final_text": "The link is created in `sendToken` in `packages/core/src/lib/actions/signin/send-token.ts` (around lines 12–92).\n\n- **Token generation:** It calls `provider.generateVerificationToken()` if the provider defines one. Otherwise it uses `randomString(32)`. Expiry is `provider.maxAge` or one day by default.\n- **Sending:** The raw token goes into the email link, `{baseUrl}/callback/{provider.id}?callbackUrl=…&token=…&email=…`, via `provider.sendVerificationRequest`.\n- **Storage:** Only a hash is persisted. `adapter.createVerificationToken({ identifier: email, token: createHash(token + secret), expires })` stores it. The secret is `provider.secret ?? options.secret`. The `VerificationToken` interface in `packages/core/src/adapters.ts` documents this hashed-token design.\n\nSo the database holds `identifier` (the email), the hashed token, and the expiry. The plaintext token exists only in the email. The token is verified later by hashing the value from the link the same way and looking it up. I didn't trace the callback side, so that part is inferred from the design rather than read.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 5623,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "hash"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-magic-link",
+      "arm": "baseline",
+      "trial": 1,
+      "prompt_tokens": 12082,
+      "completion_tokens": 890,
+      "cost_usd": 0.0016531999999999999,
+      "model_calls": 5,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rg": 2279,
+        "read_file": 4879
+      },
+      "stop": "answer",
+      "final_text": "The one-time link is created in `sendToken` in `packages/core/src/lib/actions/signin/send-token.ts` (lines 12–92). It runs when someone submits only an email address.\n\n- **Token generation:** It calls `provider.generateVerificationToken()` if the provider defines one. Otherwise it uses `randomString(32)`.\n- **Expiry:** `provider.maxAge` (in seconds), defaulting to one day.\n- **Link:** Built as `{baseUrl}/callback/{provider.id}?callbackUrl=…&token=…&email=…`. The raw token is passed to `provider.sendVerificationRequest`, which emails it. The raw token is never stored.\n- **Storage:** The adapter's `createVerificationToken` receives `{ identifier: email, token: SHA-256(token + secret), expires }`. The hash comes from `createHash` in `packages/core/src/lib/utils/web.ts`. The secret is `provider.secret ?? options.secret`.\n\nOn callback, `adapter.useVerificationToken` (called in `lib/actions/callback/index.ts`, around line 220) looks up the token by its hash. The database therefore holds only the hash, so a leaked table can't be used to log in.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 9427,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "hash"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-magic-link",
+      "arm": "grep+rig",
+      "trial": 1,
+      "prompt_tokens": 11258,
+      "completion_tokens": 691,
+      "cost_usd": 0.0014713,
+      "model_calls": 2,
+      "tool_turns": 2,
+      "tool_chars": {
+        "rig_explore": 18258,
+        "rig_search": 1891
+      },
+      "stop": "answer",
+      "final_text": "The link is created in `sendToken` in `packages/core/src/lib/actions/signin/send-token.ts`. It runs when someone submits an email address to sign in.\n\n1. **Email normalization:** the address goes through `provider.normalizeIdentifier` (or a default normalizer).\n2. **Token generation:** it uses `provider.generateVerificationToken()` if defined, otherwise `randomString(32)`. The expiry defaults to 24 hours (`provider.maxAge`).\n3. **Link construction:** the raw token goes into the URL `{baseUrl}/callback/{provider.id}?callbackUrl=…&token=…&email=…`, which is sent via `provider.sendVerificationRequest`.\n4. **Storage:** the database never sees the raw token. It stores `createHash(token + secret)` (where `secret` is `provider.secret ?? options.secret`) as the `token` field of a `VerificationToken` row, with `identifier` set to the email and `expires` set to the expiry date. The row is written through `adapter.createVerificationToken`, if the adapter implements it.\n\nWhen the user clicks the link, the callback presumably re-hashes the submitted token with the secret and matches it against that row. I did not trace the callback side, so that step is an inference.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 5204,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "hash"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-magic-link",
+      "arm": "baseline",
+      "trial": 2,
+      "prompt_tokens": 12099,
+      "completion_tokens": 965,
+      "cost_usd": 0.0016924,
+      "model_calls": 5,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rg": 2375,
+        "read_file": 4879
+      },
+      "stop": "answer",
+      "final_text": "The link is created in `packages/core/src/lib/actions/signin/send-token.ts`, in `sendToken()`.\n\n**Creation:**\n- The email is normalized with `defaultNormalizer` (or the provider's `normalizeIdentifier`).\n- The token is `provider.generateVerificationToken()` if the provider defines one, otherwise `randomString(32)`.\n- The link is built as `{baseUrl}/callback/{provider.id}?callbackUrl=…&token=…&email=…`, and it's passed to `provider.sendVerificationRequest()` along with the raw token.\n- Expiry defaults to 24 hours (`provider.maxAge` overrides it).\n\n**Storage:**\n- Only a hash is stored. The code calls `adapter.createVerificationToken({ identifier: email, token: createHash(token + secret), expires })`.\n- `createHash` (in `packages/core/src/lib/utils/web.ts`) is SHA-256 over the token concatenated with the secret, hex-encoded. The secret is `provider.secret ?? options.secret`.\n- The raw token exists only in the email link. The DB row is keyed by identifier (the email) and holds the hash, so a leaked table can't be used to log in without the secret.\n\nWhen the link is clicked, the callback path (`packages/core/src/lib/actions/callback/index.ts`) calls `adapter.useVerificationToken`, which consumes the row.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 9432,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "hash"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-magic-link",
+      "arm": "grep+rig",
+      "trial": 2,
+      "prompt_tokens": 27556,
+      "completion_tokens": 746,
+      "cost_usd": 0.0031286,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rig_search": 3719,
+        "rg": 18296,
+        "read_file": 4879
+      },
+      "stop": "answer",
+      "final_text": "The link is created in `sendToken` in `packages/core/src/lib/actions/signin/send-token.ts`.\n\n1. The email is normalized with `defaultNormalizer` (or the provider's `normalizeIdentifier`).\n2. `callbacks.signIn` runs with `email: { verificationRequest: true }`. If it denies access, sign-in fails.\n3. A token is generated with `provider.generateVerificationToken()`, falling back to `randomString(32)`. It expires after `provider.maxAge`, defaulting to 24 hours.\n4. The email is sent with a callback URL: `{baseUrl}/callback/{provider.id}?callbackUrl=…&token=…&email=…`. The raw token is only in this URL and the email.\n5. The database stores only a hash: `adapter.createVerificationToken({ identifier: email, token: createHash(token + secret), expires })`. The secret is `provider.secret ?? options.secret`.\n\nSo the plaintext token never reaches the database. When the link is clicked, the callback handler presumably hashes the incoming token the same way and looks it up. I did not open `createHash` in `utils/web.js` or the callback code, so I can't confirm the hash algorithm or the lookup side.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 7376,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "hash"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-cookie-size",
+      "arm": "baseline",
+      "trial": 0,
+      "prompt_tokens": 40300,
+      "completion_tokens": 1386,
+      "cost_usd": 0.004723,
+      "model_calls": 4,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rg": 25021,
+        "read_file": 8170
+      },
+      "stop": "answer",
+      "final_text": "When the session token is too big for one cookie, Auth.js splits it into several cookies. It does not fail, and it does not truncate.\n\nIn `packages/core/src/lib/utils/cookie.ts`:\n\n- **Chunk size:** `ALLOWED_COOKIE_SIZE` is 4096, and `CHUNK_SIZE` is 4096 minus a 160-byte estimate for the cookie's name and attributes, so 3936 characters of value per chunk.\n- **Splitting:** `#chunk()` cuts the session value (the JWT or database session token) into pieces of `CHUNK_SIZE`. It names them `<name>.0`, `<name>.1`, and so on. A value that fits in one chunk is stored under the plain name.\n- **Writing:** `chunk()` first marks every existing session chunk for deletion with `maxAge: 0`, then sets the new chunks. Stale chunks from a previous, larger session are cleared this way.\n- **Reading:** The `SessionStore` constructor collects every cookie whose name starts with the session cookie name. The `value` getter sorts them by numeric suffix and joins them back into the original string.\n- **Logging:** When chunking happens, it logs a debug message, `CHUNKING_SESSION_COOKIE`.\n\nThere is no cap on the number of chunks, so the code will keep splitting however large the token gets. The cost is that every chunk is sent on every request, which the docs point out (`docs/pages/concepts/session-strategies.mdx`). Browsers also limit how many cookies a domain can hold, and the code doesn't check for that. A large JWT can therefore push the total cookie header size past what the server or browser accepts, and that failure would happen outside this code. The practical fix is to keep the token small, for example by storing less data in the `jwt` callback.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 11321,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "SessionStore",
+          "CHUNK_SIZE",
+          "4096"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-cookie-size",
+      "arm": "grep+rig",
+      "trial": 0,
+      "prompt_tokens": 12870,
+      "completion_tokens": 1048,
+      "cost_usd": 0.0018110000000000001,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 2773,
+        "rig_search": 3680,
+        "read_file": 2849
+      },
+      "stop": "answer",
+      "final_text": "When the session cookie is too big, Auth.js splits it into several smaller cookies instead of failing. The logic is in `packages/core/src/lib/utils/cookie.ts`.\n\n- **Limit:** `ALLOWED_COOKIE_SIZE` is 4096 bytes, and `ESTIMATED_EMPTY_COOKIE_SIZE` is 160 bytes for the cookie's name and attributes. Each chunk's value is therefore capped at `CHUNK_SIZE` = 3936 characters.\n- **Splitting:** `#chunk` checks whether the value exceeds one chunk. If it does, it slices the value into pieces named `<name>.0`, `<name>.1`, and so on. Each piece is set as its own cookie with the original options.\n- **Logging:** It logs a `CHUNKING_SESSION_COOKIE` debug message with the value size and per-chunk sizes. Nothing is thrown.\n- **Stale chunks:** `chunk()` first marks all existing chunks for deletion, using `maxAge: 0`. It then writes the new set. This also handles a switch between chunked and unchunked form.\n- **Reading:** The chunks are joined back in numeric order to rebuild the value. I did not open the parsing side, so that part is based on the docs and the chunk naming, not on reading the code.\n\nThe docs (`docs/pages/concepts/session-strategies.mdx`) add a caveat: every chunk is sent on every request. A large session therefore adds overhead to each request, and the browser's own per-cookie and per-domain limits still apply.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 8267,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "CHUNK_SIZE",
+          "4096"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-cookie-size",
+      "arm": "baseline",
+      "trial": 1,
+      "prompt_tokens": 30726,
+      "completion_tokens": 1424,
+      "cost_usd": 0.0037846,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 27144,
+        "read_file": 8170
+      },
+      "stop": "answer",
+      "final_text": "When the session cookie is too big, Auth.js splits it across several cookies instead of failing. Nothing is thrown and nothing is truncated.\n\n- **Splitting:** In `packages/core/src/lib/utils/cookie.ts`, `SessionStore.#chunk` checks the session value against `CHUNK_SIZE`, which is 4096 minus an estimated 160 bytes of cookie overhead, so about 3936 characters per chunk. Any larger value is cut into pieces named `<name>.0`, `<name>.1`, and so on. It logs a debug message (`CHUNKING_SESSION_COOKIE`) and returns the chunk cookies to be set.\n- **Reassembly:** When a request arrives, the constructor collects every cookie whose name starts with the session cookie name. `value` sorts them by the numeric suffix and joins them back into the original token.\n- **Stale chunks:** `chunk()` first calls `#clean()`, which emits every previously set chunk with `maxAge: 0`. That clears old chunks when the session shrinks or changes shape, including switching between chunked and unchunked.\n\nCaveats:\n- The code sets no limit on the number of chunks. Each request sends all of them, and browsers cap the number of cookies per domain (roughly 50 in most browsers; this is from general knowledge, not the repo). A very large JWT could therefore be silently dropped by the browser, and the session would then appear to be missing.\n- The size check uses `.length`, which counts characters, not bytes. This is fine for the ASCII base64url output of JWE tokens but could undercount if non-ASCII data ever reaches the token.\n- The docs (`docs/pages/concepts/session-strategies.mdx`) advise keeping the JWT small because it travels on every request.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 10264,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "SessionStore",
+          "CHUNK_SIZE",
+          "4096"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-cookie-size",
+      "arm": "grep+rig",
+      "trial": 1,
+      "prompt_tokens": 25032,
+      "completion_tokens": 1103,
+      "cost_usd": 0.0030547,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rig_explore": 19883,
+        "rg": 2825,
+        "read_file": 3684
+      },
+      "stop": "answer",
+      "final_text": "When the session cookie is too big, Auth.js splits it into multiple cookies instead of failing.\n\n- **Splitting:** In `packages/core/src/lib/utils/cookie.ts`, `#chunk` checks the encoded session token against a budget of 3936 characters (`CHUNK_SIZE = 4096 - 160`, where 160 is the estimated overhead of an empty cookie). Any value over that is cut into pieces named `<name>.0`, `<name>.1`, and so on, each written with the same options. A debug log records the chunking.\n- **Clearing stale chunks:** `chunk()` first expires all existing chunks (`maxAge: 0`) and then writes the new set. This also handles a session switching between chunked and unchunked.\n- **Reading back:** The constructor collects every cookie with the session prefix. The `value` getter sorts them by numeric suffix and concatenates them, so the token is reassembled before it is decoded.\n- **Limits:** There is no hard error. The docs (`docs/pages/concepts/session-strategies.mdx`) warn that the data is sent on every request, so large JWT sessions add overhead. The budget is measured in string length, not bytes, so a value with multi-byte characters could exceed 4096 bytes. In practice the session token is an ASCII JWT, so this is unlikely to matter.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 8148,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "CHUNK_SIZE",
+          "4096"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-cookie-size",
+      "arm": "baseline",
+      "trial": 2,
+      "prompt_tokens": 34213,
+      "completion_tokens": 1227,
+      "cost_usd": 0.0040348,
+      "model_calls": 4,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 22071,
+        "read_file": 3823
+      },
+      "stop": "answer",
+      "final_text": "When the session token is too big for one cookie, Auth.js splits it across several cookies instead of failing. The logic is in `packages/core/src/lib/utils/cookie.ts`.\n\n- **Chunk size:** The browser limit is treated as 4096 bytes, minus an estimated 160 bytes of cookie overhead, so each chunk holds up to 3936 characters of the token.\n- **Naming:** Chunks are named `<cookieName>.0`, `<cookieName>.1`, and so on. A token that fits in one piece keeps the plain name.\n- **Reading back:** `SessionStore` collects every cookie with the session prefix, sorts them by numeric suffix, and joins the values to rebuild the token.\n- **Cleanup:** On every `chunk()` call, all existing session chunks are expired (`maxAge: 0`) and the new set is written. This means switching between chunked and unchunked form doesn't leave stale cookies behind.\n\nTwo things the code doesn't handle:\n\n- **No cap on chunk count.** Browsers limit how many cookies a domain can hold and the total header size, so a very large token could be silently dropped by the browser. I didn't find a check for this, so treat it as an inference from the code.\n- **Length vs. bytes.** The split uses `string.length`, which counts characters, not bytes. This is safe for the ASCII token format, but would be wrong for multibyte values.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 10327,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "SessionStore",
+          "4096"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-cookie-size",
+      "arm": "grep+rig",
+      "trial": 2,
+      "prompt_tokens": 12804,
+      "completion_tokens": 816,
+      "cost_usd": 0.0016884,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rig_search": 3945,
+        "rg": 2518,
+        "read_file": 2849
+      },
+      "stop": "answer",
+      "final_text": "The session cookie is split into chunks instead of failing. This is handled in `packages/core/src/lib/utils/cookie.ts`.\n\n- **Limit:** `ALLOWED_COOKIE_SIZE` is 4096 bytes. Each chunk is `CHUNK_SIZE = 4096 - 160 = 3936` characters, leaving room for the cookie's name and attributes.\n- **Splitting:** `#chunk` divides the value into `ceil(length / 3936)` pieces named `<name>.0`, `<name>.1`, and so on. A value that fits in one piece is stored under the plain name.\n- **Logging:** When it chunks, it emits a `CHUNKING_SESSION_COOKIE` debug message. Nothing is logged at error level and no exception is thrown.\n- **Reassembly:** On read, the chunks are sorted by their numeric suffix and joined back into the original value.\n- **Stale chunks:** `chunk()` first marks all existing chunk cookies for deletion (`maxAge: 0`), then sets the new ones. So if the session shrinks or switches between chunked and unchunked, old pieces get cleared.\n\nThe cost is that every chunk is sent on every request, so large sessions add overhead. The docs (`docs/pages/concepts/session-strategies.mdx`) recommend keeping JWT or session payloads small for this reason.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 7033,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "CHUNK_SIZE",
+          "4096"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-redirect",
+      "arm": "baseline",
+      "trial": 0,
+      "prompt_tokens": 51846,
+      "completion_tokens": 1539,
+      "cost_usd": 0.0059541,
+      "model_calls": 4,
+      "tool_turns": 5,
+      "tool_chars": {
+        "rg": 39795,
+        "list_dir": 1281,
+        "read_file": 3504
+      },
+      "stop": "answer",
+      "final_text": "**Where the landing page comes from**\n\nIt's decided in `packages/core/src/lib/utils/callback-url.ts` (`createCallbackUrl`), in this order:\n\n1. A `callbackUrl` / `redirectTo` value from the form body (POST) or query string (GET).\n2. Otherwise, the callback URL saved in a cookie earlier in the flow, so it survives the trip through the provider or email link.\n3. Otherwise, the app's origin (the home page).\n\nThe resolved value is saved back into a cookie when it differs from the previous one, so signin, callback, and signout can all see it.\n\n**What stops redirects to other sites**\n\nThe validation lives in the `redirect` callback, which defaults to `defaultCallbacks.redirect` in `packages/core/src/lib/init.ts`:\n\n- Paths starting with `/` are prefixed with the app's base URL, so they stay on the app.\n- Absolute URLs are only accepted if their origin equals the app's origin.\n- Anything else falls back to the base URL.\n\nEvery candidate (param or cookie) goes through this check before it becomes a redirect target.\n\n**Other things that affect where users land**\n\n- Some flows override the target. The `pages` config can send users to custom signin, error, verify-request, or new-user pages. The `signIn` callback can block sign-in or return a different URL.\n- OAuth with a redirect proxy (`redirectProxyUrl` / `AUTH_REDIRECT_PROXY_URL`) forwards the callback to another origin. That origin is set in server config, not taken from user input, and the origin check in `init.ts` ensures it matches the configured proxy.\n\n**Caveat:** the protection depends on the `redirect` callback. If an app overrides it with a looser version, open redirects become possible again. Also, `new URL(url)` in the default throws on malformed input rather than falling back, which is worth knowing if you're debugging odd errors.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 11876,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "init.ts",
+          "callback-url",
+          "defaultCallbacks",
+          "createCallbackUrl"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-redirect",
+      "arm": "grep+rig",
+      "trial": 0,
+      "prompt_tokens": 65650,
+      "completion_tokens": 1850,
+      "cost_usd": 0.00749,
+      "model_calls": 5,
+      "tool_turns": 7,
+      "tool_chars": {
+        "rig_explore": 6027,
+        "rg": 22482,
+        "rig_callers": 2087,
+        "read_file": 2515,
+        "rig_node": 469
+      },
+      "stop": "answer",
+      "final_text": "**Where the landing page is decided**\n\n1. **Input:** The client sends a `callbackUrl` (or `redirectTo` in the newer clients, which map to it). It arrives as a form field on POST or a query param on GET. If the request has none, the server falls back to a `callbackUrl` cookie. The client-side `signIn` helpers default to `window.location.href`, so users usually return to the page they started on.\n2. **Resolution:** `createCallbackUrl` in `packages/core/src/lib/utils/callback-url.ts` picks the candidate: the param first, then the cookie, and otherwise the site origin. It runs that candidate through `callbacks.redirect`. It then stores the result in a cookie so the value survives the OAuth or email round-trip.\n3. **Use:** After the callback succeeds, `handleAuthorized` (`packages/core/src/lib/actions/callback/index.ts`) redirects there. The magic-link path (`sendToken`) uses the same `callbacks.redirect` check.\n\n**What stops redirects to other sites**\n\nThe default `redirect` callback in `packages/core/src/lib/init.ts` allows only two kinds of target:\n- A path starting with `/` is joined onto the app's own origin.\n- A full URL is allowed only if its origin equals the app's origin.\n\nAnything else falls back to the app's base URL. So `https://evil.com` becomes your home page. Because the check runs on both the param and the cookie, an attacker can't bypass it with a cookie either.\n\n**Caveats**\n- The check lives in `callbacks.redirect`, so overriding that callback without the same origin check reopens the open redirect.\n- From reading the code (not tested), a non-URL, non-slash value such as `foo` would hit `new URL(url)` and throw rather than fall back to the base URL. Worth verifying if you rely on that behaviour.\n- The Qwik and SvelteKit helpers default to `req.url.href` or `Referer` when no target is given. Those values are passed through the same `callbackUrl` path, so the same check applies.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 14790,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "init.ts",
+          "callback-url",
+          "createCallbackUrl"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-redirect",
+      "arm": "baseline",
+      "trial": 1,
+      "prompt_tokens": 82692,
+      "completion_tokens": 2150,
+      "cost_usd": 0.0093442,
+      "model_calls": 6,
+      "tool_turns": 8,
+      "tool_chars": {
+        "rg": 37738,
+        "list_dir": 1281,
+        "read_file": 3091
+      },
+      "stop": "answer",
+      "final_text": "**Short answer:** the post-login destination comes from a `callbackUrl` (or `redirectTo`) value, and the `redirect` callback decides whether it's allowed. The default callback only permits same-site URLs, so anything else falls back to the site's base URL.\n\n**How the landing page is chosen**\n\n1. **Where the value comes from.** The client passes `callbackUrl` or `redirectTo` in `signIn()`, or the sign-in form posts it as a hidden field. On the server, `packages/core/src/lib/index.ts:28` reads it from the body or query. If none is given, a previously stored callback-URL cookie is used.\n2. **Validation.** `createCallbackUrl` in `packages/core/src/lib/utils/callback-url.ts` runs the value through `callbacks.redirect({ url, baseUrl })`. It does this for the param value first, then the cookie. The returned value is the final destination. It is also written back to the cookie so it survives the OAuth or email round trip.\n3. **Use.** The callback handler (`packages/core/src/lib/actions/callback/index.ts`, e.g. lines 204, 324, 390, 525) returns `{ redirect: callbackUrl }`. If no value was supplied, the base URL is used.\n\n**What stops an off-site redirect**\n\n- **Default `redirect` callback** (`packages/core/src/lib/init.ts` ~lines 30–37):\n  - A value starting with `/` is joined to the base URL, so it stays on your origin.\n  - An absolute URL is kept only if its origin equals the base URL.\n  - Anything else returns the base URL.\n- **Config check** (`packages/core/src/lib/utils/assert.ts`): `isValidHttpUrl` rejects malformed or non-http(s) callback URLs at config-check time with `InvalidCallbackUrl`.\n- **Override point:** you can supply your own `callbacks.redirect` in your config. If you do, your function becomes the only gatekeeper, so it must keep the same-origin rule.\n\nI didn't trace the framework adapters (e.g. the SolidStart client in `packages/frameworks-solid-start/src/client.ts`), which pass the value through to the same server logic.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 17935,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "init.ts",
+          "callback-url",
+          "createCallbackUrl"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-redirect",
+      "arm": "grep+rig",
+      "trial": 1,
+      "prompt_tokens": 24636,
+      "completion_tokens": 1141,
+      "cost_usd": 0.0030341,
+      "model_calls": 3,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rig_explore": 20582,
+        "rig_search": 3851,
+        "read_file": 2163
+      },
+      "stop": "answer",
+      "final_text": "After login, the destination comes from a `callbackUrl` value. If none is provided, it falls back to the site origin (home page).\n\n**How the destination is chosen** (`packages/core/src/lib/utils/callback-url.ts`, `createCallbackUrl`):\n1. If a `callbackUrl` form field or query parameter is present, it's used.\n2. Otherwise, if a `callbackUrl` cookie exists from an earlier step in the flow, that's used.\n3. Otherwise, it defaults to `url.origin`.\n\nThe chosen value is also saved back to a cookie so it survives the sign-in and callback round trips.\n\n**What prevents redirects to other sites** (`defaultCallbacks.redirect` in `packages/core/src/lib/init.ts`):\n- Both the parameter and the cookie value pass through `callbacks.redirect` before use.\n- Root-relative paths (starting with `/`) are prefixed with the app's base URL, so they stay on the same site.\n- Absolute URLs are allowed only if their origin matches the app's base URL.\n- Anything else, including external sites, falls back to the base URL.\n\nSo an attacker's `?callbackUrl=https://evil.example` ends up as the site's home page. A user can override the `redirect` callback in their config, and that override then becomes the only check, so its logic matters.\n\nI did not trace the final redirect step after a successful login, so I can't confirm from what I read that every path uses this resolved value. The `redirect` check and the `createCallbackUrl` logic are what I verified.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 8951,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "init.ts",
+          "callback-url",
+          "defaultCallbacks",
+          "createCallbackUrl"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-redirect",
+      "arm": "baseline",
+      "trial": 2,
+      "prompt_tokens": 40697,
+      "completion_tokens": 1651,
+      "cost_usd": 0.004895200000000001,
+      "model_calls": 5,
+      "tool_turns": 7,
+      "tool_chars": {
+        "rg": 8166,
+        "read_file": 20820
+      },
+      "stop": "answer",
+      "final_text": "**Where they land:** The login flow resolves a single `callbackUrl` and redirects there. It comes from three places, in priority order:\n\n1. **Request param** (`callbackUrl` in the POST body or query string), used if present. `packages/core/src/lib/utils/callback-url.ts`\n2. **`callbackUrl` cookie**, set on an earlier request so the destination survives the sign-in round trip (OAuth or email link).\n3. **Fallback**: `url.origin`, i.e. the site's home page.\n\nThe result is saved back into the cookie (`callbackUrlCookie`) so later steps in the flow can reuse it. This is wired up in `packages/core/src/lib/init.ts` (around line 174).\n\nAfter the provider authenticates the user, `packages/core/src/lib/actions/callback/index.ts` returns `{ redirect: callbackUrl }`. There is one exception: if the user is brand new and `pages.newUser` is configured, they go there first, with the original `callbackUrl` passed along as a query param so the journey can continue.\n\n**What stops off-site redirects:** the `callbacks.redirect` function, which is the default in `packages/core/src/lib/init.ts` (around line 33):\n\n```ts\nredirect({ url, baseUrl }) {\n  if (url.startsWith(\"/\")) return `${baseUrl}${url}`\n  else if (new URL(url).origin === baseUrl) return url\n  return baseUrl\n}\n```\n\n- Relative paths are prefixed with the site's own origin, so they stay on the site.\n- Absolute URLs are allowed only if their origin matches the site's origin.\n- Anything else falls back to the site's origin.\n\nBecause `createCallbackUrl` runs every incoming value through this callback, both the param and the cookie are checked before use. Users can override `callbacks.redirect` in config, which replaces this check, so a custom override needs the same validation.\n\n**One edge case:** an absolute-looking string that isn't a valid URL (e.g. `\"foo\"`, which doesn't start with `/`) makes `new URL(url)` throw rather than fall back. I didn't check whether that error is caught further up. It fails closed (no redirect to an external site), but it may produce an error rather than a clean fallback.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 12788,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "init.ts",
+          "callback-url",
+          "createCallbackUrl"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-redirect",
+      "arm": "grep+rig",
+      "trial": 2,
+      "prompt_tokens": 88281,
+      "completion_tokens": 1739,
+      "cost_usd": 0.0096976,
+      "model_calls": 5,
+      "tool_turns": 6,
+      "tool_chars": {
+        "rig_explore": 18574,
+        "rg": 35027,
+        "read_file": 927
+      },
+      "stop": "answer",
+      "final_text": "**Where the landing page is chosen**\n\n1. **Entry point:** The sign-in form or `signIn()` call can pass `redirectTo` or `callbackUrl`. If neither is given, the default is the page the user started from.\n2. **Storage:** `createCallbackUrl` (`packages/core/src/lib/utils/callback-url.ts`) takes the value from the request parameter first, then from the `callbackUrl` cookie. If neither is set, it falls back to the site origin (`/`). If the value came from the parameter, it is saved in the `callbackUrl` cookie so it survives the OAuth or email round trip. This runs in `init.ts`.\n3. **Use:** After the provider or email link returns, `callback/index.ts` sends the user to `callbackUrl` (lines ~204, 324, 390, 525). Sign-in itself is handled by `handleLoginOrRegister`, which creates or links the user and session but does not choose the destination.\n\n**What stops redirects to other sites**\n\nEvery candidate URL goes through `callbacks.redirect` (`init.ts`, lines 33–37):\n\n- A path starting with `/` is joined to the site's base URL, so it stays on the site. A value like `//evil.com` becomes `https://yoursite//evil.com`, which is still on your origin.\n- An absolute URL is allowed only if its origin matches the site's origin.\n- Anything else falls back to the base URL.\n\nThis check runs on the request parameter and on the cookie value before either is used. The `redirect` callback can be overridden in config, so the protection depends on that override keeping the same origin check.\n\n**Caveats**\n\n- A bare relative value like `dashboard` (no leading slash) is not matched by either branch. `new URL(\"dashboard\")` throws, so it is not treated as a safe fallback. Treat that as a possible error case, not a guarantee.\n- The check is only as strong as the `redirect` callback. A custom callback that returns the input unchanged would reopen open redirects.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 14846,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "init.ts",
+          "callback-url",
+          "createCallbackUrl"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-oauth-checks",
+      "arm": "baseline",
+      "trial": 0,
+      "prompt_tokens": 17428,
+      "completion_tokens": 1540,
+      "cost_usd": 0.0025128,
+      "model_calls": 3,
+      "tool_turns": 3,
+      "tool_chars": {
+        "rg": 10446,
+        "read_file": 13534
+      },
+      "stop": "answer",
+      "final_text": "The main defense is a **state cookie** that is compared against the `state` parameter the provider returns. Several other checks back it up.\n\n**How it works**\n\n1. **Sign-in** (`packages/core/src/lib/actions/signin/authorization-url.ts`): `state.create()` in `oauth/checks.ts` generates a random value. It sends that value to the provider as `state`, and stores it in a sealed, encrypted cookie. The cookie is a JWT with a 15-minute TTL and a salt derived from the cookie name. Its payload also records the provider id.\n2. **Callback** (`packages/core/src/lib/actions/callback/oauth/callback.ts`): the code calls `o.validateAuthResponse(...)` with the expected state read from the cookie. If the returned `state` doesn't match, the callback fails. The cookie is cleared after use, so it can't be replayed.\n3. **Provider binding**: `parseCookie` rejects a cookie whose stored provider id doesn't match the provider handling the callback. A state or nonce minted for GitHub can't be used on the Google callback.\n4. **PKCE** (`checks.pkce`): the code verifier is stored in a sealed cookie and sent in the token exchange. An attacker who injects an authorization code without the verifier can't redeem it.\n5. **Nonce** (OIDC): `checks.nonce.use` returns the expected nonce, which `processAuthorizationCodeResponse` checks against the ID token's `nonce` claim.\n\n**Caveat:** state checking is opt-in per provider. `callback.ts` only runs the state check when `provider.checks` includes `\"state\"`, and otherwise passes `o.skipStateCheck`. The default for `checks` is `[\"pkce\"]` (`lib/utils/providers.ts:92`), so a custom OAuth provider that doesn't set `checks` explicitly gets PKCE but not state. Many built-in providers set `[\"pkce\", \"state\"]` or `[\"state\", \"pkce\"]`. For a custom provider, set `checks: [\"pkce\", \"state\"]` (or `\"nonce\"` for OIDC). The `checks` config type is in `providers/oauth.ts:201`.\n\nI didn't trace the lines between 120 and 131 of `callback.ts`, so the exact line where the cookie's state value is read is an inference from the code I did see.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 10322,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "/\\bstate\\b/i",
+          "/pkce|code.?verifier/i",
+          "nonce"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-oauth-checks",
+      "arm": "grep+rig",
+      "trial": 0,
+      "prompt_tokens": 70971,
+      "completion_tokens": 1587,
+      "cost_usd": 0.007890600000000001,
+      "model_calls": 6,
+      "tool_turns": 6,
+      "tool_chars": {
+        "rig_explore": 20900,
+        "rg": 7543,
+        "read_file": 6050
+      },
+      "stop": "answer",
+      "final_text": "The login flow binds the callback to the original request with a **state** value, and optionally PKCE and nonce. The state check is the main one.\n\n**Start of login** (`packages/core/src/lib/actions/signin/authorization-url.ts`, ~lines 90-112): a random state is generated, sent to the provider as the `state` param, and stored in an encrypted, short-lived cookie. PKCE and nonce are added the same way when enabled.\n\n**Callback** (`packages/core/src/lib/actions/callback/oauth/callback.ts`, ~lines 130-139):\n- `checks.state.use(...)` reads the state cookie. It must exist, decrypt, and be scoped to this provider (`checks.ts`, `parseCookie`, which rejects a cookie made for a different provider). The cookie is then cleared.\n- `o.validateAuthResponse(...)` compares the `state` in the callback's query params against that cookie value. A mismatch or missing state fails the login.\n- PKCE (`checks.pkce.use`, ~line 152) sends the stored code verifier in the token exchange, so an intercepted code can't be redeemed by someone else.\n- For OIDC, the nonce is checked against the ID token's claims during token validation.\n\n**Details to know:**\n- The cookie is sealed with the app's secret (JWT-encrypted) and expires after 15 minutes (`COOKIE_TTL`/`STATE_MAX_AGE`), so it can't be forged or replayed indefinitely.\n- The state check only runs when `provider.checks` includes `\"state\"`. Per the `oauth.ts` docs, it's added automatically for OAuth providers. Setting `checks: [\"none\"]` or skipping it disables this protection, so don't do that.\n- I didn't trace the nonce validation code, so that part is based on the call sites rather than a read of the implementation.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 15052,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "/\\bstate\\b/i",
+          "/pkce|code.?verifier/i",
+          "nonce"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-oauth-checks",
+      "arm": "baseline",
+      "trial": 1,
+      "prompt_tokens": 22496,
+      "completion_tokens": 1376,
+      "cost_usd": 0.0029376000000000003,
+      "model_calls": 3,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rg": 8727,
+        "read_file": 28361
+      },
+      "stop": "answer",
+      "final_text": "The response is bound to the login that started it by a per-login `state` value stored in a cookie, and the callback compares the two.\n\n**Starting the login** (`packages/core/src/lib/actions/signin/authorization-url.ts`, `checks.state.create` in `callback/oauth/checks.ts`):\n- A random value is generated and wrapped in an encrypted JWT. It is sent to the provider as the `state` query parameter.\n- The same value is sealed into a cookie. That cookie is encrypted, expires after 15 minutes, and records the provider id.\n\n**Handling the callback** (`callback/oauth/callback.ts`, `handleOAuth`):\n1. `checks.state.use` reads and decrypts the state cookie. `parseCookie` rejects it if it is missing, invalid, or was created for a different provider. The cookie is then cleared.\n2. `o.validateAuthResponse(...)` from oauth4webapi compares the `state` returned in the URL with the cookie value and fails on a mismatch. If the provider's `checks` doesn't include `\"state\"`, it passes `skipStateCheck` and this comparison is skipped.\n\n**Additional binding:**\n- PKCE (`code_verifier` cookie) ties the code exchange to the browser that started the flow.\n- For OIDC, the `nonce` cookie is checked against the `nonce` claim in the ID token.\n\n**Caveat:** In `authorization-url.ts` (around line 100), if PKCE is configured but the authorization server doesn't advertise `S256`, OIDC providers get `provider.checks = [\"nonce\"]`. That assignment replaces the whole array, so `\"state\"` is dropped. In that case the callback skips the state comparison and relies only on the nonce. It's worth checking whether that overwrite is intended, or whether it should be a push or merge.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 9665,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "/\\bstate\\b/i",
+          "/pkce|code.?verifier/i",
+          "nonce"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-oauth-checks",
+      "arm": "grep+rig",
+      "trial": 1,
+      "prompt_tokens": 66521,
+      "completion_tokens": 1667,
+      "cost_usd": 0.0074856,
+      "model_calls": 8,
+      "tool_turns": 9,
+      "tool_chars": {
+        "rig_search": 7812,
+        "rg": 3417,
+        "read_file": 12728
+      },
+      "stop": "answer",
+      "final_text": "The callback checks that the `state` value returned by the provider matches a sealed cookie set when the login started.\n\n1. **At sign-in** (`packages/core/src/lib/actions/signin/authorization-url.ts`, around lines 84–93): if the provider's `checks` include `\"state\"`, `checks.state.create()` generates a random value, puts it in the `state` query parameter sent to the provider, and sets it in a cookie.\n2. **The cookie is sealed**: `packages/core/src/lib/actions/callback/oauth/checks.ts` encrypts it as a JWT, with a 15-minute TTL, and stores the provider id inside the payload.\n3. **At callback** (`packages/core/src/lib/actions/callback/oauth/callback.ts`, lines 130–139): `checks.state.use()` reads and decrypts the cookie, then clears it. It throws if the cookie is missing, expired, or tampered with. It also throws if the provider id in the payload doesn't match the provider handling the callback. The value is passed to `o.validateAuthResponse` from `oauth4webapi`, which rejects the response if the returned `state` doesn't match.\n\nTwo things to check:\n- The protection only applies when `\"state\"` is in the provider's `checks`. Otherwise the code passes `o.skipStateCheck`. Providers like FusionAuth set `checks: [\"pkce\", \"state\"]` explicitly, and the proxy example sets `checks: [\"state\"]`. Confirm your provider config includes it.\n- PKCE (`checks.pkce`) is a second binding on the same cookie mechanism, and it is consumed after the state check.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 15639,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "/\\bstate\\b/i",
+          "/pkce|code.?verifier/i"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-oauth-checks",
+      "arm": "baseline",
+      "trial": 2,
+      "prompt_tokens": 27239,
+      "completion_tokens": 1320,
+      "cost_usd": 0.0033839,
+      "model_calls": 4,
+      "tool_turns": 4,
+      "tool_chars": {
+        "rg": 6768,
+        "read_file": 20137
+      },
+      "stop": "answer",
+      "final_text": "The binding is done with a state value stored in a sealed cookie, checked on callback. The main pieces are in `packages/core/src/lib/actions/callback/oauth/checks.ts` and `callback.ts`.\n\n1. **Sign-in creates the state.** `state.create()` generates a random value and seals it into a `state` cookie, which is set in the browser. The value is also sent as the `state` parameter in the authorization URL.\n2. **The cookie is sealed.** It is a JWE encrypted and signed with `AUTH_SECRET`, with a 15-minute TTL. The payload includes the provider id, so a cookie minted for one provider is rejected by another (`parseCookie`, around line 77).\n3. **Callback compares them.** `handleOAuth` calls `checks.state.use()`, which reads and decrypts the cookie, then clears it. It passes the result to `o.validateAuthResponse()` (`callback.ts` ~line 134), which requires the `state` query param to match. A mismatch or missing value fails with `InvalidCheck`.\n4. **Replay protection.** The cookie is cleared after use, and the TTL limits how long it stays valid.\n\nTwo more checks bind the response to the login:\n- **PKCE** (`pkce.use`): the code verifier is stored in a sealed cookie and sent with the token exchange, so a stolen authorization code is useless on its own.\n- **Nonce** (OIDC): the nonce is passed as `expectedNonce` to `processAuthorizationCodeResponse`, so it must match the ID token's `nonce` claim.\n\nCaveat: all of this applies only when the provider's `checks` array includes the check. The state check is skipped if `\"state\"` is not in `provider.checks` (`skipStateCheck`), and nonce/PKCE are likewise opt-in per provider. Confirm that the provider you use has `state` enabled. Built-in providers such as Vipps, Salesforce, Apple, and BankID set it explicitly.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 11339,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "/\\bstate\\b/i",
+          "/pkce|code.?verifier/i",
+          "nonce"
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "query_id": "nl-oauth-checks",
+      "arm": "grep+rig",
+      "trial": 2,
+      "prompt_tokens": 40325,
+      "completion_tokens": 1470,
+      "cost_usd": 0.0047675,
+      "model_calls": 4,
+      "tool_turns": 5,
+      "tool_chars": {
+        "rig_explore": 20234,
+        "rg": 6001,
+        "read_file": 5618
+      },
+      "stop": "answer",
+      "final_text": "The check is a state parameter bound to a browser cookie, and the library's `oauth-4.1.1` validation enforces it. Here's the flow:\n\n1. **Sign-in start** (`packages/core/src/lib/actions/signin/authorization-url.ts`, around lines 84–112): a random `state` is generated in `checks.state.create()` (`checks.ts`, ~line 156). It is sent to the provider as the `state` query param, and the same value is stored in an encrypted, HttpOnly cookie named `state`. The cookie is sealed with `sealCookie`. The state value is a signed JWT with a 15-minute max age. For OIDC providers, a `nonce` is handled the same way and is also bound to the ID token.\n\n2. **Callback** (`packages/core/src/lib/actions/callback/oauth/callback.ts`, lines 130–150): `checks.state.use(...)` reads the state cookie from the request and clears it. It then calls `o.validateAuthResponse(..., state)` from `oauth4webapi`, which compares the `state` returned in the query (or form body for `response_mode=form_post`) against the expected value. A mismatch or missing value throws, and the callback fails with `OAuthCallbackError`.\n\n3. **Other checks on the same path:** PKCE (`checks.pkce`) stores the `code_verifier` in a cookie and sends it on the token exchange, so an intercepted authorization code can't be redeemed by another client. For OIDC, `nonce` is checked against the ID token claims (callback.ts ~line 230).\n\nThings to keep in mind:\n- The state check only runs if the provider includes `\"state\"` in its `checks`. Default OAuth providers get it, but a custom provider with `checks: [\"none\"]` or `[\"pkce\"]` alone would skip it. Check `provider.checks` for each provider you use.\n- Binding depends on the browser keeping the `state` cookie. Its SameSite/Secure settings are adjusted for `none` in `authorization-url.ts` (lines 84–87), which matters if you're embedding flows across sites.\n- The `state` value is a signed JWT, so the server can also read the optional `origin` for the redirect proxy. That's a separate feature, not extra validation.\n\nI didn't read `useCookie` or `oauth4webapi`'s `validateAuthResponse` directly, so the exact comparison and cookie-clearing behavior is inferred from how they're called.",
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "upstreams": [
+        "Claude Platform on AWS"
+      ],
+      "elapsed_ms": 11490,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "/\\bstate\\b/i",
+          "/pkce|code.?verifier/i",
+          "nonce"
+        ],
+        "forbidden": []
+      }
+    }
+  ]
+}

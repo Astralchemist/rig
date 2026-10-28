@@ -1,0 +1,1 @@
+# rig bench — hybrid-search
