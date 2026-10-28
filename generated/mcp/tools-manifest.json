@@ -2654,6 +2654,14 @@
               }
             ]
           },
+          "reason": {
+            "type": "string",
+            "description": "Why nothing was undone"
+          },
+          "failed": {
+            "$ref": "#/properties/undone/anyOf/0",
+            "description": "The mutation whose inverse could not be applied"
+          },
           "elapsed_ms": {
             "type": "number"
           }

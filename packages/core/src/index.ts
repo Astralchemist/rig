@@ -15,6 +15,7 @@ export type {
   WaypointKind,
   WaypointPayload,
   WaypointRow,
+  UndoOutcome,
 } from './rig.ts';
 export { Database } from './db/database.ts';
 export { bunSqliteFactory } from './db/bun-adapter.ts';

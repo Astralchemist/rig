@@ -86,7 +86,8 @@ export const deriveEvents = (rig: Rig, mutations: MutationRow[]): DerivedEvent[]
         });
         break;
       case 'undo':
-        out.push({ type: 'undone', ts: m.ts, payload: p });
+        // An undo whose inverse could not be applied changed nothing.
+        if (p.applied !== false) out.push({ type: 'undone', ts: m.ts, payload: p });
         break;
       case 'selection':
         out.push({
