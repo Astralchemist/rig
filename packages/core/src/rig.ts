@@ -92,7 +92,7 @@ export type { FileRow } from './db/file-queries.ts';
 export type { GraphSnapshot } from './db/graph-snapshot.ts';
 export type { PendingEdgeRow } from './db/pending-edges.ts';
 export type { MutationRow, MutationKind } from './db/mutation-log.ts';
-export { RigWrites } from './rig-writes.ts';
+export { RigWrites, UnknownRefsError } from './rig-writes.ts';
 export type { WriteCtx, ProposeArgs, AddNodeArgs, UndoOutcome } from './rig-writes.ts';
 
 export interface RigWatchOptions extends WatchOptions {

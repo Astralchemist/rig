@@ -75,6 +75,26 @@ export interface DropWaypointArgs {
   keyTerms?: readonly string[];
   compactable?: boolean;
   payloads?: readonly WaypointPayload[];
+  // Why the waypoint was dropped (required by rig_drop_waypoint); stored in
+  // its data and returned by rig_waypoints / rig_chain.
+  rationale?: string;
+}
+
+// A waypoint named ids that are not in the graph; nothing was written.
+export class UnknownRefsError extends Error {
+  readonly unknownIds: string[];
+  constructor(
+    readonly constellationRefs: readonly string[],
+    readonly predecessors: readonly string[],
+  ) {
+    const parts = [
+      constellationRefs.length ? `constellation_refs: ${constellationRefs.join(', ')}` : '',
+      predecessors.length ? `predecessors: ${predecessors.join(', ')}` : '',
+    ].filter(Boolean);
+    super(`unknown node ids in ${parts.join('; ')}`);
+    this.name = 'UnknownRefsError';
+    this.unknownIds = [...new Set([...constellationRefs, ...predecessors])];
+  }
 }
 
 export class RigWrites {
@@ -245,7 +265,10 @@ export class RigWrites {
 
   // Drop a conversation waypoint — node + predecessor edges + constellation
   // refs + session-row upsert, all inside one transaction so the mutation log
-  // entry is consistent with the visible state.
+  // entry is consistent with the visible state. Every referenced id is
+  // checked first: an unknown one throws UnknownRefsError listing them all
+  // (it used to abort the insert halfway with "FOREIGN KEY constraint
+  // failed").
   dropWaypoint(args: DropWaypointArgs, ctx: WriteCtx): string {
     const adapter = this.db.adapter;
     const id = `waypoint:${crypto.randomUUID()}`;
@@ -260,16 +283,24 @@ export class RigWrites {
       key_terms: args.keyTerms ?? [],
       compactable: args.compactable === true,
       payloads: args.payloads ?? [],
+      ...(args.rationale ? { rationale: args.rationale } : {}),
     };
     adapter.transaction(() => {
+      const exists = adapter.prepare(`SELECT 1 AS x FROM nodes WHERE id = ?`);
+      const unknown = (ids: readonly string[] = []): string[] =>
+        [...new Set(ids)].filter((ref) => !exists.get(ref));
+      const badRefs = unknown(args.constellationRefs);
+      const badPreds = unknown(args.predecessors);
+      if (badRefs.length || badPreds.length) throw new UnknownRefsError(badRefs, badPreds);
       adapter
         .prepare(
           `INSERT INTO nodes (id, type, name, data, created_at, updated_at)
            VALUES (?, 'conversation-waypoint', ?, ?, ?, ?)`,
         )
         .run(id, args.title, JSON.stringify(data), now, now);
+      // OR IGNORE: an id listed twice is one edge.
       const ins = adapter.prepare(
-        `INSERT INTO edges (src, dst, kind, provenance, created_at) VALUES (?, ?, ?, ?, ?)`,
+        `INSERT OR IGNORE INTO edges (src, dst, kind, provenance, created_at) VALUES (?, ?, ?, ?, ?)`,
       );
       for (const pid of args.predecessors ?? []) {
         ins.run(id, pid, 'waypoint_succeeds', ctx.actor, now);

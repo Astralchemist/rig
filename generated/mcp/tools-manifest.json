@@ -561,6 +561,10 @@
                       }
                     ]
                   }
+                },
+                "rationale": {
+                  "type": "string",
+                  "description": "Why it was dropped (absent on older waypoints)"
                 }
               },
               "required": [
@@ -1328,6 +1332,7 @@
       },
       "errors": [
         "NOT_INITIALIZED",
+        "NODE_NOT_FOUND",
         "PROVENANCE_REQUIRED",
         "RATIONALE_REQUIRED"
       ]
@@ -2949,6 +2954,10 @@
                       }
                     ]
                   }
+                },
+                "rationale": {
+                  "type": "string",
+                  "description": "Why it was dropped (absent on older waypoints)"
                 }
               },
               "required": [

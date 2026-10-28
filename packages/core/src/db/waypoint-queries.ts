@@ -33,6 +33,8 @@ export interface WaypointRow {
   key_terms: string[];
   compactable: boolean;
   payloads: WaypointPayload[];
+  // Why it was dropped; absent on waypoints dropped before it was kept.
+  rationale?: string;
 }
 
 interface RawNode {
@@ -52,6 +54,7 @@ interface RawData {
   key_terms?: string[];
   compactable?: boolean;
   payloads?: WaypointPayload[];
+  rationale?: string;
 }
 
 const parse = (r: RawNode): WaypointRow => {
@@ -69,6 +72,7 @@ const parse = (r: RawNode): WaypointRow => {
     key_terms: d.key_terms ?? [],
     compactable: d.compactable === true,
     payloads: d.payloads ?? [],
+    ...(typeof d.rationale === 'string' ? { rationale: d.rationale } : {}),
   };
 };
 
