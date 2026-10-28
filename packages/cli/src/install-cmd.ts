@@ -62,8 +62,8 @@ export async function runInstall(cwd: string): Promise<void> {
     if (scope !== requested) {
       process.stdout.write(
         scope === 'global'
-          ? `  ${contract.display_name} has no project-level config here — writing user-level files (every project).\n`
-          : `  ${contract.display_name} has no user-level config — writing project files.\n`,
+          ? `  ${contract.display_name} has no project-level config — writing its user-level files instead.\n`
+          : `  ${contract.display_name} has no user-level config — writing its project files instead.\n`,
       );
     }
     const result = await installTarget(contract, opts);

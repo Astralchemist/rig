@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
-import { existsSync } from 'node:fs';
-import { homedir } from 'node:os';
-import path from 'node:path';
 import { defineTargetContract } from '@rig/contracts';
 
-// OpenRouter is an OpenAI-compatible API, not an MCP host. This target writes
-// a reference MCP server entry that OpenRouter users can point any MCP-capable
-// client at (Cline, Continue, LibreChat, etc.). Detection is best-effort —
-// either the conventional config dir exists, or an OPENROUTER_API_KEY is set.
+// OpenRouter is an OpenAI-compatible API, not an MCP host (#1): nothing reads
+// these files. `rig install openrouter` writes them as a reference — an MCP
+// server entry and the tool guidance to copy into whichever MCP client talks to
+// OpenRouter (Cline, Continue, LibreChat, …) — and says so. It is never
+// auto-detected, so `rig start` never writes it.
+const REFERENCE =
+  'reference only — OpenRouter is an API, not an MCP host, so nothing reads this file.';
+
 export default defineTargetContract({
   name: 'openrouter',
   display_name: 'OpenRouter',
-  detect: async () =>
-    existsSync(path.join(homedir(), '.config', 'openrouter')) ||
-    !!process.env.OPENROUTER_API_KEY,
+  detect: async () => false,
   files: [
     {
       role: 'mcp_config',
@@ -28,6 +27,7 @@ export default defineTargetContract({
           },
         },
       },
+      note: `${REFERENCE} Copy its mcpServers.rig entry into the MCP client you use with OpenRouter (Cline, Continue, LibreChat, …).`,
     },
     {
       role: 'instructions',
@@ -35,6 +35,7 @@ export default defineTargetContract({
       mode: 'append-section',
       section_marker: '## Rig',
       template: '{{GENERATED:openrouter.instructions.md}}',
+      note: `${REFERENCE} Paste the rig section into that client's custom instructions.`,
     },
   ],
   uninstall_strategy: 'reverse',

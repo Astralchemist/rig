@@ -45,8 +45,9 @@ commands:
   sync        incremental update
   query       CLI search
   files       list indexed files
-  install     wire Rig into Claude Code / Cursor / Codex / opencode / openrouter — writes
-              into this project by default; --global writes your user-level config
+  install     wire Rig into Claude Code / Cursor / Codex / opencode — writes into this
+              project by default; --global writes your user-level config
+              (openrouter: writes a reference config only — it isn't an MCP host)
   serve       start MCP and/or web server (--mcp / --web / --all [--no-auth])
   doctor      diagnose environment, db, model cache, agent configs
   bench       benchmark SQL + analytical surfaces (--fixture <N> for synthetic stress test, --json for raw)
