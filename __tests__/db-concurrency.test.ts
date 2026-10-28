@@ -108,6 +108,21 @@ describe('Database — concurrent writers', () => {
     expect(seen).toBe(1);
     expect(rows()).toEqual(['child', 'parent']);
   });
+
+  it("close() doesn't wait out another process's lock for its best-effort optimize", async () => {
+    // Give PRAGMA optimize something to ANALYZE, so it wants the write lock.
+    db.adapter.exec('CREATE INDEX probe_who ON probe (who)');
+    const insert = db.adapter.prepare("INSERT INTO probe (who) VALUES ('seed')");
+    db.adapter.transaction(() => {
+      for (let i = 0; i < 500; i++) insert.run();
+    })();
+    const child = await holdWriteLock(dbPath);
+    expectLocked(dbPath);
+    const start = performance.now();
+    db.close();
+    expect(performance.now() - start).toBeLessThan(HOLD_MS / 2);
+    expect(await child.exited).toBe(0);
+  });
 });
 
 describe('better-sqlite3 adapter (Node fallback)', () => {
