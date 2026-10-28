@@ -4,6 +4,17 @@
 // almost always means `rig install claude`.
 const AGENTS = ['claude', 'cursor', 'codex', 'opencode', 'openrouter'];
 
+// Words people reach for instead of a command's name. Without this `remove`
+// would be "corrected" to `serve` by edit distance.
+const SYNONYMS: Record<string, string> = {
+  remove: 'uninstall',
+  rm: 'uninstall',
+  unwire: 'uninstall',
+  unlink: 'uninstall',
+  deinstall: 'uninstall',
+  wire: 'install',
+};
+
 // Levenshtein edit distance — small inputs, so the simple O(n·m) table is fine.
 const editDistance = (a: string, b: string): number => {
   const m = a.length;
@@ -26,6 +37,8 @@ const editDistance = (a: string, b: string): number => {
 // nothing is close enough to be worth showing.
 export const suggestCommand = (input: string, commands: string[]): string | null => {
   if (AGENTS.includes(input)) return `install ${input}`;
+  const synonym = SYNONYMS[input];
+  if (synonym && commands.includes(synonym)) return synonym;
   let best: string | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   for (const c of commands) {
