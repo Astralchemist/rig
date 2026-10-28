@@ -12,6 +12,10 @@ const SHAPES_PY = `class Shape:
     def unit():
         return Shape()
 
+    @classmethod
+    async def remote(cls):
+        return cls()
+
     if True:
         def conditional(self):
             pass
@@ -85,5 +89,16 @@ describe('python extraction', () => {
     expect(kindOf('area.Local.size')).toBe('method'); // class defined inside a function
     expect(kindOf('Shape.scale.clamp')).toBe('function'); // nested in a method
     expect(kindOf('area.square')).toBe('function'); // nested in a function
+  });
+
+  test('async defs are marked async', async () => {
+    const { nodes } = await extractFromSource('pkg/shapes.py', SHAPES_PY);
+    const isAsync = (qualifiedName: string): boolean | undefined =>
+      nodes.find((n) => n.qualifiedName === qualifiedName)?.isAsync;
+
+    expect(isAsync('fetch')).toBe(true);
+    expect(isAsync('Shape.remote')).toBe(true); // decorated method
+    expect(isAsync('area')).toBe(false);
+    expect(isAsync('Shape.unit')).toBe(false);
   });
 });

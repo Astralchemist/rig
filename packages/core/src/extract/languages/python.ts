@@ -1,6 +1,7 @@
 // Derived from CodeGraph (MIT) — github.com/colbymchenry/codegraph
 // Source: src/extraction/languages/python.ts (import paths rewired; Rig's
-// extractImports replaces extractImport to cover `import x` / `import x as y`).
+// extractImports replaces extractImport to cover `import x` / `import x as y`,
+// and isAsync is fixed for this grammar).
 
 import { Node as SyntaxNode } from 'web-tree-sitter';
 import { getChildByField, getNodeText } from '../tree-sitter-helpers.ts';
@@ -45,10 +46,8 @@ export const pythonExtractor: LanguageExtractor = {
     }
     return sig;
   },
-  isAsync: (node) => {
-    const prev = node.previousSibling;
-    return prev?.type === 'async';
-  },
+  // `async` is the definition's own first token, not a preceding sibling.
+  isAsync: (node) => node.firstChild?.type === 'async',
   isStatic: (node) => {
     const prev = node.previousNamedSibling;
     if (prev?.type === 'decorator') {
