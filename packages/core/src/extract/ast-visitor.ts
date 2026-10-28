@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Node as SyntaxNode } from 'web-tree-sitter';
-import { calleeNameOf, declKindOf, docAnchorOf, nameFor } from './node-builders.ts';
+import {
+  calleeNameOf,
+  declKindOf,
+  docAnchorOf,
+  functionBindingOf,
+  nameFor,
+} from './node-builders.ts';
 import { generateNodeId, getPrecedingDocstring } from './tree-sitter-helpers.ts';
 import type { LanguageExtractor } from './tree-sitter-types.ts';
 import type {
@@ -129,10 +135,12 @@ export function visit(node: SyntaxNode, ctx: VisitCtx): void {
   if (kind) {
     const name = nameFor(node, ctx.extractor);
     if (name) {
-      const id = generateNodeId(ctx.filePath, kind, name, node.startPosition.row + 1);
+      // A bound function (`const f = () => {}`) spans its declarator, `f = …`.
+      const span = functionBindingOf(node) ?? node;
+      const id = generateNodeId(ctx.filePath, kind, name, span.startPosition.row + 1);
       const qn = ctx.scope.slice(1).map((s) => s.name).concat(name).join('.');
       const signature = ctx.extractor.getSignature?.(node, ctx.source);
-      const docstring = getPrecedingDocstring(docAnchorOf(node), ctx.source);
+      const docstring = getPrecedingDocstring(docAnchorOf(span), ctx.source);
       ctx.nodes.push({
         id,
         kind,
@@ -140,10 +148,10 @@ export function visit(node: SyntaxNode, ctx: VisitCtx): void {
         qualifiedName: qn || name,
         filePath: ctx.filePath,
         language: ctx.language,
-        startLine: node.startPosition.row + 1,
-        endLine: node.endPosition.row + 1,
-        startColumn: node.startPosition.column,
-        endColumn: node.endPosition.column,
+        startLine: span.startPosition.row + 1,
+        endLine: span.endPosition.row + 1,
+        startColumn: span.startPosition.column,
+        endColumn: span.endPosition.column,
         ...(docstring !== undefined ? { docstring } : {}),
         ...(signature !== undefined ? { signature } : {}),
         isExported: ctx.extractor.isExported?.(node, ctx.source) ?? false,

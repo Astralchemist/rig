@@ -39,13 +39,37 @@ export const declKindOf = (
   return null;
 };
 
-export const nameFor = (node: SyntaxNode, ex: LanguageExtractor): string | null =>
-  getChildByField(node, ex.nameField)?.text ?? null;
+const FUNCTION_VALUE_TYPES = new Set(['arrow_function', 'function_expression']);
+const BINDING_STATEMENT_TYPES = new Set(['lexical_declaration', 'variable_declaration']);
 
-// The node a declaration's doc comment sits above: `/** … */ export function f`
-// documents f, but the comment is a sibling of the export statement.
-export const docAnchorOf = (node: SyntaxNode): SyntaxNode =>
-  node.parent?.type === 'export_statement' ? node.parent : node;
+// `const f = () => {}`, `export let g = function () {}`: a function value bound
+// to a plain name by a top-level or exported const/let/var. Returns the
+// declarator, which names the function and spans the binding; null otherwise
+// (locals, destructuring, wrapped values like `memo(() => {})`).
+export const functionBindingOf = (node: SyntaxNode): SyntaxNode | null => {
+  const declarator = node.parent;
+  if (!FUNCTION_VALUE_TYPES.has(node.type) || declarator?.type !== 'variable_declarator') {
+    return null;
+  }
+  if (getChildByField(declarator, 'name')?.type !== 'identifier') return null;
+  const statement = declarator.parent;
+  if (!statement || !BINDING_STATEMENT_TYPES.has(statement.type)) return null;
+  const owner = statement.parent?.type;
+  return owner === 'program' || owner === 'export_statement' ? declarator : null;
+};
+
+// A bound function takes its binding's name (the declarator's `name` field):
+// `const f = function g() {}` is called as f.
+export const nameFor = (node: SyntaxNode, ex: LanguageExtractor): string | null =>
+  getChildByField(functionBindingOf(node) ?? node, ex.nameField)?.text ?? null;
+
+// The node a declaration's doc comment sits above: a declarator's comment
+// precedes its whole `const` statement, and `/** … */ export function f`
+// documents f although the comment is a sibling of the export statement.
+export const docAnchorOf = (node: SyntaxNode): SyntaxNode => {
+  const statement = node.type === 'variable_declarator' && node.parent ? node.parent : node;
+  return statement.parent?.type === 'export_statement' ? statement.parent : statement;
+};
 
 export const calleeNameOf = (callNode: SyntaxNode): string | null => {
   const fn = getChildByField(callNode, 'function') ?? callNode.namedChild(0);

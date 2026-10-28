@@ -1,5 +1,6 @@
 // Derived from CodeGraph (MIT) — github.com/colbymchenry/codegraph
-// Source: src/extraction/languages/javascript.ts (verbatim, import paths rewired).
+// Source: src/extraction/languages/javascript.ts (import paths rewired; Rig's
+// getSignature also handles a lone arrow parameter, `x => x`).
 
 import { getChildByField, getNodeText } from '../tree-sitter-helpers.ts';
 import type { LanguageExtractor } from '../tree-sitter-types.ts';
@@ -43,7 +44,9 @@ export const javascriptExtractor: LanguageExtractor = {
   paramsField: 'parameters',
   getSignature: (node, source) => {
     const params = getChildByField(node, 'parameters');
-    return params ? getNodeText(params, source) : undefined;
+    if (params) return getNodeText(params, source);
+    const lone = getChildByField(node, 'parameter'); // `x => x`, no parentheses
+    return lone ? `(${getNodeText(lone, source)})` : undefined;
   },
   isExported: (node, _source) => {
     let current = node.parent;
