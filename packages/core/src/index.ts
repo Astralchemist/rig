@@ -12,6 +12,9 @@ export type {
   NeighborsOptions,
   SearchOptions,
   FileRow,
+  WaypointKind,
+  WaypointPayload,
+  WaypointRow,
 } from './rig.ts';
 export { Database } from './db/database.ts';
 export { bunSqliteFactory } from './db/bun-adapter.ts';

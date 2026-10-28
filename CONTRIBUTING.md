@@ -6,7 +6,8 @@ Thanks for being here. Rig is built so that contributing is *cheap* — most add
 
 ```bash
 bun install
-bun run gen          # emit generated/ from .contracts/
+bun run install:hooks  # pre-commit hook that runs gen:check (the suite checks it's installed)
+bun run gen            # emit generated/ from .contracts/
 bun test
 ```
 
@@ -39,10 +40,11 @@ After editing a contract, run `bun run gen` and commit the regenerated `generate
 bun run gen:check        # generated/ is fresh
 bun run check:compat     # no breaking changes to stable tools
 bun run check:migrations # shipped migrations unchanged
+bun run typecheck        # tsc over packages (incl. the .tsx app), scripts, contracts
 bun test
 ```
 
-CI runs all four. Notes:
+CI runs all five. Notes:
 
 - **Stable tools are protected.** If you change a `stable` tool's inputs/outputs/errors, `check:compat` fails. Make the change additive, mark the tool `experimental`, or bump the manifest major version. See [`COMPATIBILITY.md`](COMPATIBILITY.md).
 - **Migrations are immutable once shipped.** Add `vN+1`; don't edit `vN`. Re-bless with `bun run migration:lock` only when adding a version.

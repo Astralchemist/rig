@@ -11,7 +11,7 @@ const REGISTRY = `https://registry.npmjs.org/${PKG_NAME}/latest`;
 // than `a`. Numeric-only compare is enough for our 0.x line; a prerelease
 // suffix on an otherwise-equal version is treated as older.
 export const isNewer = (a: string, b: string): boolean => {
-  const part = (v: string) => v.split('-')[0].split('.').map((n) => Number.parseInt(n, 10) || 0);
+  const part = (v: string) => v.split('-')[0]!.split('.').map((n) => Number.parseInt(n, 10) || 0);
   const [pa, pb] = [part(a), part(b)];
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
     const x = pa[i] ?? 0;

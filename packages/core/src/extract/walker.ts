@@ -54,9 +54,9 @@ export interface WalkedFile {
 export interface WalkOptions {
   // Only yield files whose relative path matches at least one include pattern.
   // If empty/undefined, everything passes the include filter.
-  include?: readonly string[];
+  include?: readonly string[] | undefined;
   // Skip files whose relative path matches any exclude pattern.
-  exclude?: readonly string[];
+  exclude?: readonly string[] | undefined;
 }
 
 export async function* walkProject(

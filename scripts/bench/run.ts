@@ -77,8 +77,7 @@ const runOne = async (
       messages.push({ role: 'assistant', content: res.content });
       if (res.stop_reason !== 'tool_use') {
         finalText = res.content
-          .filter((b) => b.type === 'text')
-          .map((b) => (b as { text: string }).text)
+          .flatMap((b) => (b.type === 'text' && typeof b.text === 'string' ? [b.text] : []))
           .join('\n')
           .trim();
         break;

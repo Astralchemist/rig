@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import { Map as RigMap, type Snapshot } from './Map.tsx';
 import { NodeDetail } from './NodeDetail.tsx';
 import { NodePopover } from './NodePopover.tsx';
