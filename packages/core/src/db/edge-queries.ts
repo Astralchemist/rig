@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { SqliteAdapter } from './adapter.ts';
+import { parseSourceUrls } from './pending-edges.ts';
 
 export interface TaggedEdge {
   src: string;
@@ -7,6 +8,8 @@ export interface TaggedEdge {
   kind: string;
   weight?: number;
   table: 'structural' | 'semantic';
+  // Semantic edges only: the URLs cited when the edge was proposed.
+  source_urls?: string[];
 }
 
 export interface NeighborsOptions {
@@ -39,21 +42,32 @@ export const getNeighbors = (
     out.push({ src: r.src, dst: r.dst, kind: r.kind, table: 'structural' });
   }
 
-  if (!opts.kind || opts.kind === 'related') {
-    const semRows = db
-      .prepare(
-        `SELECT src, dst, weight FROM edges_semantic WHERE (src = ? OR dst = ?) LIMIT ?`,
-      )
-      .all(id, id, limit) as { src: string; dst: string; weight: number }[];
-    for (const r of semRows) {
-      out.push({
-        src: r.src,
-        dst: r.dst,
-        kind: 'related',
-        weight: r.weight,
-        table: 'semantic',
-      });
-    }
+  // Accepted proposals carry the kind they were proposed with (v13); rows
+  // accepted before that were backfilled, or read 'related'.
+  let semSql = `SELECT src, dst, weight, kind, source_urls FROM edges_semantic WHERE (src = ? OR dst = ?)`;
+  const semParams: unknown[] = [id, id];
+  if (opts.kind) {
+    semSql += ` AND kind = ?`;
+    semParams.push(opts.kind);
+  }
+  semSql += ` LIMIT ?`;
+  semParams.push(limit);
+  const semRows = db.prepare(semSql).all(...semParams) as {
+    src: string;
+    dst: string;
+    weight: number;
+    kind: string;
+    source_urls: string | null;
+  }[];
+  for (const r of semRows) {
+    out.push({
+      src: r.src,
+      dst: r.dst,
+      kind: r.kind,
+      weight: r.weight,
+      table: 'semantic',
+      source_urls: parseSourceUrls(r.source_urls),
+    });
   }
 
   return out.slice(0, limit);

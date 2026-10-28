@@ -41,18 +41,22 @@ interface RawPendingRow {
   source_urls: string | null;
 }
 
-const parsePending = (r: RawPendingRow): PendingEdgeRow => {
-  let urls: string[] = [];
-  if (r.source_urls) {
-    try {
-      const parsed = JSON.parse(r.source_urls) as unknown;
-      if (Array.isArray(parsed)) urls = parsed.filter((u): u is string => typeof u === 'string');
-    } catch {
-      // legacy / corrupt row — surface as empty, do not throw
-    }
+// source_urls columns (pending_edges, edges_semantic) hold a JSON array or NULL.
+export const parseSourceUrls = (raw: string | null): string[] => {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) return parsed.filter((u): u is string => typeof u === 'string');
+  } catch {
+    // legacy / corrupt row — surface as empty, do not throw
   }
-  return { ...r, source_urls: urls };
+  return [];
 };
+
+const parsePending = (r: RawPendingRow): PendingEdgeRow => ({
+  ...r,
+  source_urls: parseSourceUrls(r.source_urls),
+});
 
 export const proposeEdge = (db: SqliteAdapter, input: ProposeInput): number => {
   const urls = input.sourceUrls && input.sourceUrls.length ? JSON.stringify(input.sourceUrls) : null;
@@ -92,8 +96,9 @@ export const listPendingEdges = (db: SqliteAdapter): PendingEdgeRow[] => {
   return rows.map(parsePending);
 };
 
-// Promotes a pending edge into edges_semantic. Returns the promoted row or
-// null if the pending id is missing or not in 'pending' state.
+// Promotes a pending edge into edges_semantic, kind and evidence URLs
+// included. Returns the promoted row or null if the pending id is missing or
+// not in 'pending' state.
 export const acceptPending = (
   db: SqliteAdapter,
   pendingId: number,
@@ -102,9 +107,18 @@ export const acceptPending = (
   if (!row || row.status !== 'pending') return null;
   db.transaction(() => {
     db.prepare(
-      `INSERT INTO edges_semantic (src, dst, weight, provenance, rationale, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(row.src, row.dst, row.weight, row.provenance, row.rationale, Date.now());
+      `INSERT INTO edges_semantic (src, dst, weight, provenance, rationale, created_at, kind, source_urls)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      row.src,
+      row.dst,
+      row.weight,
+      row.provenance,
+      row.rationale,
+      Date.now(),
+      row.kind,
+      row.source_urls.length ? JSON.stringify(row.source_urls) : null,
+    );
     db.prepare(`UPDATE pending_edges SET status = 'accepted' WHERE id = ?`).run(pendingId);
   })();
   return row;

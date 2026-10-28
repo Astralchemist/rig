@@ -134,7 +134,9 @@ For one-hop callers use rig_callers.
 
 Return edges incident to the given anchor in both directions, from both
 the structural and semantic edge tables. Output is a flat EdgeRef list
-with {src, dst, kind, weight?, table}.
+with {src, dst, kind, weight?, table, source_urls?}. A semantic edge (an
+accepted rig_propose_edge) keeps the kind it was proposed with and its
+evidence URLs; the kind filter matches it like any other edge.
 
 Use when you want the raw graph view ("what does this connect to") rather
 than a ranked similarity view. For "what's most related" use rig_pull —

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { SqliteAdapter } from './adapter.ts';
+import { parseSourceUrls } from './pending-edges.ts';
 
 export interface GraphSnapshotNode {
   id: string;
@@ -21,6 +22,8 @@ export interface GraphSnapshotSemanticEdge {
   src: string;
   dst: string;
   weight: number;
+  kind: string;
+  source_urls: string[];
 }
 
 export interface GraphSnapshotPendingEdge {
@@ -56,11 +59,16 @@ export const getGraphSnapshot = (db: SqliteAdapter, limit = 500): GraphSnapshot 
       `SELECT src, dst, kind FROM edges WHERE src IN (${placeholders}) AND dst IN (${placeholders})`,
     )
     .all(...nodes.map((n) => n.id), ...nodes.map((n) => n.id)) as GraphSnapshotEdge[];
-  const semRows = db
-    .prepare(
-      `SELECT src, dst, weight FROM edges_semantic WHERE src IN (${placeholders}) AND dst IN (${placeholders})`,
-    )
-    .all(...nodes.map((n) => n.id), ...nodes.map((n) => n.id)) as GraphSnapshotSemanticEdge[];
+  const semRows = (
+    db
+      .prepare(
+        `SELECT src, dst, weight, kind, source_urls FROM edges_semantic WHERE src IN (${placeholders}) AND dst IN (${placeholders})`,
+      )
+      .all(...nodes.map((n) => n.id), ...nodes.map((n) => n.id)) as (Omit<
+      GraphSnapshotSemanticEdge,
+      'source_urls'
+    > & { source_urls: string | null })[]
+  ).map((e) => ({ ...e, source_urls: parseSourceUrls(e.source_urls) }));
   const pendingRows = db
     .prepare(
       `SELECT id, src, dst, kind, weight, rationale, provenance FROM pending_edges WHERE status = 'pending'`,

@@ -1903,6 +1903,13 @@
                     "structural",
                     "semantic"
                   ]
+                },
+                "source_urls": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Semantic edges: URLs cited as evidence when the edge was proposed"
                 }
               },
               "required": [
