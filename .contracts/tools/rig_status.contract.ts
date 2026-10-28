@@ -9,7 +9,10 @@ export default defineToolContract({
   since: '1.0',
   summary: 'Report rig index health',
   description: `
-Returns counts of nodes, edges, files, and the last sync timestamp.
+Returns counts of nodes, edges, files, and when the graph was last brought
+up to date: last_sync_ts is the last index or sync (\`rig index\`, \`rig sync\`
+or the file watcher), last_index_ts the last full \`rig index\` (ms since
+the epoch; null until the first one after upgrading).
 Use as a smoke test before any other rig_* call to confirm the index is initialized.
 \`orphans\` counts memory (aliases, annotations, promotes, proposed/accepted edges,
 waypoint refs) kept from symbols that were deleted; it re-attaches automatically
@@ -23,6 +26,7 @@ if the symbol comes back in the same file.
     edges_semantic: z.number().int(),
     files: z.number().int(),
     last_sync_ts: z.number().int().nullable(),
+    last_index_ts: z.number().int().nullable(),
     orphans: z.number().int(),
     elapsed_ms: z.number(),
   }),

@@ -7,6 +7,7 @@ import type { Database } from './db/database.ts';
 import { enrichDependenciesFromLockfiles } from './db/dep-resolution.ts';
 import { EXTRACTED_KINDS_SQL, EXTRACTED_NODE_SQL } from './db/extracted-nodes.ts';
 import { replaceFileArtifacts } from './db/file-artifacts.ts';
+import { META_LAST_INDEX_TS, META_LAST_SYNC_TS, setMeta } from './db/meta.ts';
 import { pickData, upsertFile } from './db/node-queries.ts';
 import {
   reattachOrphans,
@@ -42,7 +43,9 @@ import { rebuildStructuralEdges } from './resolve/rebuild-edges.ts';
 //      re-attach orphaned memory to re-created nodes with the same anchor
 //   6. rebuild the derived ('ast') edges from the artifacts of ALL files
 //   7. tests-edges, hubness, lockfile enrichment and communities
-//   8. embed the changed nodes, and any extracted node still missing a vector
+//   8. record the completion time in meta (last_index_ts / last_sync_ts), so
+//      status can tell when the graph last matched the files
+//   9. embed the changed nodes, and any extracted node still missing a vector
 //      from the current model
 // Steps 4–6 and the tests edges run in one transaction, so readers never see
 // a file's nodes without its edges. The slow, fallible embedding runs last: if
@@ -320,7 +323,12 @@ export async function runUpdate(
 
   const nothingChanged = changed.length === 0 && deleted.length === 0;
   const healOnly = mode === 'sync' && nothingChanged;
+  const markDone = (): Promise<void> =>
+    retryWhenBusy(() =>
+      setMeta(db, mode === 'index' ? META_LAST_INDEX_TS : META_LAST_SYNC_TS, String(Date.now())),
+    );
   if (healOnly && !(embedder && anyMissingEmbedding(db, embedder.model))) {
+    await markDone();
     return {
       files: seen.size,
       changed: 0,
@@ -396,8 +404,10 @@ export async function runUpdate(
     }
   }
   const { changedNodes, stats, orphaned, reattached } = applied;
+  // 8. The graph now matches the files.
+  await markDone();
 
-  // 8. Embed. Unchanged embedding text is skipped by text_hash, so a moved
+  // 9. Embed. Unchanged embedding text is skipped by text_hash, so a moved
   // symbol keeps its vector.
   let embedded = 0;
   if (embedder) {

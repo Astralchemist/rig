@@ -161,7 +161,11 @@ export class Rig {
       edges_structural: c.edges_structural,
       edges_semantic: c.edges_semantic,
       files: c.files,
-      last_sync_ts: c.last_activation_ts,
+      last_sync_ts:
+        c.last_index_ts === null || c.last_sync_ts === null
+          ? (c.last_index_ts ?? c.last_sync_ts)
+          : Math.max(c.last_index_ts, c.last_sync_ts),
+      last_index_ts: c.last_index_ts,
       orphans: c.orphans,
     };
   }

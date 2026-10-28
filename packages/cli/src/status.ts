@@ -15,6 +15,7 @@ export const runStatus = async (cwd: string): Promise<void> => {
     console.log(`  edges_semantic:   ${s.edges_semantic}`);
     console.log(`  files:            ${s.files}`);
     console.log(`  last_sync_ts:     ${s.last_sync_ts ?? '(none)'}`);
+    console.log(`  last_index_ts:    ${s.last_index_ts ?? '(none)'}`);
     console.log(`  orphans:          ${s.orphans}`);
   } finally {
     rig.close();
