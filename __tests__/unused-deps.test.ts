@@ -65,3 +65,41 @@ describe('A2 rig_unused_deps', () => {
     expect(unused.find((d) => d.name === '@types/node')).toBeUndefined();
   });
 });
+
+// Python `import x` / `import x as y` must count as uses, not just `from x import y`.
+describe('A2 rig_unused_deps — Python imports', () => {
+  let project: string;
+  let rig: Rig;
+
+  beforeEach(async () => {
+    project = mkdtempSync(join(tmpdir(), 'rig-unused-py-'));
+    writeFileSync(join(project, 'requirements.txt'), 'pandas==2.1.4\nnumpy>=1.26\nrequests\n');
+    writeFileSync(join(project, 'pyproject.toml'), '[project]\ndependencies = ["pandas>=2.1"]\n');
+    writeFileSync(
+      join(project, 'main.py'),
+      ['import numpy', 'import pandas as pd', '', 'def load(path):', '    return pd.read_csv(path)', ''].join('\n'),
+    );
+    rig = await Rig.init(project, { embedder: new DeterministicEmbedder() });
+    await rig.indexAll();
+  });
+
+  afterEach(() => {
+    rig.close();
+    rmSync(project, { recursive: true, force: true });
+  });
+
+  test('an aliased import counts as a use (import pandas as pd)', () => {
+    const unused = rig.getUnusedDependencies();
+    expect(unused.filter((d) => d.name === 'pandas')).toEqual([]);
+  });
+
+  test('a plain import counts as a use (import numpy)', () => {
+    const unused = rig.getUnusedDependencies();
+    expect(unused.find((d) => d.name === 'numpy')).toBeUndefined();
+  });
+
+  test('a declared package that is never imported is still flagged', () => {
+    const unused = rig.getUnusedDependencies();
+    expect(unused.map((d) => d.name)).toContain('requests');
+  });
+});

@@ -1,8 +1,9 @@
 // Derived from CodeGraph (MIT) — github.com/colbymchenry/codegraph
-// Source: src/extraction/languages/python.ts (verbatim, import paths rewired).
+// Source: src/extraction/languages/python.ts (import paths rewired; Rig's
+// extractImports replaces extractImport to cover `import x` / `import x as y`).
 
 import { getChildByField, getNodeText } from '../tree-sitter-helpers.ts';
-import type { LanguageExtractor } from '../tree-sitter-types.ts';
+import type { ImportInfo, LanguageExtractor } from '../tree-sitter-types.ts';
 
 export const pythonExtractor: LanguageExtractor = {
   functionTypes: ['function_definition'],
@@ -41,17 +42,26 @@ export const pythonExtractor: LanguageExtractor = {
     }
     return false;
   },
-  extractImport: (node, source) => {
+  // `from x import y` → x. `import a.b, c as d` → a.b and c (alias 'd').
+  extractImports: (node, source) => {
     const importText = source.substring(node.startIndex, node.endIndex).trim();
     if (node.type === 'import_from_statement') {
       const moduleNode = node.childForFieldName('module_name');
-      if (moduleNode) {
-        return {
-          moduleName: source.substring(moduleNode.startIndex, moduleNode.endIndex),
-          signature: importText,
-        };
-      }
+      if (!moduleNode) return [];
+      return [{ moduleName: getNodeText(moduleNode, source), signature: importText }];
     }
-    return null;
+    const out: ImportInfo[] = [];
+    for (const name of node.childrenForFieldName('name')) {
+      const aliased = name?.type === 'aliased_import';
+      const moduleNode = aliased ? name.childForFieldName('name') : name;
+      if (!moduleNode) continue;
+      const alias = aliased ? name.childForFieldName('alias') : null;
+      out.push({
+        moduleName: getNodeText(moduleNode, source),
+        signature: importText,
+        ...(alias ? { alias: getNodeText(alias, source) } : {}),
+      });
+    }
+    return out;
   },
 };

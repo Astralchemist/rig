@@ -114,6 +114,9 @@ export interface UnresolvedReference {
   filePath?: string;
   language?: Language;
   candidates?: string[];
+  // Imports only: the local name `import pandas as pd` binds ('pd'), kept for
+  // automatic aliasing (backlog A3).
+  alias?: string;
 }
 
 export interface ExtractionError {

@@ -89,8 +89,11 @@ export function visit(node: SyntaxNode, ctx: VisitCtx): void {
     }
   }
   if (ctx.extractor.importTypes.includes(node.type)) {
-    const info = ctx.extractor.extractImport?.(node, ctx.source);
-    if (info?.moduleName) {
+    const infos = ctx.extractor.extractImports
+      ? ctx.extractor.extractImports(node, ctx.source)
+      : [ctx.extractor.extractImport?.(node, ctx.source)];
+    for (const info of infos) {
+      if (!info?.moduleName) continue;
       ctx.refs.push({
         fromNodeId: ctx.scope[0]!.id,
         referenceName: info.moduleName,
@@ -99,6 +102,7 @@ export function visit(node: SyntaxNode, ctx: VisitCtx): void {
         column: node.startPosition.column,
         filePath: ctx.filePath,
         language: ctx.language,
+        ...(info.alias !== undefined ? { alias: info.alias } : {}),
       });
     }
   }

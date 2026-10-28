@@ -37,7 +37,31 @@ async def fetch():
     pass
 `;
 
+const IMPORTS_PY = `import os
+import pandas as pd
+import os.path, numpy as np
+import matplotlib.pyplot as plt
+from .base import Base
+from pkg.sub import *
+`;
+
 describe('python extraction', () => {
+  test('plain and aliased imports become import refs that keep the alias', async () => {
+    const { unresolvedReferences } = await extractFromSource('app/main.py', IMPORTS_PY);
+    const imports = unresolvedReferences
+      .filter((r) => r.referenceKind === 'imports')
+      .map((r) => ({ module: r.referenceName, alias: r.alias, line: r.line }));
+    expect(imports).toEqual([
+      { module: 'os', alias: undefined, line: 1 },
+      { module: 'pandas', alias: 'pd', line: 2 },
+      { module: 'os.path', alias: undefined, line: 3 },
+      { module: 'numpy', alias: 'np', line: 3 },
+      { module: 'matplotlib.pyplot', alias: 'plt', line: 4 },
+      { module: '.base', alias: undefined, line: 5 },
+      { module: 'pkg.sub', alias: undefined, line: 6 },
+    ]);
+  });
+
   test('module-level defs are functions, defs in a class body are methods', async () => {
     const { nodes } = await extractFromSource('pkg/shapes.py', SHAPES_PY);
     const kindOf = (qualifiedName: string): string | undefined =>
