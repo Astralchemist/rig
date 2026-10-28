@@ -3,3 +3,4 @@ exact = true
 
 [test]
 root = "__tests__"
+preload = ["./scripts/test-preload.ts"]
