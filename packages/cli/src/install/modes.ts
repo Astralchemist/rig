@@ -2,7 +2,7 @@
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { atomicWrite } from './atomic.ts';
-import { deepMerge } from './json-merge.ts';
+import { deepMerge, permissionsUnion, type MergeOptions } from './json-merge.ts';
 import { mergeJsonc } from './jsonc-merge.ts';
 import { expandHome } from './paths.ts';
 import { upsertSection, upsertSectionSafe } from './section.ts';
@@ -32,10 +32,11 @@ const applyMergeJson = async (
   resolvedPath: string,
   template: unknown,
   dryRun: boolean,
+  merge: MergeOptions,
 ): Promise<ApplyResult> => {
   const existing = await readOrEmpty(resolvedPath);
   const base = existing ? (JSON.parse(existing) as unknown) : {};
-  const merged = deepMerge(base, template);
+  const merged = deepMerge(base, template, merge);
   const next = JSON.stringify(merged, null, 2) + '\n';
   if (existing === next) {
     return { path: resolvedPath, mode: 'merge-json', changed: false, status: 'unchanged' };
@@ -96,7 +97,11 @@ export async function applyFile(
   const resolvedPath = expandHome(file.path, opts.home);
   const template = await expandTokens(file.template, ctx);
 
-  if (file.mode === 'merge-json') return applyMergeJson(resolvedPath, template, dryRun);
+  if (file.mode === 'merge-json') {
+    // Permission lists are unioned so re-installs keep user-added entries (#8).
+    const merge = file.role === 'permissions' ? { union: permissionsUnion } : {};
+    return applyMergeJson(resolvedPath, template, dryRun, merge);
+  }
   if (file.mode === 'append-section') return applyAppendSection(resolvedPath, template, dryRun);
   if (file.mode === 'replace') return applyReplace(resolvedPath, template, dryRun);
   if (file.mode === 'write-toml') return applyWriteToml(resolvedPath, template, dryRun);
