@@ -5,7 +5,8 @@
 const AGENTS = ['claude', 'cursor', 'codex', 'opencode', 'openrouter'];
 
 // Words people reach for instead of a command's name. Without this `remove`
-// would be "corrected" to `serve` by edit distance.
+// would be "corrected" to `serve` by edit distance, and `import` or `backup`
+// would find nothing.
 const SYNONYMS: Record<string, string> = {
   remove: 'uninstall',
   rm: 'uninstall',
@@ -13,6 +14,11 @@ const SYNONYMS: Record<string, string> = {
   unlink: 'uninstall',
   deinstall: 'uninstall',
   wire: 'install',
+  backup: 'export-memory',
+  'save-memory': 'export-memory',
+  import: 'import-memory',
+  restore: 'import-memory',
+  'load-memory': 'import-memory',
 };
 
 // Levenshtein edit distance — small inputs, so the simple O(n·m) table is fine.

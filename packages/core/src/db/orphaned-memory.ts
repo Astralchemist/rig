@@ -26,9 +26,14 @@ import { DERIVED_EDGE_PROVENANCE, EXTRACTED_KINDS } from './extracted-nodes.ts';
 //
 // Reasons: 'symbol-removed' and 'file-deleted' for a deleted node's own
 // memory; 'endpoint-missing' for edges of a re-attached node whose other end
-// is still gone — they wait in a row anchored at that end.
+// is still gone — they wait in a row anchored at that end; 'import-unmatched'
+// for memory `rig import-memory` read for a symbol this graph does not have.
 
-export type OrphanReason = 'symbol-removed' | 'file-deleted' | 'endpoint-missing';
+export type OrphanReason =
+  | 'symbol-removed'
+  | 'file-deleted'
+  | 'endpoint-missing'
+  | 'import-unmatched';
 
 export interface OrphanAnchor {
   file_path: string;
@@ -113,7 +118,7 @@ const anchorOfNode = (n: AnchoredNode): OrphanAnchor => ({
 });
 
 // Ids of the nodes holding an anchor, in ordinal (position) order.
-const nodesAtAnchor = (db: SqliteAdapter) => {
+export const nodesAtAnchor = (db: SqliteAdapter) => {
   const q = db.prepare(
     `SELECT id, data FROM nodes
      WHERE json_extract(data, '$.filePath') = ? AND type = ?

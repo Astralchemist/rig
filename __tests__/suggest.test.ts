@@ -4,7 +4,8 @@ import { suggestCommand } from '../packages/cli/src/suggest.ts';
 
 const COMMANDS = [
   'start', 'init', 'status', 'index', 'sync', 'query', 'files',
-  'install', 'uninstall', 'serve', 'doctor', 'bench', 'export-docs', 'update',
+  'install', 'uninstall', 'serve', 'doctor', 'bench', 'export-docs',
+  'export-memory', 'import-memory', 'update',
 ];
 
 describe('rig — did-you-mean command suggestions', () => {
@@ -29,6 +30,15 @@ describe('rig — did-you-mean command suggestions', () => {
     expect(suggestCommand('unwire', COMMANDS)).toBe('uninstall');
     expect(suggestCommand('rm', COMMANDS)).toBe('uninstall');
     expect(suggestCommand('wire', COMMANDS)).toBe('install');
+  });
+
+  test('memory export/import: typos, and the words people use instead', () => {
+    expect(suggestCommand('export-memroy', COMMANDS)).toBe('export-memory');
+    expect(suggestCommand('import-memories', COMMANDS)).toBe('import-memory');
+    // edit distance alone finds nothing for these
+    expect(suggestCommand('backup', COMMANDS)).toBe('export-memory');
+    expect(suggestCommand('import', COMMANDS)).toBe('import-memory');
+    expect(suggestCommand('restore', COMMANDS)).toBe('import-memory');
   });
 
   test('far-off gibberish suggests nothing', () => {

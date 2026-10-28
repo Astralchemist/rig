@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-export { Rig, RIG_DIR_NAME, DB_FILE_NAME, UnknownRefsError } from './rig.ts';
+export { Rig, RIG_DIR_NAME, DB_FILE_NAME, UnknownRefsError, MemoryFileError } from './rig.ts';
 export type {
   RigOptions,
   PullResult,
@@ -16,6 +16,10 @@ export type {
   WaypointPayload,
   WaypointRow,
   UndoOutcome,
+  MemoryExport,
+  MemoryImportCounts,
+  MemoryImportResult,
+  MemoryRecordType,
 } from './rig.ts';
 export { Database } from './db/database.ts';
 export { bunSqliteFactory } from './db/bun-adapter.ts';
