@@ -56,6 +56,7 @@
     "compat:snapshot": "bun run scripts/compat-check.ts --write",
     "check:migrations": "bun run scripts/migration-lock.ts",
     "migration:lock": "bun run scripts/migration-lock.ts --write",
+    "typecheck": "tsc --noEmit -p .",
     "test": "bun test",
     "test:e2e": "playwright test",
     "install:hooks": "bash scripts/install-hooks.sh",

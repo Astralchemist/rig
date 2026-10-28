@@ -25,7 +25,7 @@ jobs:
 
       - name: Generate embedded wasm
         # wasm-embedded.ts is gitignored — generated from node_modules at build
-        # time. grammars.ts imports it, so the test run needs it present.
+        # time. grammars.ts imports it, so typecheck and tests need it present.
         run: bun run gen:wasm
 
       - name: generated/ is fresh
@@ -36,6 +36,9 @@ jobs:
 
       - name: shipped migrations unchanged
         run: bun run check:migrations
+
+      - name: typecheck
+        run: bun run typecheck
 
       - name: tests
         run: bun test
