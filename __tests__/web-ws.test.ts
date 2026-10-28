@@ -75,6 +75,38 @@ describe('web WS channel', () => {
   );
 });
 
+describe('web WS live updates', () => {
+  test('broadcasts one event per write, for every write after startup', async () => {
+    const project = await initProject();
+    const handle = await serveWeb({ projectRoot: project, port: 0 });
+    const events: Array<{ type: string }> = [];
+    const ws = await openWs(handle);
+    ws.on('message', (m) => events.push(JSON.parse(m.toString()) as { type: string }));
+    const selections = (): number => events.filter((e) => e.type === 'selection:changed').length;
+
+    // Every write appends to the same open WAL in place; macOS's fs.watch
+    // reports only the first of those, so writes 2 and 3 are the real check.
+    for (let i = 1; i <= 3; i++) {
+      const res = await fetch(`${handle.url}/api/selection`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ node_id: null }),
+      });
+      expect(res.ok).toBe(true);
+      const deadline = Date.now() + 2000;
+      while (selections() < i && Date.now() < deadline) await sleep(25);
+      expect(selections()).toBe(i);
+    }
+    // ...and no duplicates trail in once the debounce and poll have settled.
+    await sleep(600);
+    expect(selections()).toBe(3);
+
+    ws.terminate();
+    await handle.close();
+    rmSync(project, { recursive: true, force: true });
+  });
+});
+
 describe('WebHandle.close() (#3)', () => {
   test('resolves with a WS client still connected, and drops that client', async () => {
     const project = await initProject();

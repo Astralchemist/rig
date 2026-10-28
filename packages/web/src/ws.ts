@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Rig } from '@rig/core';
 import { activationsSince } from '@rig/core/db/activation-queries.ts';
-import { watch, type FSWatcher } from 'node:fs';
+import { unwatchFile, watch, watchFile, type FSWatcher } from 'node:fs';
 import type { Server as HttpServer } from 'node:http';
 import { join, resolve } from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
@@ -98,9 +98,16 @@ export const attachWs = (httpServer: HttpServer, rig: Rig): WsHandle => {
     // .rig/ may not exist yet — Rig hasn't been initialised. WS still works.
   }
 
+  // On macOS fs.watch reports in-place writes to the open WAL only once, so
+  // only the first commit after startup ever reached clients. Stat-polling the
+  // WAL every 250ms catches every commit, from any process, on any OS.
+  const walFile = join(root, RIG_DIR, 'rig.db-wal');
+  watchFile(walFile, { persistent: false, interval: 250 }, onDbChange);
+
   return {
     close: async () => {
       if (timer) clearTimeout(timer);
+      unwatchFile(walFile, onDbChange);
       for (const w of watchers) w.close();
       for (const ws of clients) ws.terminate();
       await new Promise<void>((res) => wss.close(() => res()));
