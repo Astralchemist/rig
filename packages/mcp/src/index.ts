@@ -8,6 +8,7 @@ import {
 } from './server-handlers.ts';
 import { resolveProjectRoot } from './project-root.ts';
 import { StdioTransport } from './transport.ts';
+import { serveUninitialized } from './uninitialized.ts';
 // Static imports so bun --compile bundles the generated artifacts into the binary.
 // Dynamic file reads against import.meta.url break under $bunfs at runtime.
 import manifestJson from '../../../generated/mcp/tools-manifest.json' with { type: 'json' };
@@ -38,6 +39,8 @@ export interface ServeMcpOptions {
 
 export async function serveMcp(opts: ServeMcpOptions = {}): Promise<void> {
   const projectRoot = opts.projectRoot ?? resolveProjectRoot(process.argv.slice(2), process.cwd());
+  // No graph here: still answer the host; every tool call says how to fix it.
+  if (!Rig.isInitialized(projectRoot)) return serveUninitialized(projectRoot, loadManifest());
   const rig = await Rig.open(projectRoot);
 
   const manifest = loadManifest();

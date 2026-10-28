@@ -109,7 +109,7 @@ export const makeMessageHandler = (
           id as string | number,
           ErrorCodes.InternalError,
           err.message,
-          { rigError: err.code },
+          { ...err.data, rigError: err.code },
         );
         return;
       }

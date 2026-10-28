@@ -33,6 +33,8 @@ export class ToolError extends Error {
   constructor(
     public readonly code: string,
     message: string,
+    // Extra fields for the JSON-RPC error's `data`, alongside `rigError`.
+    public readonly data?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'ToolError';
