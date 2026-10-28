@@ -2,6 +2,13 @@
 import { NODE_KINDS, type NodeKind } from '../extract/upstream-types.ts';
 import type { SqliteAdapter } from './adapter.ts';
 
+// Provenance of every edge derived from extraction (direct edges and resolved
+// refs written by resolver.ts, tests edges by graph/tests-edges.ts). Anything
+// else on `edges` was written by an actor (waypoint_references,
+// waypoint_succeeds, cluster membership): the update pipeline never rebuilds
+// it, and keeps it in orphaned_memory when its node is deleted.
+export const DERIVED_EDGE_PROVENANCE = 'ast';
+
 // Node kinds only agents write. Every other NodeKind can come out of an
 // extractor; agent-added types (cluster, add_node's free-form types) are not
 // NodeKinds at all.

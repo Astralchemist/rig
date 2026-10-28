@@ -187,6 +187,74 @@ describe('retention across index and sync', () => {
     expect(second.changed).toBe(0);
   });
 
+  test('deleting a symbol orphans its memory; restoring it re-attaches', async () => {
+    const helper = nodeId('helper', 'function');
+    rig.writes.addAlias({ nodeId: helper, alias: 'doubler', rationale: 'test alias' }, ctx);
+    rig.writes.annotateNode(
+      { nodeId: helper, note: 'auth boundary', rationale: 'test annotate' },
+      ctx,
+    );
+
+    write('b.ts', `export const keep = 1;\n`);
+    const removed = await rig.sync();
+    const rows = all<Record<string, unknown> & { payload: string }>(
+      `SELECT node_id, kind, name, qualified_name, file_path, reason, payload FROM orphaned_memory`,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      node_id: helper,
+      kind: 'function',
+      name: 'helper',
+      qualified_name: 'helper',
+      file_path: 'b.ts',
+      reason: 'symbol-removed',
+    });
+    const payload = JSON.parse(rows[0]!.payload) as {
+      aliases: { alias: string }[];
+      annotations: { note: string }[];
+    };
+    expect(payload.aliases.map((a) => a.alias)).toEqual(['doubler']);
+    expect(payload.annotations.map((a) => a.note)).toEqual(['auth boundary']);
+    expect((await rig.status()).orphans).toBe(1);
+    expect(removed.orphaned).toBe(1);
+
+    write('b.ts', B_TS);
+    const restored = await rig.sync();
+    const back = nodeId('helper', 'function');
+    expect(rig.getAliases(back).map((a) => a.alias)).toEqual(['doubler']);
+    expect(rig.searchNodes('doubler').map((n) => n.id)).toEqual([back]);
+    expect(rig.getAnnotations(back).map((a) => a.note)).toEqual(['auth boundary']);
+    expect((await rig.status()).orphans).toBe(0);
+    expect(restored.reattached).toBe(1);
+  });
+
+  test('a deleted file restored elsewhere in the file gets its edges and waypoint refs back', async () => {
+    const m = attachMemory();
+    const before = memoryState();
+
+    unlinkSync(join(project, 'b.ts'));
+    await rig.sync();
+    expect(
+      all<{ reason: string }>(`SELECT reason FROM orphaned_memory`).map((r) => r.reason),
+    ).toEqual(['file-deleted']);
+    expect(all(`SELECT 1 AS x FROM edges_semantic`)).toHaveLength(0);
+
+    // Restored two lines lower: a different position-keyed id.
+    write('b.ts', `// moved\n\n${B_TS}`);
+    await rig.sync();
+    const back = nodeId('helper', 'function');
+    expect(back).not.toBe(m.helper);
+    const swap = (v: unknown): unknown => JSON.parse(JSON.stringify(v).replaceAll(m.helper, back));
+    expect(memoryState()).toEqual(swap(before));
+    const refs = (
+      JSON.parse(one<{ data: string }>(`SELECT data FROM nodes WHERE id = ?`, m.waypoint).data) as {
+        constellation_refs: string[];
+      }
+    ).constellation_refs;
+    expect(refs).toEqual([back, m.main]);
+    expect((await rig.status()).orphans).toBe(0);
+  });
+
   test('editing a file and syncing rebuilds its outgoing calls/imports edges', async () => {
     const before = edgesFromFile('a.ts');
     expect(countByKind(before)).toMatchObject({ calls: 1, imports: 1 });

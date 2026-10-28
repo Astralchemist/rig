@@ -7,6 +7,10 @@ export interface SyncResult {
   filesChanged: number;
   filesPurged: number;
   durationMs: number;
+  // Deleted nodes whose agent-written memory went to orphaned_memory, and
+  // orphan rows re-attached to re-created nodes.
+  orphaned: number;
+  reattached: number;
 }
 
 /**
@@ -21,5 +25,11 @@ export async function runSync(
   embedder?: Embedder,
 ): Promise<SyncResult> {
   const r = await runUpdate(projectRoot, database, embedder, { mode: 'sync' });
-  return { filesChanged: r.changed, filesPurged: r.deleted, durationMs: r.elapsedMs };
+  return {
+    filesChanged: r.changed,
+    filesPurged: r.deleted,
+    durationMs: r.elapsedMs,
+    orphaned: r.orphaned,
+    reattached: r.reattached,
+  };
 }

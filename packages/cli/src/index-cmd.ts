@@ -81,6 +81,8 @@ export const runIndex = async (cwd: string): Promise<void> => {
     console.log(`  edges:            ${r.edges}`);
     console.log(`  unresolved:       ${r.unresolved}`);
     console.log(`  embedded:         ${r.embedded}`);
+    if (r.orphaned > 0) console.log(`  orphaned memory:  ${r.orphaned}`);
+    if (r.reattached > 0) console.log(`  re-attached:      ${r.reattached}`);
     console.log(`  elapsed:          ${r.elapsed_ms}ms`);
   } finally {
     rig.close();

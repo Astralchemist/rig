@@ -1,14 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { SqliteAdapter } from '../db/adapter.ts';
-import { loadExtractedNodes } from '../db/extracted-nodes.ts';
+import { DERIVED_EDGE_PROVENANCE, loadExtractedNodes } from '../db/extracted-nodes.ts';
 import { loadAllFileArtifacts } from '../db/file-artifacts.ts';
 import { resolveReferences, type ResolveStats } from './resolver.ts';
-
-// Provenance of every edge derived from extraction (direct edges and resolved
-// refs written by resolver.ts, tests edges by graph/tests-edges.ts). Anything
-// else on `edges` was written by an actor (waypoint_references,
-// waypoint_succeeds, cluster membership) and is never touched here.
-export const DERIVED_EDGE_PROVENANCE = 'ast';
 
 // Files rows that predate v12 (extractor_version IS NULL) have no artifacts
 // yet. One survives an update only when a filtered index (--include/--exclude)

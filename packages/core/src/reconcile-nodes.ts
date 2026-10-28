@@ -32,16 +32,43 @@ export interface ReconciledNode {
   node: ExtractNode;
   // Stored row it updates, or null when it is inserted.
   storedId: string | null;
+  // Position among the file's nodes with the same (kind, qualifiedName).
+  ordinal: number;
 }
 
 export interface Reconciliation {
   nodes: ReconciledNode[];
-  removed: StoredNode[];
+  removed: (StoredNode & { ordinal: number })[];
   // Generated id → final id, for rewriting the file's edges and refs.
   idMap: Map<string, string>;
 }
 
+type Positioned = Pick<StoredNode, 'kind' | 'qualifiedName' | 'startLine' | 'startColumn'>;
+
 const keyOf = (kind: string, qualifiedName: string): string => `${kind}\u0000${qualifiedName}`;
+
+// Ordinal of each node among the nodes with the same (kind, qualifiedName),
+// ordered by start line, then column, then input order.
+export const positionOrdinals = (nodes: readonly Positioned[]): number[] => {
+  const byKey = new Map<string, number[]>();
+  nodes.forEach((n, i) => {
+    const k = keyOf(n.kind, n.qualifiedName);
+    const arr = byKey.get(k);
+    if (arr) arr.push(i);
+    else byKey.set(k, [i]);
+  });
+  const out: number[] = nodes.map(() => 0);
+  for (const idxs of byKey.values()) {
+    idxs.sort(
+      (a, b) =>
+        nodes[a]!.startLine - nodes[b]!.startLine ||
+        nodes[a]!.startColumn - nodes[b]!.startColumn ||
+        a - b,
+    );
+    idxs.forEach((i, o) => (out[i] = o));
+  }
+  return out;
+};
 
 const reHash = (id: string, salt: number): string => {
   const colon = id.indexOf(':');
@@ -56,47 +83,21 @@ export const reconcileNodes = (
   // Is this id held by a node outside `stored`?
   isTakenElsewhere: (id: string) => boolean,
 ): Reconciliation => {
-  const storedByKey = new Map<string, StoredNode[]>();
-  for (const s of stored) {
-    const k = keyOf(s.kind, s.qualifiedName);
-    const arr = storedByKey.get(k);
-    if (arr) arr.push(s);
-    else storedByKey.set(k, [s]);
-  }
-  for (const arr of storedByKey.values()) {
-    arr.sort(
-      (a, b) =>
-        a.startLine - b.startLine ||
-        a.startColumn - b.startColumn ||
-        (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
-    );
-  }
-
-  const freshByKey = new Map<string, number[]>();
-  extracted.forEach((n, i) => {
-    const k = keyOf(n.kind, n.qualifiedName);
-    const arr = freshByKey.get(k);
-    if (arr) arr.push(i);
-    else freshByKey.set(k, [i]);
-  });
-
   // 1. key + ordinal
+  const storedOrdinals = positionOrdinals(stored);
+  const storedBySlot = new Map<string, StoredNode>();
+  stored.forEach((s, i) => {
+    storedBySlot.set(`${keyOf(s.kind, s.qualifiedName)}#${storedOrdinals[i]}`, s);
+  });
+  const freshOrdinals = positionOrdinals(extracted);
   const matchOf: (StoredNode | null)[] = extracted.map(() => null);
   const claimed = new Set<string>();
-  for (const [k, idxs] of freshByKey) {
-    const candidates = storedByKey.get(k);
-    if (!candidates) continue;
-    // toSorted is stable, so equal positions keep extraction order.
-    const ordered = idxs.toSorted(
-      (a, b) =>
-        extracted[a]!.startLine - extracted[b]!.startLine ||
-        extracted[a]!.startColumn - extracted[b]!.startColumn,
-    );
-    for (let o = 0; o < ordered.length && o < candidates.length; o++) {
-      matchOf[ordered[o]!] = candidates[o]!;
-      claimed.add(candidates[o]!.id);
-    }
-  }
+  extracted.forEach((n, i) => {
+    const s = storedBySlot.get(`${keyOf(n.kind, n.qualifiedName)}#${freshOrdinals[i]}`);
+    if (!s) return;
+    matchOf[i] = s;
+    claimed.add(s.id);
+  });
 
   // 2. equal generated id among the leftovers
   const leftoverById = new Map<string, StoredNode>();
@@ -129,9 +130,15 @@ export const reconcileNodes = (
       assigned.add(id);
     }
     if (!idMap.has(n.id)) idMap.set(n.id, id);
-    return { node: id === n.id ? n : { ...n, id }, storedId: match ? match.id : null };
+    return {
+      node: id === n.id ? n : { ...n, id },
+      storedId: match ? match.id : null,
+      ordinal: freshOrdinals[i]!,
+    };
   });
 
-  const removed = stored.filter((s) => !claimed.has(s.id));
+  const removed = stored.flatMap((s, i) =>
+    claimed.has(s.id) ? [] : [{ ...s, ordinal: storedOrdinals[i]! }],
+  );
   return { nodes, removed, idMap };
 };

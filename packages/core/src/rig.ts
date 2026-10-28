@@ -146,6 +146,7 @@ export class Rig {
       edges_semantic: c.edges_semantic,
       files: c.files,
       last_sync_ts: c.last_activation_ts,
+      orphans: c.orphans,
     };
   }
 

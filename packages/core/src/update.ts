@@ -8,6 +8,12 @@ import { enrichDependenciesFromLockfiles } from './db/dep-resolution.ts';
 import { EXTRACTED_KINDS_SQL, EXTRACTED_NODE_SQL } from './db/extracted-nodes.ts';
 import { replaceFileArtifacts } from './db/file-artifacts.ts';
 import { pickData, upsertFile } from './db/node-queries.ts';
+import {
+  reattachOrphans,
+  snapshotOrphans,
+  type AnchoredNode,
+  type OrphanReason,
+} from './db/orphaned-memory.ts';
 import { embedAndStore } from './embed/index-embeddings.ts';
 import type { Embedder } from './embed/types.ts';
 import { EXTRACTOR_VERSION, extractFromSource } from './extract/extractor.ts';
@@ -16,7 +22,12 @@ import { makeWalkFilter, walkProject, type WalkOptions } from './extract/walker.
 import { detectCommunities } from './graph/communities.ts';
 import { recomputeHubness, recomputeHubnessForFiles } from './graph/hubness.ts';
 import { inferTestsEdges } from './graph/tests-edges.ts';
-import { reconcileNodes, type StoredNode } from './reconcile-nodes.ts';
+import {
+  positionOrdinals,
+  reconcileNodes,
+  type ReconciledNode,
+  type StoredNode,
+} from './reconcile-nodes.ts';
 import { rebuildStructuralEdges } from './resolve/rebuild-edges.ts';
 
 // The one update pipeline behind `rig index`, `rig sync` and the file watcher:
@@ -26,7 +37,9 @@ import { rebuildStructuralEdges } from './resolve/rebuild-edges.ts';
 //   4. update them in place (reconcile-nodes.ts): matched nodes keep their id
 //      and row, so aliases, promotes, edges, annotations and embeddings that
 //      hang off them survive; only nodes that no longer exist are removed
-//   5. delete removed nodes and the files rows of deleted files
+//   5. snapshot the agent-written memory of removed nodes into
+//      orphaned_memory, delete them and the files rows of deleted files, and
+//      re-attach orphaned memory to re-created nodes with the same anchor
 //   6. rebuild the derived ('ast') edges from the artifacts of ALL files
 //   7. embed the changed nodes
 //   8. tests-edges, hubness, lockfile enrichment and communities
@@ -70,6 +83,9 @@ export interface UpdateResult {
   unresolved: number;
   // Nodes whose embedding was (re)computed.
   embedded: number;
+  // orphaned_memory rows written for deleted nodes, and rows re-attached.
+  orphaned: number;
+  reattached: number;
   elapsedMs: number;
 }
 
@@ -129,6 +145,15 @@ const extractNodeOf = (r: StoredRow): ExtractNode => {
   };
 };
 
+const anchoredOf = (node: ExtractNode, ordinal: number): AnchoredNode => ({
+  id: node.id,
+  kind: node.kind,
+  name: node.name,
+  qualifiedName: node.qualifiedName,
+  filePath: node.filePath,
+  ordinal,
+});
+
 // Step 4 for one file: reconcile the fresh nodes with the stored ones, update
 // matched rows in place (only when something changed), insert new ones, and
 // replace the files row and artifacts with node ids rewritten to the kept
@@ -137,7 +162,7 @@ const extractNodeOf = (r: StoredRow): ExtractNode => {
 const applyChangedFile = (
   db: SqliteAdapter,
   f: ChangedFile,
-): { nodes: ExtractNode[]; removed: StoredNode[] } => {
+): { nodes: ReconciledNode[]; removed: AnchoredNode[] } => {
   const storedRows = loadStoredRows(db, f.path);
   const storedById = new Map(storedRows.map((r) => [r.id, r]));
   const exists = db.prepare(`SELECT 1 AS x FROM nodes WHERE id = ?`);
@@ -172,10 +197,35 @@ const applyChangedFile = (
     f.result.unresolvedReferences.map((r) => ({ ...r, fromNodeId: idOf(r.fromNodeId) })),
     f.result.edges.map((e) => ({ ...e, source: idOf(e.source), target: idOf(e.target) })),
   );
-  return { nodes: plan.nodes.map((r) => r.node), removed: plan.removed };
+  return {
+    nodes: plan.nodes,
+    removed: plan.removed.map((r) => ({
+      id: r.id,
+      kind: r.kind,
+      name: storedById.get(r.id)!.name,
+      qualifiedName: r.qualifiedName,
+      filePath: f.path,
+      ordinal: r.ordinal,
+    })),
+  };
 };
 
-const deleteNodes = (db: SqliteAdapter, nodes: readonly StoredNode[]): void => {
+// Every stored node of a file that is gone from disk.
+const fileNodes = (db: SqliteAdapter, path: string): AnchoredNode[] => {
+  const rows = loadStoredRows(db, path);
+  const stored = rows.map(storedNodeOf);
+  const ordinals = positionOrdinals(stored);
+  return stored.map((s, i) => ({
+    id: s.id,
+    kind: s.kind,
+    name: rows[i]!.name,
+    qualifiedName: s.qualifiedName,
+    filePath: path,
+    ordinal: ordinals[i]!,
+  }));
+};
+
+const deleteNodes = (db: SqliteAdapter, nodes: readonly { id: string }[]): void => {
   const del = db.prepare(`DELETE FROM nodes WHERE id = ?`);
   for (const n of nodes) del.run(n.id);
 };
@@ -251,6 +301,8 @@ export async function runUpdate(
       edges: 0,
       unresolved: 0,
       embedded: 0,
+      orphaned: 0,
+      reattached: 0,
       elapsedMs: Date.now() - start,
     };
   }
@@ -258,23 +310,31 @@ export async function runUpdate(
   // 4–6 (+ tests edges, which derive from the rebuilt imports edges).
   onProgress?.({ phase: 'resolve' });
   const changedNodes: ExtractNode[] = [];
-  const stats = db.transaction(() => {
-    const removed: StoredNode[] = [];
+  const { stats, orphaned, reattached } = db.transaction(() => {
+    const written: AnchoredNode[] = [];
+    const removed: (AnchoredNode & { reason: OrphanReason })[] = [];
     for (const f of changed) {
       const applied = applyChangedFile(db, f);
-      changedNodes.push(...applied.nodes);
-      removed.push(...applied.removed);
+      for (const r of applied.nodes) {
+        changedNodes.push(r.node);
+        written.push(anchoredOf(r.node, r.ordinal));
+      }
+      for (const r of applied.removed) removed.push({ ...r, reason: 'symbol-removed' });
     }
     for (const path of deleted) {
-      removed.push(...loadStoredRows(db, path).map(storedNodeOf));
+      for (const n of fileNodes(db, path)) removed.push({ ...n, reason: 'file-deleted' });
       // Cascades the file's artifacts.
       db.prepare(`DELETE FROM files WHERE path = ?`).run(path);
     }
+    // The whole batch is snapshotted before anything is deleted, so memory
+    // linking two removed nodes lands in both rows.
+    const orphaned = snapshotOrphans(db, removed);
     deleteNodes(db, removed);
-    const s = rebuildStructuralEdges(db, projectRoot);
+    const reattached = reattachOrphans(db, written);
+    const stats = rebuildStructuralEdges(db, projectRoot);
     onProgress?.({ phase: 'tests-edges' });
     inferTestsEdges(db);
-    return s;
+    return { stats, orphaned, reattached };
   })();
 
   // 7. Embed. Unchanged embedding text is skipped by text_hash, so a moved
@@ -321,6 +381,8 @@ export async function runUpdate(
     edges: stats.edges,
     unresolved: stats.unresolved,
     embedded,
+    orphaned,
+    reattached,
     elapsedMs: Date.now() - start,
   };
 }

@@ -213,6 +213,9 @@ the map has been served once in this project (`rig start` or
 
 Returns counts of nodes, edges, files, and the last sync timestamp.
 Use as a smoke test before any other rig_* call to confirm the index is initialized.
+`orphans` counts memory (aliases, annotations, promotes, proposed/accepted edges,
+waypoint refs) kept from symbols that were deleted; it re-attaches automatically
+if the symbol comes back in the same file.
 
 ### `rig_unused_deps`
 

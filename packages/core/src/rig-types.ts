@@ -18,6 +18,9 @@ export interface StatusInfo {
   edges_semantic: number;
   files: number;
   last_sync_ts: number | null;
+  // orphaned_memory rows: agent memory detached from deleted symbols, waiting
+  // for a node with the same anchor to come back.
+  orphans: number;
 }
 
 export interface IndexResult {
@@ -36,4 +39,8 @@ export interface IndexResult {
   deleted: number;
   // Nodes whose embedding was (re)computed.
   embedded: number;
+  // Deleted nodes whose agent-written memory went to orphaned_memory, and
+  // orphan rows re-attached to re-created nodes.
+  orphaned: number;
+  reattached: number;
 }

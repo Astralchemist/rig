@@ -36,5 +36,7 @@ export async function runIndexAll(
     unchanged: r.unchanged,
     deleted: r.deleted,
     embedded: r.embedded,
+    orphaned: r.orphaned,
+    reattached: r.reattached,
   };
 }
