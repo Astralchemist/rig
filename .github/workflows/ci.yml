@@ -114,3 +114,34 @@ jobs:
           node ../node_modules/.bin/rig status
           # Extraction must have produced code nodes, not just exited 0.
           grep -Eq '^ *nodes: +[1-9]' index.txt
+
+  e2e:
+    name: e2e (playwright · chromium)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ">=1.1"
+      # The Playwright runner runs under Node; the server under test runs on Bun.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: Generate embedded wasm
+        # e2e/seed-and-serve.ts indexes a fixture project, which needs the grammars.
+        run: bun run gen:wasm
+      - name: Build the web UI
+        run: bun run build:web
+      - name: Install chromium
+        run: bunx playwright install --with-deps chromium
+      - name: e2e
+        run: bun run test:e2e
+      - name: Upload traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
