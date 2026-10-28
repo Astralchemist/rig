@@ -2168,6 +2168,16 @@
               }
             ]
           },
+          "last_index_ts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "orphans": {
             "type": "integer"
           },
@@ -2182,6 +2192,7 @@
           "edges_semantic",
           "files",
           "last_sync_ts",
+          "last_index_ts",
           "orphans",
           "elapsed_ms"
         ],

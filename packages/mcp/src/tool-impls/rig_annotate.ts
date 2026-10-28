@@ -13,5 +13,6 @@ export async function run(args: Args, ctx: ToolContext): Promise<Result> {
     { sessionId: ctx.sessionId, actor: ctx.provenance ?? 'ai:unknown' },
   );
   if (!ok) throw new ToolError('NODE_NOT_FOUND', args.node_id);
+  ctx.recordActivation(args.node_id);
   return { ok: true, elapsed_ms: Date.now() - start };
 }

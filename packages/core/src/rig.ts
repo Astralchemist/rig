@@ -26,6 +26,7 @@ import {
   type UnusedDepRow,
 } from './db/dep-queries.ts';
 import {
+  getWaypoint as wqGet,
   getWaypointChain as wqChain,
   listWaypoints as wqList,
   type ListWaypointsOpts,
@@ -46,6 +47,12 @@ import {
   getNode as gqGetNode,
 } from './graph/traversal.ts';
 import { runIndexAll } from './index-all.ts';
+import {
+  exportMemory,
+  importMemory,
+  type MemoryExport,
+  type MemoryImportResult,
+} from './memory-file.ts';
 import { computeMagneticPull, type PullResult } from './pull.ts';
 import { listAliases, type AliasRow } from './db/alias-queries.ts';
 import { listAnnotations, type AnnotationRow } from './db/annotation-queries.ts';
@@ -92,8 +99,15 @@ export type { FileRow } from './db/file-queries.ts';
 export type { GraphSnapshot } from './db/graph-snapshot.ts';
 export type { PendingEdgeRow } from './db/pending-edges.ts';
 export type { MutationRow, MutationKind } from './db/mutation-log.ts';
-export { RigWrites } from './rig-writes.ts';
-export type { WriteCtx, ProposeArgs, AddNodeArgs } from './rig-writes.ts';
+export { MemoryFileError } from './memory-file.ts';
+export type {
+  MemoryExport,
+  MemoryImportCounts,
+  MemoryImportResult,
+  MemoryRecordType,
+} from './memory-file.ts';
+export { RigWrites, UnknownRefsError } from './rig-writes.ts';
+export type { WriteCtx, ProposeArgs, AddNodeArgs, UndoOutcome } from './rig-writes.ts';
 
 export interface RigWatchOptions extends WatchOptions {
   // How often a process that did not get the watch lock tries again, so it
@@ -160,7 +174,11 @@ export class Rig {
       edges_structural: c.edges_structural,
       edges_semantic: c.edges_semantic,
       files: c.files,
-      last_sync_ts: c.last_activation_ts,
+      last_sync_ts:
+        c.last_index_ts === null || c.last_sync_ts === null
+          ? (c.last_index_ts ?? c.last_sync_ts)
+          : Math.max(c.last_index_ts, c.last_sync_ts),
+      last_index_ts: c.last_index_ts,
       orphans: c.orphans,
     };
   }
@@ -354,8 +372,22 @@ export class Rig {
     return wqList(this.database.adapter, opts);
   }
 
+  getWaypoint(id: string): WaypointRow | null {
+    return wqGet(this.database.adapter, id);
+  }
+
   getWaypointChain(id: string, maxDepth = 10): WaypointRow[] {
     return wqChain(this.database.adapter, id, maxDepth);
+  }
+
+  // The agent-written memory as a deterministic JSONL export (memory-file.ts).
+  exportMemory(): MemoryExport {
+    return exportMemory(this.database.adapter);
+  }
+
+  // Merge a memory export into this graph; only adds (memory-file.ts).
+  importMemory(text: string): MemoryImportResult {
+    return importMemory(this.database.adapter, text);
   }
 
   getCriticalPath(id: NodeId, maxSteps = 16): CriticalStep[] {

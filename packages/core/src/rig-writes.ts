@@ -19,11 +19,23 @@ import {
   type PendingEdgeRow,
 } from './db/pending-edges.ts';
 import { touchSession, type WaypointKind, type WaypointPayload } from './db/waypoint-queries.ts';
+import { recomputeHubness } from './graph/hubness.ts';
 
 export interface WriteCtx {
   sessionId: string;
   actor: string;
 }
+
+// What an undo did. `mutation` is the mutation it targeted (null when the
+// session had nothing left to undo); `undone` says whether its inverse was
+// applied, and `reason` says why not.
+export interface UndoOutcome {
+  mutation: MutationRow | null;
+  undone: boolean;
+  reason?: string;
+}
+
+export const NOTHING_TO_UNDO = 'nothing to undo';
 
 export interface ProposeArgs {
   src: string;
@@ -63,6 +75,26 @@ export interface DropWaypointArgs {
   keyTerms?: readonly string[];
   compactable?: boolean;
   payloads?: readonly WaypointPayload[];
+  // Why the waypoint was dropped (required by rig_drop_waypoint); stored in
+  // its data and returned by rig_waypoints / rig_chain.
+  rationale?: string;
+}
+
+// A waypoint named ids that are not in the graph; nothing was written.
+export class UnknownRefsError extends Error {
+  readonly unknownIds: string[];
+  constructor(
+    readonly constellationRefs: readonly string[],
+    readonly predecessors: readonly string[],
+  ) {
+    const parts = [
+      constellationRefs.length ? `constellation_refs: ${constellationRefs.join(', ')}` : '',
+      predecessors.length ? `predecessors: ${predecessors.join(', ')}` : '',
+    ].filter(Boolean);
+    super(`unknown node ids in ${parts.join('; ')}`);
+    this.name = 'UnknownRefsError';
+    this.unknownIds = [...new Set([...constellationRefs, ...predecessors])];
+  }
 }
 
 export class RigWrites {
@@ -208,10 +240,14 @@ export class RigWrites {
     return true;
   }
 
+  // The payload keeps the flags the node had before (`prev`), which undo
+  // restores.
   promoteHub(nodeId: string, rationale: string, ctx: WriteCtx): boolean {
     const adapter = this.db.adapter;
-    const ok = adapter.prepare(`SELECT 1 FROM nodes WHERE id = ?`).get(nodeId);
-    if (!ok) return false;
+    const prev = adapter
+      .prepare(`SELECT hub_explicit, is_hub, hubness FROM nodes WHERE id = ?`)
+      .get(nodeId) as { hub_explicit: number; is_hub: number; hubness: number } | null;
+    if (!prev) return false;
     adapter
       .prepare(`UPDATE nodes SET hub_explicit = 1, is_hub = 1, hubness = MAX(hubness, 0.3) WHERE id = ?`)
       .run(nodeId);
@@ -221,7 +257,7 @@ export class RigWrites {
     recordMutation(adapter, {
       sessionId: ctx.sessionId,
       kind: 'promote_hub',
-      payload: { id: nodeId, hubness, rationale },
+      payload: { id: nodeId, hubness, rationale, prev },
       actor: ctx.actor,
     });
     return true;
@@ -229,7 +265,10 @@ export class RigWrites {
 
   // Drop a conversation waypoint — node + predecessor edges + constellation
   // refs + session-row upsert, all inside one transaction so the mutation log
-  // entry is consistent with the visible state.
+  // entry is consistent with the visible state. Every referenced id is
+  // checked first: an unknown one throws UnknownRefsError listing them all
+  // (it used to abort the insert halfway with "FOREIGN KEY constraint
+  // failed").
   dropWaypoint(args: DropWaypointArgs, ctx: WriteCtx): string {
     const adapter = this.db.adapter;
     const id = `waypoint:${crypto.randomUUID()}`;
@@ -244,16 +283,24 @@ export class RigWrites {
       key_terms: args.keyTerms ?? [],
       compactable: args.compactable === true,
       payloads: args.payloads ?? [],
+      ...(args.rationale ? { rationale: args.rationale } : {}),
     };
     adapter.transaction(() => {
+      const exists = adapter.prepare(`SELECT 1 AS x FROM nodes WHERE id = ?`);
+      const unknown = (ids: readonly string[] = []): string[] =>
+        [...new Set(ids)].filter((ref) => !exists.get(ref));
+      const badRefs = unknown(args.constellationRefs);
+      const badPreds = unknown(args.predecessors);
+      if (badRefs.length || badPreds.length) throw new UnknownRefsError(badRefs, badPreds);
       adapter
         .prepare(
           `INSERT INTO nodes (id, type, name, data, created_at, updated_at)
            VALUES (?, 'conversation-waypoint', ?, ?, ?, ?)`,
         )
         .run(id, args.title, JSON.stringify(data), now, now);
+      // OR IGNORE: an id listed twice is one edge.
       const ins = adapter.prepare(
-        `INSERT INTO edges (src, dst, kind, provenance, created_at) VALUES (?, ?, ?, ?, ?)`,
+        `INSERT OR IGNORE INTO edges (src, dst, kind, provenance, created_at) VALUES (?, ?, ?, ?, ?)`,
       );
       for (const pid of args.predecessors ?? []) {
         ins.run(id, pid, 'waypoint_succeeds', ctx.actor, now);
@@ -321,51 +368,124 @@ export class RigWrites {
     return listMutationsSince(this.db.adapter, sinceTs, sessionId);
   }
 
-  // Reverses the last non-undo, non-focus mutation in this session. Returns
-  // the mutation that was undone, or null if nothing to undo.
-  undoLast(ctx: WriteCtx): MutationRow | null {
+  // Undo this session's newest mutation not undone yet, so each call steps
+  // one further back. The undo is logged with its target (undoneId) either
+  // way: when the inverse can't be applied (the target is gone, or someone
+  // else changed it since) it is reported, never claimed, and logged with
+  // applied: false so the next undo moves past it instead of failing on it
+  // forever.
+  undo(ctx: WriteCtx): UndoOutcome {
     const adapter = this.db.adapter;
-    const last = lastUndoableMutation(adapter, ctx.sessionId);
-    if (!last) return null;
-    const p = last.payload as Record<string, unknown>;
-    switch (last.kind) {
-      case 'propose_edge':
-        adapter.prepare(`DELETE FROM pending_edges WHERE id = ?`).run(p.pendingId as number);
-        break;
-      case 'accept_edge': {
-        const pe = getPendingEdge(adapter, p.pendingId as number);
-        if (pe) {
-          adapter.transaction(() => {
-            removeSemanticEdge(adapter, pe.src, pe.dst, pe.provenance);
-            restorePendingToPending(adapter, pe.id);
-          })();
-        }
-        break;
+    return adapter.transaction((): UndoOutcome => {
+      const target = lastUndoableMutation(adapter, ctx.sessionId);
+      if (!target) return { mutation: null, undone: false, reason: NOTHING_TO_UNDO };
+      const failure = this.invert(target);
+      recordMutation(adapter, {
+        sessionId: ctx.sessionId,
+        kind: 'undo',
+        payload:
+          failure === null
+            ? { undoneId: target.id, undoneKind: target.kind }
+            : { undoneId: target.id, undoneKind: target.kind, applied: false, reason: failure },
+        actor: ctx.actor,
+      });
+      return failure === null
+        ? { mutation: target, undone: true }
+        : { mutation: target, undone: false, reason: failure };
+    })();
+  }
+
+  // The mutation undo() reverted, or null when it reverted nothing.
+  undoLast(ctx: WriteCtx): MutationRow | null {
+    const r = this.undo(ctx);
+    return r.undone ? r.mutation : null;
+  }
+
+  // Apply the inverse of `m`. Returns null on success, else why it can't be
+  // applied; nothing is changed then.
+  private invert(m: MutationRow): string | null {
+    const adapter = this.db.adapter;
+    const p = m.payload as Record<string, unknown>;
+    const pendingOf = (): PendingEdgeRow | string => {
+      const pe = getPendingEdge(adapter, Number(p.pendingId));
+      return pe ?? `pending edge ${String(p.pendingId)} no longer exists`;
+    };
+    switch (m.kind) {
+      case 'propose_edge': {
+        const pe = pendingOf();
+        if (typeof pe === 'string') return pe;
+        // Withdrawing an accepted or rejected proposal would orphan that
+        // decision; it has to be undone first.
+        if (pe.status !== 'pending') return `pending edge ${pe.id} was ${pe.status} since`;
+        adapter.prepare(`DELETE FROM pending_edges WHERE id = ?`).run(pe.id);
+        return null;
       }
-      case 'reject_edge':
-        restorePendingToPending(adapter, p.pendingId as number);
-        break;
+      case 'accept_edge': {
+        const pe = pendingOf();
+        if (typeof pe === 'string') return pe;
+        if (pe.status !== 'accepted') return `pending edge ${pe.id} is ${pe.status}, not accepted`;
+        removeSemanticEdge(adapter, pe.src, pe.dst, pe.provenance);
+        restorePendingToPending(adapter, pe.id);
+        return null;
+      }
+      case 'reject_edge': {
+        const pe = pendingOf();
+        if (typeof pe === 'string') return pe;
+        if (pe.status !== 'rejected') return `pending edge ${pe.id} is ${pe.status}, not rejected`;
+        restorePendingToPending(adapter, pe.id);
+        return null;
+      }
+      // Each wrote one node (a cluster also its `contains` edges to the
+      // members, a waypoint its succeeds/references edges); deleting the node
+      // cascades those edges and leaves the members alone. A waypoint's
+      // sessions row stays, so its last_seen keeps reflecting activity.
       case 'add_node':
-        adapter.prepare(`DELETE FROM nodes WHERE id = ?`).run(p.id as string);
-        break;
+      case 'cluster':
+      case 'drop_waypoint': {
+        const id = String(p.id);
+        const r = adapter.prepare(`DELETE FROM nodes WHERE id = ?`).run(id);
+        return r.changes > 0 ? null : `node ${id} no longer exists`;
+      }
       case 'add_alias':
-        aqRemove(adapter, p.nodeId as string, p.alias as string);
-        break;
-      case 'drop_waypoint':
-        // Edges cascade via ON DELETE; the sessions row is intentionally left
-        // alone so its last_seen stays accurate across an undo.
-        adapter.prepare(`DELETE FROM nodes WHERE id = ?`).run(p.id as string);
-        break;
+        return aqRemove(adapter, String(p.nodeId), String(p.alias))
+          ? null
+          : `alias '${String(p.alias)}' of ${String(p.nodeId)} no longer exists`;
+      case 'annotate': {
+        const r = adapter
+          .prepare(`DELETE FROM annotations WHERE id = ?`)
+          .run(Number(p.annotationId));
+        return r.changes > 0 ? null : `annotation ${String(p.annotationId)} no longer exists`;
+      }
+      case 'promote_hub':
+        return this.unpromote(p);
       default:
-        // annotate/cluster are not yet undoable; log nothing.
-        break;
+        return `${m.kind} has no inverse`;
     }
-    recordMutation(adapter, {
-      sessionId: ctx.sessionId,
-      kind: 'undo',
-      payload: { undoneId: last.id, undoneKind: last.kind },
-      actor: ctx.actor,
-    });
-    return last;
+  }
+
+  private unpromote(p: Record<string, unknown>): string | null {
+    const adapter = this.db.adapter;
+    const id = String(p.id);
+    const node = adapter.prepare(`SELECT type FROM nodes WHERE id = ?`).get(id) as {
+      type: string;
+    } | null;
+    if (!node) return `node ${id} no longer exists`;
+    const prev = p.prev as { hub_explicit?: unknown; is_hub?: unknown; hubness?: unknown } | null;
+    if (
+      prev &&
+      typeof prev.hub_explicit === 'number' &&
+      typeof prev.is_hub === 'number' &&
+      typeof prev.hubness === 'number'
+    ) {
+      adapter
+        .prepare(`UPDATE nodes SET hub_explicit = ?, is_hub = ?, hubness = ? WHERE id = ?`)
+        .run(prev.hub_explicit, prev.is_hub, prev.hubness, id);
+      return null;
+    }
+    // Logged before promotes recorded their prior flags: clear the explicit
+    // mark and recompute hubness for the node's type.
+    adapter.prepare(`UPDATE nodes SET hub_explicit = 0 WHERE id = ?`).run(id);
+    recomputeHubness(adapter, new Set([node.type]));
+    return null;
   }
 }

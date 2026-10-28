@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Rig } from '@rig/core';
 import { DeterministicEmbedder } from '@rig/core/embed/deterministic-embedder.ts';
+import { ToolError, type ToolContext } from '@rig/mcp/dispatch.ts';
+import { rigChainHandler } from '../generated/mcp/handlers/rig_chain.handler.ts';
+import { rigDropWaypointHandler } from '../generated/mcp/handlers/rig_drop_waypoint.handler.ts';
+import { rigWaypointsHandler } from '../generated/mcp/handlers/rig_waypoints.handler.ts';
 
 // Phase 4 B1 — conversation waypoints.
 describe('B1 conversation waypoints', () => {
@@ -194,5 +198,147 @@ describe('B1 conversation waypoints', () => {
     const undone = rig.writes.undoLast({ sessionId: 'undo-test', actor: 'ai:test' });
     expect(undone?.kind).toBe('drop_waypoint');
     expect(rig.getNode(id)).toBeNull();
+  });
+});
+
+describe('rig_drop_waypoint: rationale and references', () => {
+  let project: string;
+  let rig: Rig;
+  let helper: string;
+
+  const toolCtx = (sessionId = 'agent-1'): ToolContext => ({
+    rig,
+    sessionId,
+    provenance: 'ai:test',
+    recordActivation: () => {},
+  });
+  const drop = (extra: Record<string, unknown> = {}): Promise<unknown> =>
+    rigDropWaypointHandler.run(
+      {
+        kind: 'decision',
+        title: 'Route through helper',
+        summary: 'All doubling goes through helper',
+        rationale: 'the user asked for one entry point',
+        ...extra,
+      },
+      toolCtx(),
+    );
+  const count = (sql: string): number =>
+    (rig.database.adapter.prepare(sql).get() as { n: number }).n;
+
+  beforeEach(async () => {
+    project = mkdtempSync(join(tmpdir(), 'rig-wp-refs-'));
+    writeFileSync(join(project, 'b.ts'), 'export function helper(): number { return 2; }\n');
+    rig = await Rig.init(project, { embedder: new DeterministicEmbedder() });
+    await rig.indexAll();
+    helper = rig.searchNodes('helper').find((n) => n.type === 'function')!.id;
+  });
+
+  afterEach(() => {
+    rig.close();
+    rmSync(project, { recursive: true, force: true });
+  });
+
+  test('the rationale is stored and returned by rig_waypoints and rig_chain', async () => {
+    const { id } = (await drop({ constellation_refs: [helper] })) as { id: string };
+    const listed = (await rigWaypointsHandler.run({}, toolCtx())) as {
+      waypoints: { id: string; rationale?: string }[];
+    };
+    expect(listed.waypoints).toEqual([
+      expect.objectContaining({ id, rationale: 'the user asked for one entry point' }),
+    ]);
+    const chain = (await rigChainHandler.run({ id }, toolCtx())) as {
+      chain: { id: string; rationale?: string }[];
+    };
+    expect(chain.chain[0]).toMatchObject({ id, rationale: 'the user asked for one entry point' });
+  });
+
+  test('unknown refs and predecessors fail with NODE_NOT_FOUND listing them; nothing is written', async () => {
+    let caught: ToolError | null = null;
+    try {
+      await drop({
+        constellation_refs: [helper, 'function:gone'],
+        predecessors: ['waypoint:gone'],
+      });
+    } catch (e) {
+      caught = e as ToolError;
+    }
+    expect(caught).toBeInstanceOf(ToolError);
+    expect(caught?.code).toBe('NODE_NOT_FOUND');
+    expect(caught?.message).toContain('function:gone');
+    expect(caught?.message).toContain('waypoint:gone');
+    expect(caught?.data).toEqual({
+      unknown_ids: ['function:gone', 'waypoint:gone'],
+      constellation_refs: ['function:gone'],
+      predecessors: ['waypoint:gone'],
+    });
+    expect(count(`SELECT COUNT(*) AS n FROM nodes WHERE type = 'conversation-waypoint'`)).toBe(0);
+    expect(count(`SELECT COUNT(*) AS n FROM sessions`)).toBe(0);
+    expect(count(`SELECT COUNT(*) AS n FROM mutation_log`)).toBe(0);
+  });
+
+  test('a ref listed twice is one edge, not a constraint failure', async () => {
+    await drop({ constellation_refs: [helper, helper] });
+    expect(count(`SELECT COUNT(*) AS n FROM edges WHERE kind = 'waypoint_references'`)).toBe(1);
+  });
+});
+
+describe('rig_waypoints session_id="last"', () => {
+  let project: string;
+  let rig: Rig;
+
+  const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+  const dropIn = (sessionId: string, title: string): string =>
+    rig.writes.dropWaypoint(
+      { kind: 'decision', title, summary: `dropped in ${sessionId}` },
+      { sessionId, actor: 'ai:test' },
+    );
+  // What `rig_waypoints session_id="last"` returns to the given MCP session.
+  const lastFor = async (sessionId: string): Promise<string[]> => {
+    const ctx: ToolContext = { rig, sessionId, provenance: 'ai:test', recordActivation: () => {} };
+    const r = (await rigWaypointsHandler.run({ session_id: 'last', limit: 20 }, ctx)) as {
+      waypoints: { title: string }[];
+    };
+    return r.waypoints.map((w) => w.title);
+  };
+
+  beforeEach(async () => {
+    project = mkdtempSync(join(tmpdir(), 'rig-wp-last-'));
+    rig = await Rig.init(project, { embedder: new DeterministicEmbedder() });
+    await rig.indexAll();
+  });
+
+  afterEach(() => {
+    rig.close();
+    rmSync(project, { recursive: true, force: true });
+  });
+
+  test('a session that has not dropped waypoints gets the most recent session', async () => {
+    dropIn('older', 'older decision');
+    await sleep(5);
+    dropIn('newer', 'newer decision');
+    expect(await lastFor('fresh')).toEqual(['newer decision']);
+  });
+
+  test('a session that has dropped waypoints still gets the previous session, not its own', async () => {
+    dropIn('previous', 'previous decision');
+    await sleep(5);
+    dropIn('current', 'my own decision');
+    expect(await lastFor('current')).toEqual(['previous decision']);
+    // Only the caller has waypoints: nothing from a previous session.
+    expect(await lastFor('previous')).toEqual(['my own decision']);
+  });
+
+  test('skips a session whose waypoints were all undone', async () => {
+    dropIn('older', 'older decision');
+    await sleep(5);
+    dropIn('newer', 'undone decision');
+    rig.writes.undoLast({ sessionId: 'newer', actor: 'ai:test' });
+    expect(await lastFor('fresh')).toEqual(['older decision']);
+  });
+
+  test('is empty when no other session has waypoints', async () => {
+    dropIn('current', 'my own decision');
+    expect(await lastFor('current')).toEqual([]);
   });
 });

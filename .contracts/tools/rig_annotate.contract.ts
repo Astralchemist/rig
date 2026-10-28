@@ -33,4 +33,5 @@ FooBar in commit abc1234").
   records_activation: true,
   provenance_required: true,
   requires_rationale: true,
+  broadcasts: 'node:annotated',
 });

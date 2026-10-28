@@ -139,7 +139,9 @@ For one-hop callers use rig_callers.
 
 Return edges incident to the given anchor in both directions, from both
 the structural and semantic edge tables. Output is a flat EdgeRef list
-with {src, dst, kind, weight?, table}.
+with {src, dst, kind, weight?, table, source_urls?}. A semantic edge (an
+accepted rig_propose_edge) keeps the kind it was proposed with and its
+evidence URLs; the kind filter matches it like any other edge.
 
 Use when you want the raw graph view ("what does this connect to") rather
 than a ranked similarity view. For "what's most related" use rig_pull —
@@ -167,9 +169,10 @@ relative + absolute paths are not counted as phantoms.
 ### `rig_pull`
 
 Rank the top-k anchors most "magnetically attracted" to the given node.
-Score combines graph distance (structural), embedding cosine similarity
-(semantic), recent activation decay (recency), and a hub-bias boost so
-high-fanout anchors surface first by default. Returns PullResult[] with
+Score combines graph distance (structural: 1/(1+hops) over code edges and
+accepted rig_propose_edge links), embedding cosine similarity (semantic),
+recent activation decay (recency), and a hub-bias boost so high-fanout
+anchors surface first by default. Returns PullResult[] with
 {nodeId, score, components: {structural, semantic, recency, hub}}.
 
 Use this for "what's related to X" or "what else should I look at" —
@@ -216,7 +219,10 @@ the map has been served once in this project (`rig start` or
 
 ### `rig_status`
 
-Returns counts of nodes, edges, files, and the last sync timestamp.
+Returns counts of nodes, edges, files, and when the graph was last brought
+up to date: last_sync_ts is the last index or sync (`rig index`, `rig sync`
+or the file watcher), last_index_ts the last full `rig index` (ms since
+the epoch; null until the first one after upgrading).
 Use as a smoke test before any other rig_* call to confirm the index is initialized.
 `orphans` counts memory (aliases, annotations, promotes, proposed/accepted edges,
 waypoint refs) kept from symbols that were deleted; it re-attaches automatically
@@ -236,9 +242,11 @@ authoritative dead-code report.
 ### `rig_waypoints`
 
 List waypoints in newest-first order. Optional filters: session_id (pass
-"last" to auto-resolve to the most-recently-active session — useful at
-session start to rehydrate the previous thread), kind (decision /
-observation / constraint / open-question / principle).
+"last" to auto-resolve to the most recently active session with waypoints
+other than your own — useful at session start to rehydrate the previous
+thread, and it keeps finding that thread after you drop waypoints of your
+own), kind (decision / observation / constraint / open-question /
+principle).
 
 Call this on session start, before the first user turn, with
 session_id="last" limit=20 to pick up where the previous session ended.
@@ -247,9 +255,12 @@ session_id="last" limit=20 to pick up where the previous session ended.
 
 ### `rig_context`
 
-Build a context bundle of the top-K anchors most relevant to a task,
-formatted for direct LLM consumption (markdown by default; JSON
-available). Uses search + magnetic-pull ranking.
+Build a context bundle for a task: runs the same name search as
+rig_search (FTS5 over anchor names, qualified names and aliases, BM25
+ranked) and returns the top max_nodes hits in that order with their
+source bodies, formatted for direct LLM consumption (markdown by default;
+JSON available). It does not rank by magnetic pull: call rig_pull on a
+hit for the anchors related to it.
 
 Heavy tier — the bundle carries full source bodies, so it costs far more
 context than the light tools. Use rig_explore for raw exploration; use
@@ -312,6 +323,11 @@ form a `waypoint_succeeds` chain; constellation refs form
 Use sparingly. Typical floor: at most one per ~5 turns. Drop one when a
 real decision is locked, not as a running summary.
 
+Every id in constellation_refs and predecessors must exist; otherwise the
+call fails with NODE_NOT_FOUND listing the unknown ids, and nothing is
+written. The rationale is stored with the waypoint; rig_waypoints and
+rig_chain return it.
+
 ### `rig_focus`
 
 Emit a focus:requested event over WebSocket so the map UI pans and
@@ -337,10 +353,18 @@ the connection before it solidifies.
 
 ### `rig_undo`
 
-Walk back the most recent mutation in the current MCP session — propose
-becomes deleted, accept becomes pending again, reject becomes pending,
-add_node deletes the node. Undos are themselves logged; the chain is
-auditable.
+Walk back the most recent mutation in the current MCP session that has not
+been undone yet; call it again to step further back. A proposal is deleted,
+an accept or reject returns the edge to pending, add_node, cluster and
+drop_waypoint delete what they created, add_alias and annotate remove the
+alias or note, and promote restores the node's previous hub flags. Undos
+are themselves logged; the chain is auditable.
+
+undone is the mutation reverted, or null when nothing was. Then reason
+says why: "nothing to undo" when the session has no mutation left, or why
+the inverse of the mutation named in failed can no longer be applied (its
+target is gone, or was changed since). A failed mutation is not retried:
+the next call moves on to the one before it.
 
 ## live tools
 

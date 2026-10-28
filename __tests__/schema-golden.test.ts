@@ -113,4 +113,13 @@ describe('schema golden (v1 + v2)', () => {
     expect(SCHEMA).toContain('CREATE TABLE IF NOT EXISTS orphaned_memory');
     expect(SCHEMA).toContain('CREATE INDEX IF NOT EXISTS idx_orphaned_memory_anchor');
   });
+
+  test('v13 adds kind + source_urls to edges_semantic and a meta table', () => {
+    expect(SCHEMA).toContain('-- v13:');
+    expect(SCHEMA).toContain(
+      "ALTER TABLE edges_semantic ADD COLUMN kind TEXT NOT NULL DEFAULT 'related'",
+    );
+    expect(SCHEMA).toContain('ALTER TABLE edges_semantic ADD COLUMN source_urls TEXT');
+    expect(SCHEMA).toMatch(/CREATE TABLE IF NOT EXISTS meta \(\s*key TEXT PRIMARY KEY/);
+  });
 });

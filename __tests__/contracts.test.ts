@@ -95,6 +95,19 @@ describe('phase1.5 contracts — cross-validation', () => {
       ),
     ).toThrow(/Duplicate tool 'rig_dupe'/);
   });
+
+  test("every tool's broadcasts names an event contract", async () => {
+    const all = await discoverContracts(ROOT);
+    const events = new Set(
+      all.filter((c) => c.kind === 'events').map((c) => (c.data as { name: string }).name),
+    );
+    const dangling = all
+      .filter((c) => c.kind === 'tools')
+      .map((c) => c.data as { name: string; broadcasts?: string })
+      .filter((t) => t.broadcasts !== undefined && !events.has(t.broadcasts))
+      .map((t) => `${t.name} → ${t.broadcasts}`);
+    expect(dangling).toEqual([]);
+  });
 });
 
 describe('phase1.5 contracts — freshness', () => {

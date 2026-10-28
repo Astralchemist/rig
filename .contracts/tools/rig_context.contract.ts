@@ -9,9 +9,12 @@ export default defineToolContract({
   since: '1.0',
   summary: 'Build a context bundle for a task',
   description: `
-Build a context bundle of the top-K anchors most relevant to a task,
-formatted for direct LLM consumption (markdown by default; JSON
-available). Uses search + magnetic-pull ranking.
+Build a context bundle for a task: runs the same name search as
+rig_search (FTS5 over anchor names, qualified names and aliases, BM25
+ranked) and returns the top max_nodes hits in that order with their
+source bodies, formatted for direct LLM consumption (markdown by default;
+JSON available). It does not rank by magnetic pull: call rig_pull on a
+hit for the anchors related to it.
 
 Heavy tier — the bundle carries full source bodies, so it costs far more
 context than the light tools. Use rig_explore for raw exploration; use

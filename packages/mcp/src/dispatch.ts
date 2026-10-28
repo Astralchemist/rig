@@ -2,23 +2,42 @@
 import type { Rig } from '@rig/core';
 import { recordActivation } from '@rig/core/db/activation-queries.ts';
 
+export { queryHash } from '@rig/core/db/activation-queries.ts';
+
+export interface ActivationOpts {
+  source?: string;
+  // queryHash() of the query or anchor that led to these anchors.
+  queryHash?: string;
+}
+
 export interface ToolContext {
   rig: Rig;
   sessionId: string;
   provenance: string | null;
-  // Record that a tool query touched a specific anchor. Feeds the recency term
-  // in magnetic pull. Safe to call on a missing node — just a no-op insert.
-  recordActivation: (nodeId: string, source?: string) => void;
+  // Record that a tool call touched these anchors: the one it was asked
+  // about, or the ones it returned. Feeds the recency term in magnetic pull
+  // and hubness heat. Tools call it exactly when their contract says
+  // records_activation. Safe to call on a missing node — just a no-op insert.
+  recordActivation: (nodeIds: string | readonly string[], opts?: ActivationOpts) => void;
 }
 
 // Build a recordActivation closure bound to a Rig instance + the MCP session.
 // The sessionId rides on every recorded activation so rig_hotspots can later
 // distinguish broad reuse (many distinct sessions) from session-local hammering.
+// One transaction per call, however many anchors a search returned.
 export const makeActivationRecorder =
   (rig: Rig, sessionId: string) =>
-  (nodeId: string, source = 'mcp'): void => {
-    if (!nodeId) return;
-    recordActivation(rig.database.adapter, nodeId, source, { sessionId });
+  (nodeIds: string | readonly string[], opts: ActivationOpts = {}): void => {
+    const ids = (typeof nodeIds === 'string' ? [nodeIds] : nodeIds).filter(Boolean);
+    if (ids.length === 0) return;
+    const db = rig.database.adapter;
+    const meta = {
+      sessionId,
+      ...(opts.queryHash !== undefined ? { queryHash: opts.queryHash } : {}),
+    };
+    db.transaction(() => {
+      for (const id of ids) recordActivation(db, id, opts.source ?? 'mcp', meta);
+    })();
   };
 
 export interface ToolHandler {

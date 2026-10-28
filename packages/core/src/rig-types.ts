@@ -17,7 +17,12 @@ export interface StatusInfo {
   edges_structural: number;
   edges_semantic: number;
   files: number;
+  // When the graph was last brought up to date with the files on disk: the
+  // later of the last `rig index` and the last `rig sync` / watcher sync.
+  // null until the first one after upgrading to v13.
   last_sync_ts: number | null;
+  // When the last full `rig index` completed.
+  last_index_ts: number | null;
   // orphaned_memory rows: agent memory detached from deleted symbols, waiting
   // for a node with the same anchor to come back.
   orphans: number;

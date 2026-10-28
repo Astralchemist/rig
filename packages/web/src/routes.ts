@@ -102,9 +102,13 @@ export const registerRoutes = (app: FastifyInstance, rig: Rig): void => {
     },
   );
 
+  // Same shape as rig_undo: undone, or null with reason (+ failed when an
+  // inverse could not be applied).
   app.post('/api/undo', async () => {
-    const undone = rig.writes.undoLast({ sessionId: 'web', actor: 'user:web' });
-    return { undone: undone ? { id: undone.id, kind: undone.kind, ts: undone.ts } : null };
+    const r = rig.writes.undo({ sessionId: 'web', actor: 'user:web' });
+    const ref = r.mutation ? { id: r.mutation.id, kind: r.mutation.kind, ts: r.mutation.ts } : null;
+    if (r.undone) return { undone: ref };
+    return { undone: null, reason: r.reason, ...(ref ? { failed: ref } : {}) };
   });
 
   app.post<{ Body: { node_id?: string | null } }>(

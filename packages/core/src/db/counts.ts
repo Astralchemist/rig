@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { SqliteAdapter } from './adapter.ts';
+import { META_LAST_INDEX_TS, META_LAST_SYNC_TS, getMetaTs } from './meta.ts';
 
 const countOf = (db: SqliteAdapter, table: string): number => {
   const row = db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number } | null;
@@ -13,6 +14,9 @@ export interface DbCounts {
   files: number;
   orphans: number;
   last_activation_ts: number | null;
+  // When `rig index`, and `rig sync` or the watcher, last completed (meta).
+  last_index_ts: number | null;
+  last_sync_ts: number | null;
 }
 
 export const readCounts = (db: SqliteAdapter): DbCounts => {
@@ -26,5 +30,7 @@ export const readCounts = (db: SqliteAdapter): DbCounts => {
     files: countOf(db, 'files'),
     orphans: countOf(db, 'orphaned_memory'),
     last_activation_ts: last?.ts ?? null,
+    last_index_ts: getMetaTs(db, META_LAST_INDEX_TS),
+    last_sync_ts: getMetaTs(db, META_LAST_SYNC_TS),
   };
 };

@@ -561,6 +561,10 @@
                       }
                     ]
                   }
+                },
+                "rationale": {
+                  "type": "string",
+                  "description": "Why it was dropped (absent on older waypoints)"
                 }
               },
               "required": [
@@ -1328,6 +1332,7 @@
       },
       "errors": [
         "NOT_INITIALIZED",
+        "NODE_NOT_FOUND",
         "PROVENANCE_REQUIRED",
         "RATIONALE_REQUIRED"
       ]
@@ -1903,6 +1908,13 @@
                     "structural",
                     "semantic"
                   ]
+                },
+                "source_urls": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Semantic edges: URLs cited as evidence when the edge was proposed"
                 }
               },
               "required": [
@@ -2509,6 +2521,16 @@
               }
             ]
           },
+          "last_index_ts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "orphans": {
             "type": "integer"
           },
@@ -2523,6 +2545,7 @@
           "edges_semantic",
           "files",
           "last_sync_ts",
+          "last_index_ts",
           "orphans",
           "elapsed_ms"
         ],
@@ -2646,6 +2669,14 @@
                 "type": "null"
               }
             ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why nothing was undone"
+          },
+          "failed": {
+            "$ref": "#/properties/undone/anyOf/0",
+            "description": "The mutation whose inverse could not be applied"
           },
           "elapsed_ms": {
             "type": "number"
@@ -2934,6 +2965,10 @@
                       }
                     ]
                   }
+                },
+                "rationale": {
+                  "type": "string",
+                  "description": "Why it was dropped (absent on older waypoints)"
                 }
               },
               "required": [

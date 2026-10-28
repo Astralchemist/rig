@@ -32,6 +32,9 @@ export interface SemanticEdge {
   provenance: string;
   rationale: string | null;
   created_at: number;
+  // The kind it was proposed with, and the URLs cited as evidence.
+  kind: EdgeKind;
+  source_urls: string[];
 }
 
 export type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };

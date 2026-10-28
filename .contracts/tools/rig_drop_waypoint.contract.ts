@@ -25,6 +25,11 @@ form a \`waypoint_succeeds\` chain; constellation refs form
 
 Use sparingly. Typical floor: at most one per ~5 turns. Drop one when a
 real decision is locked, not as a running summary.
+
+Every id in constellation_refs and predecessors must exist; otherwise the
+call fails with NODE_NOT_FOUND listing the unknown ids, and nothing is
+written. The rationale is stored with the waypoint; rig_waypoints and
+rig_chain return it.
   `.trim(),
   input: z
     .object({
@@ -44,7 +49,7 @@ real decision is locked, not as a running summary.
     id: z.string(),
     elapsed_ms: z.number(),
   }),
-  errors: ['NOT_INITIALIZED', 'PROVENANCE_REQUIRED', 'RATIONALE_REQUIRED'],
+  errors: ['NOT_INITIALIZED', 'NODE_NOT_FOUND', 'PROVENANCE_REQUIRED', 'RATIONALE_REQUIRED'],
   permissions: {
     claude: 'auto-allow',
     cursor: 'allow',

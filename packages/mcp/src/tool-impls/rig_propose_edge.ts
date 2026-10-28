@@ -14,5 +14,6 @@ export async function run(args: Args, ctx: ToolContext): Promise<Result> {
     { ...args, sourceUrls: args.source_urls },
     { sessionId: ctx.sessionId, actor: ctx.provenance ?? 'ai:unknown' },
   );
+  ctx.recordActivation([args.src, args.dst]);
   return { pending_id: pendingId, elapsed_ms: Date.now() - start };
 }

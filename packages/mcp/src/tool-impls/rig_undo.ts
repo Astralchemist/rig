@@ -8,12 +8,16 @@ type Result = z.infer<typeof contract.output>;
 
 export async function run(_args: Args, ctx: ToolContext): Promise<Result> {
   const start = Date.now();
-  const undone = ctx.rig.writes.undoLast({
+  const r = ctx.rig.writes.undo({
     sessionId: ctx.sessionId,
     actor: ctx.provenance ?? 'ai:unknown',
   });
+  const ref = r.mutation ? { id: r.mutation.id, kind: r.mutation.kind, ts: r.mutation.ts } : null;
+  if (r.undone) return { undone: ref, elapsed_ms: Date.now() - start };
   return {
-    undone: undone ? { id: undone.id, kind: undone.kind, ts: undone.ts } : null,
+    undone: null,
+    ...(r.reason !== undefined ? { reason: r.reason } : {}),
+    ...(ref ? { failed: ref } : {}),
     elapsed_ms: Date.now() - start,
   };
 }

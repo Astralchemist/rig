@@ -42,6 +42,8 @@ export interface PullContext {
   hubBias?: number;
 }
 
+// structural = 1/(1+d), d the hop count from the anchor (bfsDistances), 0
+// when unreachable within maxHops.
 export function computeMagneticPull(
   anchorId: string,
   candidateIds: readonly string[],
@@ -95,11 +97,28 @@ const cosine = (a: Float32Array, b: Float32Array): number => {
   return dot;
 };
 
+// Undirected hop distances from the anchor over structural edges and accepted
+// semantic edges (proposals the user accepted): an accepted link is one hop
+// like any other edge. edges_semantic stays small, so it is read once.
 const bfsDistances = (
   db: SqliteAdapter,
   anchorId: string,
   maxHops: number,
 ): Map<string, number> => {
+  const semantic = new Map<string, string[]>();
+  const link = (a: string, b: string): void => {
+    const out = semantic.get(a);
+    if (out) out.push(b);
+    else semantic.set(a, [b]);
+  };
+  for (const e of db.prepare(`SELECT src, dst FROM edges_semantic`).all() as {
+    src: string;
+    dst: string;
+  }[]) {
+    link(e.src, e.dst);
+    link(e.dst, e.src);
+  }
+
   const dist = new Map<string, number>([[anchorId, 0]]);
   let frontier = [anchorId];
   for (let h = 1; h <= maxHops; h++) {
@@ -111,14 +130,17 @@ const bfsDistances = (
       )
       .all(...frontier, ...frontier) as { src: string; dst: string }[];
     const next: string[] = [];
-    for (const r of rows) {
-      for (const id of [r.src, r.dst]) {
-        if (!dist.has(id)) {
-          dist.set(id, h);
-          next.push(id);
-        }
+    const reach = (id: string): void => {
+      if (!dist.has(id)) {
+        dist.set(id, h);
+        next.push(id);
       }
+    };
+    for (const r of rows) {
+      reach(r.src);
+      reach(r.dst);
     }
+    for (const id of frontier) for (const other of semantic.get(id) ?? []) reach(other);
     frontier = next;
   }
   return dist;

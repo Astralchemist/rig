@@ -153,6 +153,8 @@ config to copy into the MCP client you use with it.
 | `rig status` | Index health |
 | `rig doctor` | Diagnose environment, db, model cache, agent configs |
 | `rig export-docs` | Render waypoints into a markdown doc tree |
+| `rig export-memory` | Save agent memory (aliases, notes, links, promotions, waypoints) as JSONL that survives losing `.rig/` (`--out <file>`). It can contain conversation-derived text: review it before committing it |
+| `rig import-memory <file>` | Merge an export back in, e.g. after a fresh clone + `rig index`. Only adds; never overwrites |
 
 Run `rig --help` for the full list.
 

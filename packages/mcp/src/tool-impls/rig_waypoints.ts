@@ -10,6 +10,7 @@ export async function run(args: Args, ctx: ToolContext): Promise<Result> {
   const start = Date.now();
   const waypoints = ctx.rig.getWaypoints({
     ...(args.session_id ? { sessionId: args.session_id } : {}),
+    callerSessionId: ctx.sessionId,
     ...(args.kind ? { kind: args.kind } : {}),
     ...(args.limit !== undefined ? { limit: args.limit } : {}),
   });

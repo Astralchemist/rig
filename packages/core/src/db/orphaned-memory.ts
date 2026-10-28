@@ -15,7 +15,8 @@ import { DERIVED_EDGE_PROVENANCE, EXTRACTED_KINDS } from './extracted-nodes.ts';
 //   hub_explicit     promoted via rig_promote
 //   aliases          [{ alias, provenance, rationale, created_at }]
 //   annotations      [{ id, note, ts, actor, rationale }]
-//   semantic_edges   edges_semantic rows touching the node
+//   semantic_edges   edges_semantic rows touching the node (kind and
+//                    source_urls since v13)
 //   pending_edges    pending_edges rows (any status) touching the node
 //   edges            non-derived `edges` rows touching the node
 //                    (waypoint_references, cluster membership, ...)
@@ -25,9 +26,14 @@ import { DERIVED_EDGE_PROVENANCE, EXTRACTED_KINDS } from './extracted-nodes.ts';
 //
 // Reasons: 'symbol-removed' and 'file-deleted' for a deleted node's own
 // memory; 'endpoint-missing' for edges of a re-attached node whose other end
-// is still gone — they wait in a row anchored at that end.
+// is still gone — they wait in a row anchored at that end; 'import-unmatched'
+// for memory `rig import-memory` read for a symbol this graph does not have.
 
-export type OrphanReason = 'symbol-removed' | 'file-deleted' | 'endpoint-missing';
+export type OrphanReason =
+  | 'symbol-removed'
+  | 'file-deleted'
+  | 'endpoint-missing'
+  | 'import-unmatched';
 
 export interface OrphanAnchor {
   file_path: string;
@@ -56,6 +62,9 @@ export interface OrphanPayload {
     provenance: string;
     rationale: string | null;
     created_at: number;
+    // v13; absent from rows snapshotted before it.
+    kind?: string;
+    source_urls?: string | null;
   }[];
   pending_edges: {
     id: number;
@@ -109,7 +118,7 @@ const anchorOfNode = (n: AnchoredNode): OrphanAnchor => ({
 });
 
 // Ids of the nodes holding an anchor, in ordinal (position) order.
-const nodesAtAnchor = (db: SqliteAdapter) => {
+export const nodesAtAnchor = (db: SqliteAdapter) => {
   const q = db.prepare(
     `SELECT id, data FROM nodes
      WHERE json_extract(data, '$.filePath') = ? AND type = ?
@@ -159,8 +168,8 @@ export const snapshotOrphans = (
       `SELECT id, note, ts, actor, rationale FROM annotations WHERE node_id = ? ORDER BY ts, id`,
     ),
     semantic: db.prepare(
-      `SELECT src, dst, weight, provenance, rationale, created_at FROM edges_semantic
-       WHERE src = ? OR dst = ?`,
+      `SELECT src, dst, weight, provenance, rationale, created_at, kind, source_urls
+       FROM edges_semantic WHERE src = ? OR dst = ?`,
     ),
     pending: db.prepare(
       `SELECT id, src, dst, kind, weight, provenance, rationale, proposed_at, session_id, status,
@@ -359,8 +368,9 @@ export const reattachOrphans = (db: SqliteAdapter, nodes: readonly AnchoredNode[
       `UPDATE nodes SET hub_explicit = 1, is_hub = 1, hubness = MAX(hubness, 0.3) WHERE id = ?`,
     ),
     semantic: db.prepare(
-      `INSERT OR IGNORE INTO edges_semantic (src, dst, weight, provenance, rationale, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT OR IGNORE INTO edges_semantic
+         (src, dst, weight, provenance, rationale, created_at, kind, source_urls)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
     pendingById: db.prepare(`SELECT 1 AS x FROM pending_edges WHERE id = ?`),
     pending: db.prepare(
@@ -394,7 +404,16 @@ export const reattachOrphans = (db: SqliteAdapter, nodes: readonly AnchoredNode[
     for (const e of p.semantic_edges) {
       const ends = place(e, 'semantic_edges', m);
       if (ends) {
-        ins.semantic.run(ends.src, ends.dst, e.weight, e.provenance, e.rationale, e.created_at);
+        ins.semantic.run(
+          ends.src,
+          ends.dst,
+          e.weight,
+          e.provenance,
+          e.rationale,
+          e.created_at,
+          e.kind ?? 'related',
+          e.source_urls ?? null,
+        );
       }
     }
     for (const e of p.pending_edges) {

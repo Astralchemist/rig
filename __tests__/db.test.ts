@@ -14,6 +14,7 @@ const EXPECTED_TABLES = [
   'file_edges',
   'file_refs',
   'files',
+  'meta',
   'mutation_log',
   'nodes',
   'nodes_fts',
@@ -35,7 +36,7 @@ describe('Database — schema', () => {
 
   it('applies all migrations on a fresh DB', () => {
     const db = Database.open(join(dir, 'rig.db'));
-    expect(db.appliedVersions()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    expect(db.appliedVersions()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
     db.close();
   });
 
@@ -59,8 +60,8 @@ describe('Database — schema', () => {
     const count = db.adapter
       .prepare('SELECT COUNT(*) AS n FROM schema_versions')
       .get() as { n: number };
-    expect(count.n).toBe(12);
-    expect(db.appliedVersions()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    expect(count.n).toBe(13);
+    expect(db.appliedVersions()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
     db.close();
   });
 

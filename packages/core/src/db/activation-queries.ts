@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { createHash } from 'node:crypto';
 import type { SqliteAdapter } from './adapter.ts';
 
 export interface ActivationRow {
@@ -27,6 +28,16 @@ export interface ActivationMeta {
   sessionId?: string;
   queryHash?: string;
 }
+
+// activations.query_hash: a short, stable key for the query that produced an
+// activation. The text is trimmed, whitespace-collapsed and case-folded, so
+// the same question asked again (or through another tool) groups together.
+// Anchor-driven tools hash the anchor id.
+export const queryHash = (query: string): string =>
+  createHash('sha256')
+    .update(query.trim().replace(/\s+/g, ' ').toLowerCase())
+    .digest('hex')
+    .slice(0, 16);
 
 export const recordActivation = (
   db: SqliteAdapter,

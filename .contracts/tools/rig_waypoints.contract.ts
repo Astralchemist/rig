@@ -24,6 +24,7 @@ const waypoint = z.object({
   key_terms: z.array(z.string()),
   compactable: z.boolean(),
   payloads: z.array(payload),
+  rationale: z.string().optional().describe('Why it was dropped (absent on older waypoints)'),
 });
 
 export default defineToolContract({
@@ -32,9 +33,11 @@ export default defineToolContract({
   summary: 'List conversation waypoints by session or kind',
   description: `
 List waypoints in newest-first order. Optional filters: session_id (pass
-"last" to auto-resolve to the most-recently-active session — useful at
-session start to rehydrate the previous thread), kind (decision /
-observation / constraint / open-question / principle).
+"last" to auto-resolve to the most recently active session with waypoints
+other than your own — useful at session start to rehydrate the previous
+thread, and it keeps finding that thread after you drop waypoints of your
+own), kind (decision / observation / constraint / open-question /
+principle).
 
 Call this on session start, before the first user turn, with
 session_id="last" limit=20 to pick up where the previous session ended.

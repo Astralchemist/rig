@@ -38,5 +38,5 @@ registered it.
     opencode: 'allow',
     openrouter: 'auto-allow',
   },
-  records_activation: false,
+  records_activation: true,
 });

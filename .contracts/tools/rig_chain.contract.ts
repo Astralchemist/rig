@@ -24,6 +24,7 @@ const waypoint = z.object({
   key_terms: z.array(z.string()),
   compactable: z.boolean(),
   payloads: z.array(payload),
+  rationale: z.string().optional().describe('Why it was dropped (absent on older waypoints)'),
 });
 
 export default defineToolContract({
