@@ -11,6 +11,8 @@ export type MutationKind =
   | 'focus'
   | 'selection'
   | 'drop_waypoint'
+  | 'add_alias'
+  | 'promote_hub'
   | 'undo';
 
 export interface MutationRow {
