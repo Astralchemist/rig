@@ -13,7 +13,7 @@ const LOCK = join(ROOT, 'compat', 'migrations.lock.json');
 export const computeMigrationHashes = (): Record<string, string> => {
   const out: Record<string, string> = {};
   for (const f of readdirSync(DIR).filter((f) => /^v\d+\.contract\.ts$/.test(f)).sort()) {
-    const version = f.match(/^v(\d+)/)![1];
+    const version = f.match(/^v(\d+)/)![1]!;
     out[version] = hashContent(readFileSync(join(DIR, f), 'utf-8'));
   }
   return out;

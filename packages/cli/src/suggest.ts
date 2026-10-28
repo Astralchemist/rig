@@ -10,15 +10,15 @@ const editDistance = (a: string, b: string): number => {
   const n = b.length;
   const row = Array.from({ length: n + 1 }, (_, i) => i);
   for (let i = 1; i <= m; i++) {
-    let prev = row[0];
+    let prev = row[0]!;
     row[0] = i;
     for (let j = 1; j <= n; j++) {
-      const tmp = row[j];
-      row[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, row[j], row[j - 1]);
+      const tmp = row[j]!;
+      row[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, tmp, row[j - 1]!);
       prev = tmp;
     }
   }
-  return row[n];
+  return row[n]!;
 };
 
 // Suggest the closest real command for an unknown one. Returns the suggestion
