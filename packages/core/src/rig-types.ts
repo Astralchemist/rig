@@ -21,9 +21,16 @@ export interface StatusInfo {
 }
 
 export interface IndexResult {
+  // Files the walk yielded, and the extracted nodes they hold after the run.
   files: number;
   nodes: number;
+  // Derived edges rebuilt for the whole project, and unresolved refs.
   edges: number;
   unresolved: number;
   elapsed_ms: number;
+  // How the walked files were handled: (re-)extracted, skipped as unchanged,
+  // or removed because they are gone from disk.
+  changed: number;
+  unchanged: number;
+  deleted: number;
 }

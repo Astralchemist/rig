@@ -59,6 +59,18 @@ export interface WalkOptions {
   exclude?: readonly string[] | undefined;
 }
 
+// The include/exclude half of the walk, for paths that may no longer exist on
+// disk: the update pipeline only treats a known file as deleted when this walk
+// could have yielded it, so `index --include` never deletes other files.
+export const makeWalkFilter = (opts: WalkOptions = {}): ((relPath: string) => boolean) => {
+  const include = (opts.include ?? []).map(globToRegex);
+  const exclude = (opts.exclude ?? []).map(globToRegex);
+  return (rel) => {
+    if (exclude.length > 0 && matchesAny(rel, exclude)) return false;
+    return include.length === 0 || matchesAny(rel, include);
+  };
+};
+
 export async function* walkProject(
   root: string,
   opts: WalkOptions = {},
