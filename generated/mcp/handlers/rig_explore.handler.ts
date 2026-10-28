@@ -10,11 +10,7 @@ import { run as impl } from '@rig/mcp/tool-impls/rig_explore.ts';
 export const rigExploreHandler: ToolHandler = {
   name: 'rig_explore',
   tier: 'heavy',
-  mainSessionForbidden: true,
   run: async (args, ctx) => {
-    if (ctx.isMainSession) {
-      throw new ToolError('MAIN_SESSION_FORBIDDEN', 'rig_explore cannot run in the main session');
-    }
     const parsedIn = contract.input.safeParse(args);
     if (!parsedIn.success) {
       throw new ToolError('INPUT_INVALID', parsedIn.error.message);

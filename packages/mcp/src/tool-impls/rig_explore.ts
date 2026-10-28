@@ -2,6 +2,7 @@
 import type { z } from 'zod';
 import contract from '../../../../.contracts/tools/rig_explore.contract.ts';
 import type { ToolContext } from '../dispatch.ts';
+import { fitSources } from './_budget.ts';
 import { readSnippet, viewOf } from './_snippet.ts';
 
 type Args = z.infer<typeof contract.input>;
@@ -25,5 +26,10 @@ export async function run(args: Args, ctx: ToolContext): Promise<Result> {
       return { ...v, source, related: [...callers, ...callees] };
     }),
   );
-  return { anchors, elapsed_ms: Date.now() - start };
+  // Trim source bodies (never whole anchors) so the response stays under the
+  // client's tool-response cap.
+  const { items, truncated } = fitSources(anchors, (as) =>
+    JSON.stringify({ anchors: as, elapsed_ms: 0, truncated: true }),
+  );
+  return { anchors: items, elapsed_ms: Date.now() - start, truncated };
 }

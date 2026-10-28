@@ -774,12 +774,17 @@
           },
           "elapsed_ms": {
             "type": "number"
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when a source was cut to fit the response cap"
           }
         },
         "required": [
           "context",
           "anchor_count",
-          "elapsed_ms"
+          "elapsed_ms",
+          "truncated"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -1422,11 +1427,16 @@
           },
           "elapsed_ms": {
             "type": "number"
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when a source was cut to fit the response cap"
           }
         },
         "required": [
           "anchors",
-          "elapsed_ms"
+          "elapsed_ms",
+          "truncated"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -2421,13 +2431,13 @@
         "properties": {
           "host": {
             "type": "string",
-            "default": "127.0.0.1"
+            "description": "Override the host the web server recorded"
           },
           "port": {
             "type": "integer",
             "minimum": 1,
             "maximum": 65535,
-            "default": 7474
+            "description": "Override the port the web server recorded"
           }
         },
         "additionalProperties": false,

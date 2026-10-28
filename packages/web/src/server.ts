@@ -4,6 +4,7 @@ import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import { Rig } from '@rig/core';
 import { findAssetRoot } from '@rig/core/asset-root.ts';
+import { writeWebAddress } from '@rig/core/web-address.ts';
 import pkg from '../../../package.json' with { type: 'json' };
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -117,6 +118,13 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
   }
 
   const address = await listenWithFallback(app, host, port);
+  // Record where we actually landed — the port may have walked past a busy
+  // one — so rig_session_token hands out a login URL that works.
+  const bound = app.server.address();
+  writeWebAddress(rig.projectRoot, {
+    host,
+    port: bound !== null && typeof bound === 'object' ? bound.port : port,
+  });
   const ws = attachWs(app.server, rig, { guard, token });
   return {
     app,

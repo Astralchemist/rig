@@ -2,6 +2,7 @@
 import type { z } from 'zod';
 import contract from '../../../../.contracts/tools/rig_context.contract.ts';
 import type { ToolContext } from '../dispatch.ts';
+import { fitSources } from './_budget.ts';
 import { readSnippet, viewOf, type NodeView } from './_snippet.ts';
 
 type Args = z.infer<typeof contract.input>;
@@ -11,7 +12,7 @@ interface Block extends NodeView {
   source: string;
 }
 
-const toMarkdown = (blocks: Block[]): string =>
+const toMarkdown = (blocks: readonly Block[]): string =>
   blocks
     .map((b) =>
       [
@@ -35,6 +36,17 @@ export async function run(args: Args, ctx: ToolContext): Promise<Result> {
       return { ...v, source: await readSnippet(ctx.rig.projectRoot, v) };
     }),
   );
-  const context = args.format === 'json' ? JSON.stringify(blocks, null, 2) : toMarkdown(blocks);
-  return { context, anchor_count: blocks.length, elapsed_ms: Date.now() - start };
+  const format = (bs: readonly Block[]): string =>
+    args.format === 'json' ? JSON.stringify(bs, null, 2) : toMarkdown(bs);
+  // Trim source bodies (never whole anchors) so the response stays under the
+  // client's tool-response cap.
+  const { items, truncated } = fitSources(blocks, (bs) =>
+    JSON.stringify({ context: format(bs), anchor_count: bs.length, elapsed_ms: 0, truncated: true }),
+  );
+  return {
+    context: format(items),
+    anchor_count: items.length,
+    elapsed_ms: Date.now() - start,
+    truncated,
+  };
 }

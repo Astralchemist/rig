@@ -49,8 +49,6 @@ export async function serveMcp(opts: ServeMcpOptions = {}): Promise<void> {
   const ctx: ToolContext = {
     rig,
     sessionId,
-    // Phase 1 default: every connection IS the main session; subscribe lands later.
-    isMainSession: true,
     // No writes in Phase 1, so provenance is always absent.
     provenance: null,
     recordActivation: makeActivationRecorder(rig, sessionId),

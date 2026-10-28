@@ -37,7 +37,6 @@ export class Beta { do(): void {} }`,
   const ctxOf = (provenance: string | null): ToolContext => ({
     rig,
     sessionId: 'test-session',
-    isMainSession: false,
     provenance,
     recordActivation: () => {},
   });
