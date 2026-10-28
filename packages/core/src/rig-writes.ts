@@ -321,8 +321,9 @@ export class RigWrites {
     return listMutationsSince(this.db.adapter, sinceTs, sessionId);
   }
 
-  // Reverses the last non-undo, non-focus mutation in this session. Returns
-  // the mutation that was undone, or null if nothing to undo.
+  // Reverses this session's newest mutation not undone yet, so each call
+  // steps one further back. Returns the mutation that was undone, or null if
+  // nothing to undo.
   undoLast(ctx: WriteCtx): MutationRow | null {
     const adapter = this.db.adapter;
     const last = lastUndoableMutation(adapter, ctx.sessionId);

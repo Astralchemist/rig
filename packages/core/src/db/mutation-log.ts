@@ -58,16 +58,24 @@ export const recordMutation = (db: SqliteAdapter, m: RecordInput): number => {
   return Number(r.lastInsertRowid);
 };
 
+// The session's newest mutation that no undo of the session has targeted yet
+// (an undo row's payload names its target as undoneId), skipping undo, focus
+// and selection rows. Successive undos so step back through the history.
 export const lastUndoableMutation = (
   db: SqliteAdapter,
   sessionId: string,
 ): MutationRow | null => {
   const row = db
     .prepare(
-      `SELECT id, ts, session_id, kind, payload, actor FROM mutation_log
-       WHERE session_id = ?
-       AND kind NOT IN ('undo', 'focus', 'selection')
-       ORDER BY ts DESC LIMIT 1`,
+      `SELECT id, ts, session_id, kind, payload, actor FROM mutation_log m
+       WHERE m.session_id = ?
+         AND m.kind NOT IN ('undo', 'focus', 'selection')
+         AND NOT EXISTS (
+           SELECT 1 FROM mutation_log u
+           WHERE u.session_id = m.session_id AND u.kind = 'undo'
+             AND json_extract(u.payload, '$.undoneId') = m.id
+         )
+       ORDER BY m.id DESC LIMIT 1`,
     )
     .get(sessionId) as RawRow | null;
   return row ? parse(row) : null;
