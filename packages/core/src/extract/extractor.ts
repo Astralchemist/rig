@@ -16,6 +16,12 @@ import type {
   UnresolvedReference,
 } from './upstream-types.ts';
 
+// Version of the extraction output (nodes, ids, direct edges, refs). Index and
+// sync skip a file only when its content hash AND the version stored with it
+// match, so bump this whenever an extractor change would produce different
+// rows for the same source; otherwise unchanged files keep stale extraction.
+export const EXTRACTOR_VERSION = 1;
+
 export async function extractFromSource(
   filePath: string,
   source: string,

@@ -7,9 +7,9 @@ export default defineToolContract({
   tier: 'write',
   summary: 'Append a note to an anchor',
   description: `
-Append a free-text note to a node's data.annotations array. Useful for
-the AI to leave a breadcrumb on a node ("this is the auth boundary",
-"renamed from FooBar in commit abc1234").
+Append a free-text note to a node's annotations. Useful for the AI to
+leave a breadcrumb on a node ("this is the auth boundary", "renamed from
+FooBar in commit abc1234").
   `.trim(),
   input: z
     .object({

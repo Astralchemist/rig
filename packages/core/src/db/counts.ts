@@ -11,6 +11,7 @@ export interface DbCounts {
   edges_structural: number;
   edges_semantic: number;
   files: number;
+  orphans: number;
   last_activation_ts: number | null;
 }
 
@@ -23,6 +24,7 @@ export const readCounts = (db: SqliteAdapter): DbCounts => {
     edges_structural: countOf(db, 'edges'),
     edges_semantic: countOf(db, 'edges_semantic'),
     files: countOf(db, 'files'),
+    orphans: countOf(db, 'orphaned_memory'),
     last_activation_ts: last?.ts ?? null,
   };
 };

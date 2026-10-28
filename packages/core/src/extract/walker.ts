@@ -5,7 +5,16 @@ import { join, relative, resolve } from 'node:path';
 import ignore, { type Ignore } from 'ignore';
 import { isSupportedSource } from './grammars.ts';
 
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.rig', 'vendor', '.next']);
+// Directories never walked (and whose changes the file watcher ignores).
+export const SKIP_DIRS: ReadonlySet<string> = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  '.rig',
+  'vendor',
+  '.next',
+]);
 
 // Minimal glob → regex. Supports **, *, ?, character classes. Cheap enough to
 // run per file; avoids pulling in another dep just for include/exclude.
@@ -58,6 +67,18 @@ export interface WalkOptions {
   // Skip files whose relative path matches any exclude pattern.
   exclude?: readonly string[] | undefined;
 }
+
+// The include/exclude half of the walk, for paths that may no longer exist on
+// disk: the update pipeline only treats a known file as deleted when this walk
+// could have yielded it, so `index --include` never deletes other files.
+export const makeWalkFilter = (opts: WalkOptions = {}): ((relPath: string) => boolean) => {
+  const include = (opts.include ?? []).map(globToRegex);
+  const exclude = (opts.exclude ?? []).map(globToRegex);
+  return (rel) => {
+    if (exclude.length > 0 && matchesAny(rel, exclude)) return false;
+    return include.length === 0 || matchesAny(rel, include);
+  };
+};
 
 export async function* walkProject(
   root: string,

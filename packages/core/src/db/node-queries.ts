@@ -28,7 +28,8 @@ const NODE_DATA_KEYS = [
   'resolvedVersion',
 ] as const;
 
-const pickData = (n: Node): Record<string, unknown> => {
+// The persisted `data` JSON of an extracted node: whitelisted fields only.
+export const pickData = (n: Node): Record<string, unknown> => {
   const src = n as unknown as Record<string, unknown>;
   const out: Record<string, unknown> = {};
   for (const k of NODE_DATA_KEYS) {
@@ -48,24 +49,21 @@ export const upsertNode = (db: SqliteAdapter, n: Node): void => {
   ).run(n.id, n.kind, n.name, data, now, now);
 };
 
-// Remove all nodes (and cascading edges/embeddings) for a file path. Call
-// before re-extracting so position-keyed node IDs don't leave stale duplicates
-// when content shifts. Used by sync (on file change) and index --force.
-export const purgeFileNodes = (db: SqliteAdapter, filePath: string): void => {
-  db.prepare(`DELETE FROM nodes WHERE json_extract(data, '$.filePath') = ?`).run(filePath);
-};
-
+// `extractorVersion` records which EXTRACTOR_VERSION produced the file's rows
+// and artifacts; NULL (pre-v12) means it has no artifacts yet.
 export const upsertFile = (
   db: SqliteAdapter,
   path: string,
   mtime: number,
   hash: string,
+  extractorVersion: number | null = null,
 ): void => {
   db.prepare(
-    `INSERT INTO files (path, mtime, hash)
-     VALUES (?, ?, ?)
-     ON CONFLICT(path) DO UPDATE SET mtime=excluded.mtime, hash=excluded.hash`,
-  ).run(path, mtime, hash);
+    `INSERT INTO files (path, mtime, hash, extractor_version)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(path) DO UPDATE SET mtime=excluded.mtime, hash=excluded.hash,
+       extractor_version=excluded.extractor_version`,
+  ).run(path, mtime, hash, extractorVersion);
 };
 
 // Batch is_hub lookup. One SQL roundtrip; used by D2's hub-aware pull bias.

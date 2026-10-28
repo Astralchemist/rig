@@ -12,6 +12,7 @@
 import * as fs from 'node:fs';
 import { logDebug, logWarn } from './errors.ts';
 import { isSupportedSource as isSourceFile } from './extract/grammars.ts';
+import { SKIP_DIRS } from './extract/walker.ts';
 import { normalizePath } from './utils.ts';
 import { watchDisabledReason } from './watch-policy.ts';
 
@@ -35,6 +36,13 @@ export interface WatchOptions {
    * Callback when a sync errors (for logging/diagnostics).
    */
   onSyncError?: (error: Error) => void;
+
+  /**
+   * How many times a failed sync is retried (one debounce apart) before the
+   * watcher waits for the next change. Covers transient failures such as
+   * SQLITE_BUSY while another process writes. Default: 3
+   */
+  maxRetries?: number;
 }
 
 /**
@@ -53,12 +61,14 @@ export class FileWatcher {
   private hasChanges = false;
   private syncing = false;
   private stopped = false;
+  private failures = 0;
 
   private readonly projectRoot: string;
   private readonly debounceMs: number;
   private readonly syncFn: () => Promise<{ filesChanged: number; durationMs: number }>;
   private readonly onSyncComplete?: WatchOptions['onSyncComplete'];
   private readonly onSyncError?: WatchOptions['onSyncError'];
+  private readonly maxRetries: number;
 
   constructor(
     projectRoot: string,
@@ -70,6 +80,7 @@ export class FileWatcher {
     this.debounceMs = options.debounceMs ?? 2000;
     this.onSyncComplete = options.onSyncComplete;
     this.onSyncError = options.onSyncError;
+    this.maxRetries = options.maxRetries ?? 3;
   }
 
   /**
@@ -100,12 +111,10 @@ export class FileWatcher {
           // Normalize path separators
           const normalized = normalizePath(filename);
 
-          // Ignore .rig/ directory changes (our own DB writes)
-          if (
-            normalized === '.rig' ||
-            normalized.startsWith('.rig/') ||
-            normalized.startsWith('.rig\\')
-          ) {
+          // Ignore .rig/ (our own DB writes) and every other directory the
+          // walker skips (node_modules, .git, dist, ...): a sync would find
+          // nothing there to index.
+          if (normalized.split('/').some((segment) => SKIP_DIRS.has(segment))) {
             return;
           }
 
@@ -116,6 +125,8 @@ export class FileWatcher {
 
           logDebug('File change detected', { file: normalized });
           this.hasChanges = true;
+          // A new change earns a fresh set of retries.
+          this.failures = 0;
           this.scheduleSync();
         }
       );
@@ -156,6 +167,17 @@ export class FileWatcher {
   }
 
   /**
+   * Queue a sync as if a file had changed, e.g. to catch up on edits made
+   * while no watcher was running.
+   */
+  requestSync(): void {
+    if (this.stopped) return;
+    this.hasChanges = true;
+    this.failures = 0;
+    this.scheduleSync();
+  }
+
+  /**
    * Whether the watcher is currently active.
    */
   isActive(): boolean {
@@ -187,11 +209,16 @@ export class FileWatcher {
 
     try {
       const result = await this.syncFn();
+      this.failures = 0;
       this.onSyncComplete?.(result);
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       logWarn('Watch sync failed', { error: error.message });
       this.onSyncError?.(error);
+      // Retry: the next sync picks up whatever is still pending (changes not
+      // yet applied, nodes still missing a vector). If it keeps failing, wait
+      // for the next file change.
+      if (++this.failures <= this.maxRetries) this.hasChanges = true;
     } finally {
       this.syncing = false;
 

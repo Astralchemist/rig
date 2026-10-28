@@ -2168,6 +2168,9 @@
               }
             ]
           },
+          "orphans": {
+            "type": "integer"
+          },
           "elapsed_ms": {
             "type": "number"
           }
@@ -2179,6 +2182,7 @@
           "edges_semantic",
           "files",
           "last_sync_ts",
+          "orphans",
           "elapsed_ms"
         ],
         "additionalProperties": false,

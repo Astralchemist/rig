@@ -37,6 +37,8 @@ export const runStart = async (cwd: string): Promise<void> => {
   const web = await serveWeb({
     projectRoot: root,
     auth: 'auto',
+    // Started below, once the initial index is done.
+    watch: false,
     ...(portStr ? { port: Number.parseInt(portStr, 10) } : {}),
     ...(host ? { host } : {}),
   });
@@ -71,6 +73,8 @@ export const runStart = async (cwd: string): Promise<void> => {
   } finally {
     rig.close();
   }
+  // Keep the map live while it is open (RIG_NO_WATCH=1 / --no-watch to skip).
+  if (web.rig.watch()) line(sym.ok, 'watching', 'the graph follows file changes');
 
   if (!flag('--no-wire')) {
     // Project scope only: list every file written so nothing changes unseen.

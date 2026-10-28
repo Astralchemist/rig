@@ -10,6 +10,10 @@ export interface ResolveStats {
   unresolved: number;
 }
 
+// The slice of a node the resolver needs; rebuild-edges.ts loads it for every
+// extracted node in the DB.
+export type ResolvableNode = Pick<Node, 'id' | 'name' | 'kind' | 'filePath'>;
+
 /**
  * Phase 1.6+ resolver — extract-time direct edges, name-match resolution for
  * non-import refs, tsconfig-paths + relative-path resolution for imports.
@@ -20,26 +24,30 @@ export interface ResolveStats {
  *   paths to file nodes. Bare specifiers (npm packages) stay unresolved.
  * - Other refs (calls/references/extends/implements) resolved by exact name
  *   match across all known nodes; ambiguous stay in unresolved_refs.
+ *
+ * Only inserts: the caller (rebuildStructuralEdges) clears the previous 'ast'
+ * edges and unresolved_refs and passes every file's artifacts + every
+ * extracted node. Edges and refs whose source node is not in `allNodes` are
+ * skipped rather than tripping the edges FK.
  */
 export const resolveReferences = (
   db: SqliteAdapter,
-  allNodes: Node[],
-  refs: UnresolvedReference[],
-  directEdges: Edge[] = [],
+  allNodes: readonly ResolvableNode[],
+  refs: readonly UnresolvedReference[],
+  directEdges: readonly Edge[] = [],
   projectRoot?: string,
 ): ResolveStats => {
   const byName = new Map<string, string[]>();
   const fileByPath = new Map<string, string>();
+  const known = new Set<string>();
   for (const n of allNodes) {
+    known.add(n.id);
     const ids = byName.get(n.name);
     if (ids) ids.push(n.id);
     else byName.set(n.name, [n.id]);
     if (n.kind === 'file') fileByPath.set(n.filePath, n.id);
   }
   const aliases = projectRoot ? loadProjectAliases(projectRoot) : null;
-
-  db.exec("DELETE FROM edges WHERE provenance = 'ast'");
-  db.exec('DELETE FROM unresolved_refs');
 
   const insertEdge = db.prepare(
     'INSERT OR IGNORE INTO edges (src, dst, kind, provenance, created_at) VALUES (?, ?, ?, ?, ?)',
@@ -53,11 +61,13 @@ export const resolveReferences = (
   const now = Date.now();
 
   for (const e of directEdges) {
+    if (!known.has(e.source) || !known.has(e.target)) continue;
     insertEdge.run(e.source, e.target, e.kind, 'ast', now);
     edges++;
   }
 
   for (const ref of refs) {
+    if (!known.has(ref.fromNodeId)) continue;
     if (ref.referenceKind === 'imports') {
       const fileId =
         projectRoot && ref.filePath

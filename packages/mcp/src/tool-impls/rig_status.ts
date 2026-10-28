@@ -8,6 +8,7 @@ export async function run(_args: unknown, ctx: ToolContext): Promise<{
   edges_semantic: number;
   files: number;
   last_sync_ts: number | null;
+  orphans: number;
   elapsed_ms: number;
 }> {
   const start = Date.now();
