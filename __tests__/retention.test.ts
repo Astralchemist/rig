@@ -136,6 +136,18 @@ describe('retention across index and sync', () => {
     expect(r.unchanged).toBe(r.files);
   });
 
+  test('index --force re-extracts every file, still in place', async () => {
+    attachMemory();
+    const before = memoryState();
+
+    embedder.count = 0;
+    const r = await rig.indexAll({ force: true });
+
+    expect(memoryState()).toEqual(before);
+    expect(r.changed).toBe(r.files);
+    expect(embedder.count).toBe(0);
+  });
+
   test('a line shift keeps the node id, so activations and waypoint refs still resolve', async () => {
     const m = attachMemory();
     recordActivation(rig.database.adapter, m.helper, 'mcp', { sessionId: 'agent-1' });
