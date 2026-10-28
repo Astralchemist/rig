@@ -45,7 +45,9 @@ export function TokenGate({ children }: TokenGateProps): JSX.Element {
       credentials: 'include',
       redirect: 'manual',
     });
-    if (res.status === 302 || res.ok) {
+    // With redirect: 'manual' the 302 that sets the cookie surfaces as an
+    // opaque redirect (status 0, ok false), not as a 302.
+    if (res.type === 'opaqueredirect' || res.ok) {
       location.reload();
     } else {
       setPasteErr('invalid token');
