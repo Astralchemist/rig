@@ -66,6 +66,7 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
 ## What you get
 
 - **A map of your codebase.** Files, symbols, calls, imports, and dependencies as a navigable graph — not a file tree.
+- **Orientation up front.** `rig_overview` (also the MCP resource `rig://overview`, and `rig overview` on the command line) hands your agent a compact markdown map of the repository, about 2,000 tokens: packages and their purposes, entry points, the most-referenced files and symbols with `file:line`, route and handler tables, where the tests live, and recent decisions. It is built from the index alone, cached, and refreshed on every index, sync and watcher update, so the agent answers "where is…" without first exploring the tree.
 - **Search in plain language.** "Where do we refresh expired sessions?" finds the code, not just a symbol named that: exact names, keywords and on-device embeddings fused into one ranking.
 - **Magnetic pull.** Ask "what's related to X" and get a ranked answer that blends graph distance, semantic similarity, and what's been active recently.
 - **Hubs.** The structurally important anchors surface first, so a 5k-node graph stays legible.
@@ -130,7 +131,8 @@ rig uninstall claude          # remove exactly what install added (--all · --gl
 
 Each install merges Rig's MCP server entry, Rig's per-tool approval policy (in the
 agent's own permission format), and a short usage guide between `<!-- rig:begin -->`
-markers, leaving the rest of each file alone — re-running it is safe. The agent spawns
+markers, leaving the rest of each file alone — re-running it is safe. The guide makes
+`rig_overview` the first call of every session. The agent spawns
 `rig serve --mcp` on demand; Claude Code asks you once to approve a server from a
 project's `.mcp.json`. In a directory without `.rig/`, the server still starts and every
 tool answers with how to fix it (`rig init` or `rig start`).
@@ -150,6 +152,7 @@ config to copy into the MCP client you use with it.
 | `rig index` | Extract + write nodes, skipping unchanged files (`--include` / `--exclude <glob>`, `--force`) |
 | `rig sync` | Incremental update |
 | `rig query` | CLI search |
+| `rig overview` | Print the orientation map your agent gets from `rig_overview` (`--budget <tokens>`, default 2000; `--json`) |
 | `rig serve --all` | Start MCP and/or the web map (`--mcp` / `--web` / `--no-auth`; `--path <dir>` for another project); keeps the graph live by syncing on file changes (`--no-watch` or `RIG_NO_WATCH=1` to turn off) |
 | `rig status` | Index health |
 | `rig doctor` | Diagnose environment, db, model cache, agent configs |

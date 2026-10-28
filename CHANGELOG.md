@@ -6,6 +6,21 @@ All notable changes to Rig are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **Orientation map.** A compact markdown map of the repository that an agent reads once at the start of a session, instead of spending turns exploring the repo's shape. On 0.3.0's benchmark, simple lookups cost about twice what grep alone did for exactly that reason. It is built from the index and the indexed files alone, with no model call, and fits a token budget (default 2,000 tokens, about 8,000 characters). Every line names real paths. Sections are ranked and trimmed to fit:
+  - project basics: languages, workspace packages, key runtime dependencies
+  - entry points: manifest `exports`, `main` and `bin` mapped to their source files, index and CLI files
+  - module layout: packages (sibling families such as `packages/adapter-*` folded into one line) with one-line purposes from manifests, READMEs and module docstrings
+  - key symbols: hub files and the most-referenced exported functions, classes and types, with signature and `file:line`
+  - request/handler surfaces: string-literal unions and enums (route and action tables), directories of modules each exporting a handler named after it, the function that dispatches to them, HTTP verb exports
+  - tests: where they live and which sources they import
+  - recent decision waypoints
+- The map is cached in `meta` and refreshed at the end of the shared update pipeline, so `rig index`, `rig sync` and the file watcher keep it current. A fingerprint of everything it reads skips regeneration when nothing changed. On next-auth (about 2,950 nodes) it generates in about 20–35 ms.
+- `rig_overview(budget?)`, a light tool returning `{ map, generated_at, nodes }`. The installed agent instructions make it the first rig call of a session.
+- The MCP server now advertises the `resources` capability and serves the same map as `rig://overview` (`resources/list`, `resources/read`).
+- `rig overview [--budget <tokens>] [--json]` prints the map.
+- Benchmark arm `grep+rig+map`: `grep+rig` with the target's map in the system prompt. The results record the map's size, and `--map-budget` sets its budget.
+
 ## [0.3.0] - 2026-10-29
 
 Natural-language search, measured. Benchmark (Claude Haiku 5.5 via OpenRouter, next-auth, 3 trials): with grep and rig together, the agent now uses 126% of grep-alone's median tokens (153% on 0.2.0). On natural-language questions it is cheaper than grep alone. With rig's search tools alone, correctness rose from 85% to 96%. See `scripts/bench/results/`.
