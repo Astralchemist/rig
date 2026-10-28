@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { atomicWrite } from './atomic.ts';
 import { deepMerge, permissionsUnion, type MergeOptions } from './json-merge.ts';
 import { mergeJsonc } from './jsonc-merge.ts';
-import { expandHome } from './paths.ts';
+import { expandRelativeTo } from './paths.ts';
 import { upsertSection, upsertSectionSafe } from './section.ts';
 import { expandTokens, type TokenContext } from './tokens.ts';
 import { buildTomlTable, flattenSingleTable, upsertTomlTable } from './toml.ts';
@@ -15,14 +15,24 @@ export interface TargetFileLike {
   mode: string;
   template: unknown;
   section_marker?: string | undefined;
+  note?: string | undefined;
 }
 
 export interface ApplyResult {
   path: string;
   mode: string;
+  role?: string;
   changed: boolean;
   status: 'wrote' | 'unchanged' | 'dry-run' | 'skipped-unimplemented';
   reason?: string;
+  note?: string;
+}
+
+export interface ApplyOptions {
+  dryRun?: boolean | undefined;
+  home?: string | undefined;
+  // Base for project-scoped (non-`~/`) paths; defaults to the process cwd.
+  projectRoot?: string | undefined;
 }
 
 const readOrEmpty = async (path: string): Promise<string> =>
@@ -91,12 +101,20 @@ void upsertSection; // re-exported elsewhere; keep the import live for typecheck
 export async function applyFile(
   file: TargetFileLike,
   ctx: TokenContext,
-  opts: { dryRun?: boolean | undefined; home?: string | undefined } = {},
+  opts: ApplyOptions = {},
 ): Promise<ApplyResult> {
-  const dryRun = !!opts.dryRun;
-  const resolvedPath = expandHome(file.path, opts.home);
+  const resolvedPath = expandRelativeTo(file.path, opts.projectRoot ?? process.cwd(), opts.home);
   const template = await expandTokens(file.template, ctx);
+  const result = await applyMode(file, resolvedPath, template, !!opts.dryRun);
+  return { ...result, role: file.role, ...(file.note ? { note: file.note } : {}) };
+}
 
+const applyMode = async (
+  file: TargetFileLike,
+  resolvedPath: string,
+  template: unknown,
+  dryRun: boolean,
+): Promise<ApplyResult> => {
   if (file.mode === 'merge-json') {
     // Permission lists are unioned so re-installs keep user-added entries (#8).
     const merge = file.role === 'permissions' ? { union: permissionsUnion } : {};
@@ -114,7 +132,7 @@ export async function applyFile(
     status: 'skipped-unimplemented',
     reason: `mode '${file.mode}' is not implemented`,
   };
-}
+};
 
 const applyMergeJsonc = async (
   resolvedPath: string,

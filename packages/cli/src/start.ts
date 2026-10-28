@@ -9,7 +9,7 @@ import { deriveProjectName, ensureInit } from './init.ts';
 import { openUrl } from './open-url.ts';
 import { banner, dim, endProgress, line, makeProgress, sym } from './ui.ts';
 import { allTargetNames, getTarget } from './install/loader.ts';
-import { installTarget } from './install/runner.ts';
+import { hasScope, installTarget } from './install/runner.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const GENERATED_DIR = join(findAssetRoot(HERE), 'generated/installer');
@@ -24,11 +24,18 @@ const opt = (n: string): string | undefined => {
 // writes config regardless of detection, so we gate on detect() first and only
 // touch the agents the user really has.
 const wireAgents = async (root: string): Promise<string[]> => {
-  const opts = { rigBin: opt('--bin') ?? 'rig', cursorPath: root, generatedDir: GENERATED_DIR, dryRun: false };
+  const opts = {
+    rigBin: opt('--bin') ?? 'rig',
+    cursorPath: root,
+    generatedDir: GENERATED_DIR,
+    dryRun: false,
+    projectRoot: root,
+    scope: 'project' as const,
+  };
   const wired: string[] = [];
   for (const name of allTargetNames()) {
     const c = getTarget(name);
-    if (!c || !(await c.detect())) continue;
+    if (!c || !hasScope(c, 'project') || !(await c.detect())) continue;
     await installTarget(c, opts);
     wired.push(name);
   }

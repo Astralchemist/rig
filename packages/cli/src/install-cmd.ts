@@ -1,46 +1,81 @@
 // SPDX-License-Identifier: Apache-2.0
-import { dirname, join } from 'node:path';
+import { homedir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findAssetRoot } from '@rig/core/asset-root.ts';
+import { parseArgs } from './install/args.ts';
 import { allTargetNames, getTarget } from './install/loader.ts';
-import { installTarget, type InstallOptions } from './install/runner.ts';
+import { displayPath, type Scope } from './install/paths.ts';
+import { hasScope, installTarget, type InstallOptions } from './install/runner.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const GENERATED_DIR = join(findAssetRoot(HERE), 'generated/installer');
 
-const flag = (name: string): boolean => process.argv.includes(name);
-const optionValue = (name: string): string | null => {
-  const i = process.argv.indexOf(name);
-  return i >= 0 && i + 1 < process.argv.length ? (process.argv[i + 1] ?? null) : null;
-};
+const other = (s: Scope): Scope => (s === 'project' ? 'global' : 'project');
 
+// Where a scope writes, for the header line.
+export const scopeLabel = (scope: Scope, projectRoot: string): string =>
+  scope === 'project' ? `project: ${projectRoot}` : 'global: ~';
+
+// `rig install [target…] [--global] [--dry-run] [--bin <path>]`
+// Project scope (the default) writes into the current directory; --global
+// writes the user-level config every project shares. A target with no files
+// for the requested scope falls back to the other one, and says so.
 export async function runInstall(cwd: string): Promise<void> {
-  const targetArg =
-    process.argv.slice(3).find((a) => !a.startsWith('--')) ?? 'claude';
-  const contract = getTarget(targetArg);
-  if (!contract) {
-    process.stderr.write(
-      `rig: unknown target '${targetArg}'. Known: ${allTargetNames().join(', ')}\n`,
-    );
-    process.exit(2);
+  const args = parseArgs(process.argv.slice(3), ['--bin']);
+  const names = args.positionals.length ? args.positionals : ['claude'];
+  for (const name of names) {
+    if (!getTarget(name)) {
+      process.stderr.write(`rig: unknown target '${name}'. Known: ${allTargetNames().join(', ')}\n`);
+      process.exit(2);
+    }
   }
 
-  const opts: InstallOptions = {
-    rigBin: optionValue('--bin') ?? 'rig',
-    cursorPath: cwd,
-    generatedDir: GENERATED_DIR,
-    dryRun: flag('--dry-run'),
-  };
+  const projectRoot = resolve(cwd);
+  const home = homedir();
+  const requested: Scope = args.flags.has('--global') ? 'global' : 'project';
+  const dryRun = args.flags.has('--dry-run');
 
-  const label = opts.dryRun ? '(dry run)' : '';
-  process.stdout.write(`rig install ${targetArg} ${label}\n`);
-  const result = await installTarget(contract, opts);
-  process.stdout.write(`  detected: ${result.detected}\n`);
-  for (const a of result.applied) {
-    const mark = a.status === 'wrote' ? '✓' : a.status === 'dry-run' ? '~' : '·';
+  for (const name of names) {
+    const contract = getTarget(name)!;
+    const scope = hasScope(contract, requested) ? requested : other(requested);
+    if (scope === 'project' && projectRoot === resolve(home)) {
+      process.stderr.write(
+        `rig: ${projectRoot} is your home directory — project files here would land in your user config.\n` +
+          `     Run \`rig install ${name}\` inside a project, or pass --global.\n`,
+      );
+      process.exit(2);
+    }
+
+    const opts: InstallOptions = {
+      rigBin: args.values.get('--bin') ?? 'rig',
+      cursorPath: projectRoot,
+      generatedDir: GENERATED_DIR,
+      dryRun,
+      home,
+      projectRoot,
+      scope,
+    };
+
     process.stdout.write(
-      `  ${mark} ${a.status.padEnd(22)} ${a.mode.padEnd(15)} ${a.path}\n`,
+      `rig install ${name} (${scopeLabel(scope, projectRoot)})${dryRun ? ' (dry run)' : ''}\n`,
     );
-    if (a.reason) process.stdout.write(`      ${a.reason}\n`);
+    if (scope !== requested) {
+      process.stdout.write(
+        scope === 'global'
+          ? `  ${contract.display_name} has no project-level config here — writing user-level files (every project).\n`
+          : `  ${contract.display_name} has no user-level config — writing project files.\n`,
+      );
+    }
+    const result = await installTarget(contract, opts);
+    process.stdout.write(`  detected: ${result.detected}\n`);
+    for (const a of result.applied) {
+      const mark = a.status === 'wrote' ? '✓' : a.status === 'dry-run' ? '~' : '·';
+      process.stdout.write(
+        `  ${mark} ${a.status.padEnd(22)} ${a.mode.padEnd(15)} ${displayPath(a.path, projectRoot, home)}\n`,
+      );
+      if (a.reason) process.stdout.write(`      ${a.reason}\n`);
+      if (a.note) process.stdout.write(`      note: ${a.note}\n`);
+    }
   }
 }
