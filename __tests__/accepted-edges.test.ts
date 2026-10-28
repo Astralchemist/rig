@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MIGRATIONS } from '../generated/core/migrations.ts';
 import { rigNeighborsHandler } from '../generated/mcp/handlers/rig_neighbors.handler.ts';
+import { rigPullHandler } from '../generated/mcp/handlers/rig_pull.handler.ts';
 import { Rig } from '../packages/core/src/index.ts';
 import { Database } from '../packages/core/src/db/database.ts';
 import { DeterministicEmbedder } from '../packages/core/src/embed/deterministic-embedder.ts';
@@ -177,6 +178,28 @@ describe('accepted edges keep their kind and evidence', () => {
     expect(rig.snapshot().edges_semantic).toEqual([
       { src: alpha, dst: beta, weight: 0.5, kind: 'calls', source_urls: URLS },
     ]);
+  });
+
+  test('rig_pull walks an accepted edge as one hop', async () => {
+    // Siblings two hops from alpha (via a.ts) fill a small k; a.ts and b.ts
+    // share no structural edge, so beta is out of reach.
+    writeFileSync(
+      join(project, 'a.ts'),
+      'export function alpha(): void {}\n' +
+        [1, 2, 3, 4, 5].map((i) => `export function sibling${i}(): void {}\n`).join(''),
+    );
+    await rig.sync();
+    type Pull = { results: { nodeId: string; components: { structural: number } }[] };
+    const pull = async (): Promise<Pull['results']> =>
+      ((await rigPullHandler.run({ id: alpha, k: 3, hub_bias: 0 }, toolCtx())) as Pull).results;
+    expect(
+      rig.getMagneticPull(alpha, 100, { hubBias: 0 }).find((r) => r.nodeId === beta),
+    ).toMatchObject({ components: { structural: 0 } });
+    expect((await pull()).find((r) => r.nodeId === beta)).toBeUndefined();
+
+    acceptCalls();
+    const hit = (await pull()).find((r) => r.nodeId === beta);
+    expect(hit?.components.structural).toBe(1 / (1 + 1));
   });
 
   test('kind and source_urls survive the orphan snapshot and re-attach', async () => {

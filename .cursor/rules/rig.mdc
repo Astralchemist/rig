@@ -169,9 +169,10 @@ relative + absolute paths are not counted as phantoms.
 ### `rig_pull`
 
 Rank the top-k anchors most "magnetically attracted" to the given node.
-Score combines graph distance (structural), embedding cosine similarity
-(semantic), recent activation decay (recency), and a hub-bias boost so
-high-fanout anchors surface first by default. Returns PullResult[] with
+Score combines graph distance (structural: 1/(1+hops) over code edges and
+accepted rig_propose_edge links), embedding cosine similarity (semantic),
+recent activation decay (recency), and a hub-bias boost so high-fanout
+anchors surface first by default. Returns PullResult[] with
 {nodeId, score, components: {structural, semantic, recency, hub}}.
 
 Use this for "what's related to X" or "what else should I look at" —
