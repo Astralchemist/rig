@@ -8,8 +8,7 @@ import toolsManifest from '../../../generated/mcp/tools-manifest.json' with { ty
 import { deriveProjectName, ensureInit } from './init.ts';
 import { openUrl } from './open-url.ts';
 import { banner, dim, endProgress, line, makeProgress, sym } from './ui.ts';
-import { allTargetNames, getTarget } from './install/loader.ts';
-import { hasScope, installTarget } from './install/runner.ts';
+import { describeWiring, wireDetectedAgents } from './install/wire.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const GENERATED_DIR = join(findAssetRoot(HERE), 'generated/installer');
@@ -18,28 +17,6 @@ const flag = (n: string): boolean => process.argv.includes(n);
 const opt = (n: string): string | undefined => {
   const i = process.argv.indexOf(n);
   return i >= 0 && i + 1 < process.argv.length ? process.argv[i + 1] : undefined;
-};
-
-// Wire every agent that's actually present on this machine. installTarget
-// writes config regardless of detection, so we gate on detect() first and only
-// touch the agents the user really has.
-const wireAgents = async (root: string): Promise<string[]> => {
-  const opts = {
-    rigBin: opt('--bin') ?? 'rig',
-    cursorPath: root,
-    generatedDir: GENERATED_DIR,
-    dryRun: false,
-    projectRoot: root,
-    scope: 'project' as const,
-  };
-  const wired: string[] = [];
-  for (const name of allTargetNames()) {
-    const c = getTarget(name);
-    if (!c || !hasScope(c, 'project') || !(await c.detect())) continue;
-    await installTarget(c, opts);
-    wired.push(name);
-  }
-  return wired;
 };
 
 // The one-shot onboarding flow: init → open the live map → index (streaming
@@ -96,9 +73,17 @@ export const runStart = async (cwd: string): Promise<void> => {
   }
 
   if (!flag('--no-wire')) {
-    const wired = await wireAgents(root);
-    if (wired.length) line(sym.ok, 'wired', wired.join(', '));
-    else line(sym.dot, 'no agents detected', 'run `rig install <target>` later');
+    // Project scope only: list every file written so nothing changes unseen.
+    const report = await wireDetectedAgents({
+      rigBin: opt('--bin') ?? 'rig',
+      cursorPath: root,
+      generatedDir: GENERATED_DIR,
+      projectRoot: root,
+    });
+    for (const w of describeWiring(report, root)) {
+      line(w.ok ? sym.ok : sym.dot, w.label, w.detail);
+      for (const f of w.files) process.stderr.write(`      ${dim(f)}\n`);
+    }
   }
 
   process.stderr.write(`\n  ${dim('press Ctrl-C to stop the map.')}\n`);
