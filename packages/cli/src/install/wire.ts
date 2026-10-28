@@ -40,7 +40,6 @@ export const wireDetectedAgents = async (opts: WireOptions): Promise<WireReport>
     report.wired.push(
       await installTarget(contract, {
         rigBin: opts.rigBin,
-        cursorPath: opts.cursorPath,
         generatedDir: opts.generatedDir,
         projectRoot: opts.projectRoot,
         home,

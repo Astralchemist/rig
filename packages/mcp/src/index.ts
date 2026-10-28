@@ -6,6 +6,7 @@ import {
   makeMessageHandler,
   type ToolsManifest,
 } from './server-handlers.ts';
+import { resolveProjectRoot } from './project-root.ts';
 import { StdioTransport } from './transport.ts';
 // Static imports so bun --compile bundles the generated artifacts into the binary.
 // Dynamic file reads against import.meta.url break under $bunfs at runtime.
@@ -13,6 +14,7 @@ import manifestJson from '../../../generated/mcp/tools-manifest.json' with { typ
 import * as handlersModule from '../../../generated/mcp/handlers-index.ts';
 
 export { ToolError, dispatchToolCall } from './dispatch.ts';
+export { resolveProjectRoot } from './project-root.ts';
 export type { ToolContext, ToolHandler } from './dispatch.ts';
 
 const loadManifest = (): ToolsManifest => {
@@ -35,7 +37,7 @@ export interface ServeMcpOptions {
 }
 
 export async function serveMcp(opts: ServeMcpOptions = {}): Promise<void> {
-  const projectRoot = opts.projectRoot ?? process.cwd();
+  const projectRoot = opts.projectRoot ?? resolveProjectRoot(process.argv.slice(2), process.cwd());
   const rig = await Rig.open(projectRoot);
 
   const manifest = loadManifest();

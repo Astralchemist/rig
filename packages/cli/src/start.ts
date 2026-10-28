@@ -76,7 +76,6 @@ export const runStart = async (cwd: string): Promise<void> => {
     // Project scope only: list every file written so nothing changes unseen.
     const report = await wireDetectedAgents({
       rigBin: opt('--bin') ?? 'rig',
-      cursorPath: root,
       generatedDir: GENERATED_DIR,
       projectRoot: root,
     });

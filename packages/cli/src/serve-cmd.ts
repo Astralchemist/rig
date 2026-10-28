@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { serveMcp } from '@rig/mcp';
+import { resolveProjectRoot, serveMcp } from '@rig/mcp';
 import { serveWeb } from '@rig/web';
 
 const flag = (name: string): boolean => process.argv.includes(name);
@@ -9,6 +9,8 @@ const optionValue = (name: string): string | undefined => {
 };
 
 export async function runServe(cwd: string): Promise<void> {
+  // `--path <dir>` overrides cwd as the project root (Cursor passes it).
+  const root = resolveProjectRoot(process.argv.slice(3), cwd);
   const wantAll = flag('--all');
   const wantMcp = flag('--mcp') || wantAll;
   const wantWeb = flag('--web') || wantAll;
@@ -29,7 +31,7 @@ export async function runServe(cwd: string): Promise<void> {
   if (wantWeb) {
     try {
       const handle = await serveWeb({
-        projectRoot: cwd,
+        projectRoot: root,
         auth: authOpt,
         ...(port !== undefined ? { port } : {}),
         ...(host !== undefined ? { host } : {}),
@@ -59,7 +61,7 @@ export async function runServe(cwd: string): Promise<void> {
 
   if (wantMcp) {
     // Blocks on stdin. Stays alongside the web server until both close.
-    await serveMcp({ projectRoot: cwd });
+    await serveMcp({ projectRoot: root });
     return;
   }
 

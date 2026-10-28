@@ -49,7 +49,6 @@ export async function runInstall(cwd: string): Promise<void> {
 
     const opts: InstallOptions = {
       rigBin: args.values.get('--bin') ?? 'rig',
-      cursorPath: projectRoot,
       generatedDir: GENERATED_DIR,
       dryRun,
       home,

@@ -17,7 +17,6 @@ describe('installer targets', () => {
 
   const installOpts = (scope: Scope) => ({
     rigBin: 'rig',
-    cursorPath: PROJECT,
     generatedDir: GENERATED,
     home: HOME,
     projectRoot: PROJECT,

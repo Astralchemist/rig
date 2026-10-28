@@ -8,13 +8,16 @@ import { defineTargetContract } from '@rig/contracts';
 // from ~/.cursor/mcp.json (https://cursor.com/docs/context/mcp). Rules are
 // per project only (.cursor/rules/*.mdc), so --global writes just the server.
 // Cursor launches MCP subprocesses with the wrong cwd and skips `rootUri` in
-// the initialize call, so we inject `--path` ourselves.
+// the initialize call, so we pass `--path` ourselves. `${workspaceFolder}` is
+// Cursor's documented config interpolation: it expands to the open project in
+// both files, so a user-wide entry serves whichever project is open instead of
+// pinning every workspace to the directory `rig install` ran in.
 const server = {
   mcpServers: {
     rig: {
       type: 'stdio',
       command: '{{RIG_BIN}}',
-      args: ['serve', '--mcp', '--path', '{{CURSOR_PATH}}'],
+      args: ['serve', '--mcp', '--path', '${workspaceFolder}'],
     },
   },
 };

@@ -16,7 +16,7 @@ const policy = JSON.parse(readFileSync(join(GENERATED, 'claude.permissions.json'
 describe('installer — permission lists merge as a union (#8)', () => {
   let dir: string;
   let settingsPath: string;
-  const ctx = () => ({ rigBin: 'rig', cursorPath: dir, generatedDir: GENERATED });
+  const ctx = () => ({ rigBin: 'rig', generatedDir: GENERATED });
   const permissionsFile = () => ({
     role: 'permissions',
     path: settingsPath,

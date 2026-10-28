@@ -22,7 +22,6 @@ describe('rig start — agent wiring', () => {
   const wire = (detect: (t: TargetContract) => Promise<boolean>, projectRoot = project) =>
     wireDetectedAgents({
       rigBin: 'rig',
-      cursorPath: projectRoot,
       generatedDir: GENERATED,
       projectRoot,
       home,
