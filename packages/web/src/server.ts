@@ -31,6 +31,10 @@ export interface ServeWebOptions {
   // reach a loopback server. `rig start` opens the map with it already set.
   // false: no token (`rig serve --no-auth`). Refused off loopback.
   auth?: boolean | 'auto';
+  // Keep the graph live: watch the project and sync on change (one watcher
+  // per project across rig processes; RIG_NO_WATCH=1 turns it off).
+  // Default: true.
+  watch?: boolean;
 }
 
 export interface WebHandle {
@@ -126,6 +130,7 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
     port: bound !== null && typeof bound === 'object' ? bound.port : port,
   });
   const ws = attachWs(app.server, rig, { guard, token });
+  if (opts.watch !== false) rig.watch();
   return {
     app,
     rig,

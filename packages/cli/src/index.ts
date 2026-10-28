@@ -40,7 +40,7 @@ const HELP = `rig — local-first semantic knowledge graph
 usage: rig <command>
 
 commands:
-  start       one-shot: init + index + wire your agent + open the live map
+  start       one-shot: init + index + wire your agent + open the live map (--no-watch)
   init        create .rig/ in the current directory
   status      report index health
   index       extract + write nodes to .rig/rig.db; skips unchanged files
@@ -52,12 +52,16 @@ commands:
               project by default; --global writes your user-level config
               (openrouter: writes a reference config only — it isn't an MCP host)
   uninstall   remove exactly what install added: <target…> | --all  [--global] [--dry-run]
-  serve       start MCP and/or web server (--mcp / --web / --all [--no-auth])
+  serve       start MCP and/or web server (--mcp / --web / --all [--no-auth] [--no-watch])
   doctor      diagnose environment, db, model cache, agent configs
   bench       benchmark SQL + analytical surfaces (--fixture <N> for synthetic stress test, --json for raw)
   export-docs render waypoints as a markdown doc tree (--out <dir>, default ./docs)
   update      update rig to the latest npm release (--check to only report)
 `;
+
+// `--no-watch` on any long-running command (serve, start) disables the live
+// file watcher; watch-policy.ts reads it from the environment.
+if (process.argv.includes('--no-watch')) process.env.RIG_NO_WATCH = '1';
 
 const [, , cmd] = process.argv;
 if (cmd === '-v' || cmd === '--version' || cmd === 'version') {

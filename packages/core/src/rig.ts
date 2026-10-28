@@ -58,7 +58,9 @@ import type { IndexResult, RigOptions, StatusInfo } from './rig-types.ts';
 import { RigWrites } from './rig-writes.ts';
 import { runSync, type SyncResult } from './sync.ts';
 import type { NodeId, RigNode } from './types.ts';
-import { FileWatcher } from './watch.ts';
+import { FileWatcher, type WatchOptions } from './watch.ts';
+import { acquireWatchLock, type WatchLock } from './watch-lock.ts';
+import { watchDisabledReason } from './watch-policy.ts';
 
 export { DB_FILE_NAME, RIG_DIR_NAME };
 export type { IndexResult, RigOptions, StatusInfo };
@@ -82,6 +84,7 @@ export type {
   ListWaypointsOpts,
 } from './db/waypoint-queries.ts';
 export type { SyncResult } from './sync.ts';
+export type { WatchOptions } from './watch.ts';
 export type { TaggedEdge, NeighborsOptions } from './db/edge-queries.ts';
 export type { SearchOptions } from './db/search-queries.ts';
 export type { FileRow } from './db/file-queries.ts';
@@ -91,12 +94,23 @@ export type { MutationRow, MutationKind } from './db/mutation-log.ts';
 export { RigWrites } from './rig-writes.ts';
 export type { WriteCtx, ProposeArgs, AddNodeArgs } from './rig-writes.ts';
 
+export interface RigWatchOptions extends WatchOptions {
+  // How often a process that did not get the watch lock tries again, so it
+  // takes over when the current watcher exits. Default: 30s
+  lockRetryMs?: number;
+}
+
 export class Rig {
   readonly projectRoot: string;
   readonly database: Database;
   readonly embedder: Embedder | undefined;
   readonly writes: RigWrites;
   private watcher: FileWatcher | null = null;
+  private watchLock: WatchLock | null = null;
+  private watchRetry: ReturnType<typeof setInterval> | null = null;
+  // indexAll/sync runs on this connection, chained so a watcher sync never
+  // interleaves with an explicit index.
+  private updates: Promise<unknown> = Promise.resolve();
 
   constructor(opts: RigOptions) {
     this.projectRoot = opts.projectRoot;
@@ -157,14 +171,29 @@ export class Rig {
     // Re-extract every walked file, even unchanged ones (still in place).
     force?: boolean;
   } = {}): Promise<IndexResult> {
-    return runIndexAll(this.projectRoot, this.database, this.embedder, opts.onProgress, {
-      include: opts.include,
-      exclude: opts.exclude,
-    }, { force: opts.force === true });
+    return this.serialized(() =>
+      runIndexAll(
+        this.projectRoot,
+        this.database,
+        this.embedder,
+        opts.onProgress,
+        {
+          include: opts.include,
+          exclude: opts.exclude,
+        },
+        { force: opts.force === true },
+      ),
+    );
   }
 
   sync(): Promise<SyncResult> {
-    return runSync(this.projectRoot, this.database, this.embedder);
+    return this.serialized(() => runSync(this.projectRoot, this.database, this.embedder));
+  }
+
+  private serialized<T>(run: () => Promise<T>): Promise<T> {
+    const next = this.updates.then(run, run);
+    this.updates = next.catch(() => {});
+    return next;
   }
 
   getNode(id: NodeId): RigNode | null {
@@ -346,15 +375,64 @@ export class Rig {
     }).slice(0, k);
   }
 
-  watch(): boolean {
+  // Keep the graph live: watch the project and sync on change. At most one
+  // watcher runs per project across processes (watch-lock.ts); an instance
+  // that does not get the lock retries every lockRetryMs and takes over once
+  // the holder exits. Respects watch-policy.ts (RIG_NO_WATCH=1, WSL2 /mnt).
+  // Returns true when this instance is now the watcher.
+  watch(opts: RigWatchOptions = {}): boolean {
     if (this.watcher) return true;
-    this.watcher = new FileWatcher(this.projectRoot, () => this.sync());
-    return this.watcher.start();
+    if (watchDisabledReason(this.projectRoot) !== null) return false;
+    const started = this.startWatching(opts);
+    if (started !== 'locked') return started === 'started';
+    if (!this.watchRetry) {
+      this.watchRetry = setInterval(() => {
+        if (this.startWatching(opts) !== 'locked') this.stopWatchRetry();
+      }, opts.lockRetryMs ?? 30_000);
+      this.watchRetry.unref?.();
+    }
+    return false;
+  }
+
+  private startWatching(opts: RigWatchOptions): 'started' | 'locked' | 'unavailable' {
+    const lock = acquireWatchLock(rigDirOf(this.projectRoot), {
+      // Someone took the lock over (we looked stale): step down and retry.
+      onLost: () => {
+        this.watchLock = null;
+        this.unwatch();
+        this.watch(opts);
+      },
+    });
+    if (!lock) return 'locked';
+    const watcher = new FileWatcher(this.projectRoot, () => this.sync(), opts);
+    if (!watcher.start()) {
+      lock.release();
+      return 'unavailable';
+    }
+    this.watcher = watcher;
+    this.watchLock = lock;
+    // Catch up on edits made while no watcher ran (never-indexed projects are
+    // left to an explicit `rig index`).
+    const indexed = this.database.adapter.prepare(`SELECT 1 AS x FROM files LIMIT 1`).get();
+    if (indexed) watcher.requestSync();
+    return 'started';
+  }
+
+  isWatching(): boolean {
+    return this.watcher !== null;
+  }
+
+  private stopWatchRetry(): void {
+    if (this.watchRetry) clearInterval(this.watchRetry);
+    this.watchRetry = null;
   }
 
   unwatch(): void {
+    this.stopWatchRetry();
     this.watcher?.stop();
     this.watcher = null;
+    this.watchLock?.release();
+    this.watchLock = null;
   }
 
   close(): void {

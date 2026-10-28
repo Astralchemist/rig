@@ -5,7 +5,16 @@ import { join, relative, resolve } from 'node:path';
 import ignore, { type Ignore } from 'ignore';
 import { isSupportedSource } from './grammars.ts';
 
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.rig', 'vendor', '.next']);
+// Directories never walked (and whose changes the file watcher ignores).
+export const SKIP_DIRS: ReadonlySet<string> = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  '.rig',
+  'vendor',
+  '.next',
+]);
 
 // Minimal glob → regex. Supports **, *, ?, character classes. Cheap enough to
 // run per file; avoids pulling in another dep just for include/exclude.

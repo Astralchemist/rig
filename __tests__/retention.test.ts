@@ -17,6 +17,8 @@ const B_TS = `export function helper(x: number): number { return x * 2; }\n`;
 const A_TS = `import { helper } from './b';\nexport function main(): number { return helper(21); }\n`;
 const C_TS = `export class Widget { run(): void {} }\n`;
 
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
 class CountingEmbedder extends DeterministicEmbedder {
   count = 0;
   override async embed(texts: readonly string[]): Promise<Float32Array[]> {
@@ -312,5 +314,33 @@ describe('retention across index and sync', () => {
     await rig.sync();
     expect(callEdge()).not.toBeNull();
     expect(unresolvedHelperCall()).toBeNull();
+  });
+
+  test('the file watcher syncs an edit and keeps its edges', async () => {
+    const env = { force: process.env.RIG_FORCE_WATCH, off: process.env.RIG_NO_WATCH };
+    process.env.RIG_FORCE_WATCH = '1';
+    delete process.env.RIG_NO_WATCH;
+    try {
+      const before = countByKind(edgesFromFile('a.ts'));
+      const hashOfA = (): string =>
+        one<{ hash: string }>(`SELECT hash FROM files WHERE path = 'a.ts'`).hash;
+      const old = hashOfA();
+      expect(rig.watch({ debounceMs: 50 })).toBe(true);
+
+      write(
+        'a.ts',
+        `import { helper } from './b';\n// edited while watching\nexport function main(): number { return helper(21); }\n`,
+      );
+      for (const deadline = Date.now() + 5000; hashOfA() === old && Date.now() < deadline; ) {
+        await sleep(25);
+      }
+      expect(hashOfA()).not.toBe(old);
+      expect(countByKind(edgesFromFile('a.ts'))).toEqual(before);
+    } finally {
+      rig.unwatch();
+      if (env.force === undefined) delete process.env.RIG_FORCE_WATCH;
+      else process.env.RIG_FORCE_WATCH = env.force;
+      if (env.off !== undefined) process.env.RIG_NO_WATCH = env.off;
+    }
   });
 });

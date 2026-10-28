@@ -149,7 +149,7 @@ config to copy into the MCP client you use with it.
 | `rig index` | Extract + write nodes, skipping unchanged files (`--include` / `--exclude <glob>`, `--force`) |
 | `rig sync` | Incremental update |
 | `rig query` | CLI search |
-| `rig serve --all` | Start MCP and/or the web map (`--mcp` / `--web` / `--no-auth`; `--path <dir>` for another project) |
+| `rig serve --all` | Start MCP and/or the web map (`--mcp` / `--web` / `--no-auth`; `--path <dir>` for another project); keeps the graph live by syncing on file changes (`--no-watch` or `RIG_NO_WATCH=1` to turn off) |
 | `rig status` | Index health |
 | `rig doctor` | Diagnose environment, db, model cache, agent configs |
 | `rig export-docs` | Render waypoints into a markdown doc tree |

@@ -106,6 +106,28 @@ interface StoredRow {
 const hashOf = (source: string): string =>
   createHash('sha256').update(source).digest('hex').slice(0, 16);
 
+const isBusy = (e: unknown): boolean => {
+  const code = (e as { code?: unknown } | null)?.code;
+  return (
+    (typeof code === 'string' && code.startsWith('SQLITE_BUSY')) ||
+    /database is locked/i.test(e instanceof Error ? e.message : String(e))
+  );
+};
+
+// Another rig process (a watcher in an MCP server, a CLI `rig index`) may hold
+// the write lock. The apply transaction reads and writes in one go and rolls
+// back on failure, so it is simply run again.
+const retryWhenBusy = async <T>(run: () => T, attempts = 6): Promise<T> => {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return run();
+    } catch (e) {
+      if (!isBusy(e) || attempt >= attempts) throw e;
+      await new Promise((r) => setTimeout(r, 25 * 2 ** attempt));
+    }
+  }
+};
+
 const loadStoredRows = (db: SqliteAdapter, path: string): StoredRow[] =>
   db
     .prepare(
@@ -309,8 +331,8 @@ export async function runUpdate(
 
   // 4–6 (+ tests edges, which derive from the rebuilt imports edges).
   onProgress?.({ phase: 'resolve' });
-  const changedNodes: ExtractNode[] = [];
-  const { stats, orphaned, reattached } = db.transaction(() => {
+  const apply = db.transaction(() => {
+    const changedNodes: ExtractNode[] = [];
     const written: AnchoredNode[] = [];
     const removed: (AnchoredNode & { reason: OrphanReason })[] = [];
     for (const f of changed) {
@@ -334,8 +356,9 @@ export async function runUpdate(
     const stats = rebuildStructuralEdges(db, projectRoot);
     onProgress?.({ phase: 'tests-edges' });
     inferTestsEdges(db);
-    return { stats, orphaned, reattached };
-  })();
+    return { changedNodes, stats, orphaned, reattached };
+  });
+  const { changedNodes, stats, orphaned, reattached } = await retryWhenBusy(apply);
 
   // 7. Embed. Unchanged embedding text is skipped by text_hash, so a moved
   // symbol keeps its vector.

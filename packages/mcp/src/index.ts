@@ -35,6 +35,10 @@ const loadHandlers = (): Map<string, ToolHandler> =>
 
 export interface ServeMcpOptions {
   projectRoot?: string;
+  // Keep the graph live: watch the project and sync on change. Only one rig
+  // process per project watches at a time; RIG_NO_WATCH=1 (or the CLI's
+  // --no-watch) turns it off. Default: true.
+  watch?: boolean;
 }
 
 export async function serveMcp(opts: ServeMcpOptions = {}): Promise<void> {
@@ -62,4 +66,6 @@ export async function serveMcp(opts: ServeMcpOptions = {}): Promise<void> {
   const transport = new StdioTransport();
   const handler = makeMessageHandler(transport, manifest, handlers, ctx);
   transport.start(handler);
+  // After the transport is up, so watcher setup never delays the handshake.
+  if (opts.watch !== false) rig.watch();
 }
