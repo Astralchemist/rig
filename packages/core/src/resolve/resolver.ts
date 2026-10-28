@@ -3,6 +3,7 @@ import type { SqliteAdapter } from '../db/adapter.ts';
 import type { Edge, Node, UnresolvedReference } from '../extract/upstream-types.ts';
 import { resolveModuleImport } from './import-resolver.ts';
 import { loadProjectAliases } from './path-aliases.ts';
+import { resolvePythonImport } from './python-modules.ts';
 
 export interface ResolveStats {
   edges: number;
@@ -60,13 +61,20 @@ export const resolveReferences = (
     if (ref.referenceKind === 'imports') {
       const fileId =
         projectRoot && ref.filePath
-          ? resolveModuleImport({
-              modulePath: ref.referenceName,
-              importingFile: ref.filePath,
-              fileByPath,
-              projectRoot,
-              aliases,
-            })
+          ? ref.language === 'python'
+            ? resolvePythonImport({
+                modulePath: ref.referenceName,
+                importedNames: ref.importedNames ?? [],
+                importingFile: ref.filePath,
+                fileByPath,
+              })
+            : resolveModuleImport({
+                modulePath: ref.referenceName,
+                importingFile: ref.filePath,
+                fileByPath,
+                projectRoot,
+                aliases,
+              })
           : null;
       if (fileId && fileId !== ref.fromNodeId) {
         insertEdge.run(ref.fromNodeId, fileId, 'imports', 'ast', now);

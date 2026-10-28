@@ -66,7 +66,7 @@ export async function extractFromSource(
     nodes,
     edges,
     refs,
-    scope: [{ id: fileId, name: filePath }],
+    scope: [{ id: fileId, name: filePath, kind: 'file' }],
     source,
   });
   return {

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { SqliteAdapter } from './adapter.ts';
+import { distributionKeysOf, importKeysOf } from './pypi-names.ts';
+import { PYTHON_STDLIB } from './python-stdlib.ts';
 
 export interface DepRow {
   id: string;
@@ -94,12 +96,20 @@ export interface UnusedDepRow {
   is_dev: boolean;
 }
 
+// Python import targets are dotted module paths, and the package is the
+// top-level module: 'pandas.io.sql' → 'pandas'. Relative targets ('.models')
+// name no package.
+const pythonPackageOf = (target: string): string | null =>
+  target.startsWith('.') ? null : (target.split('.')[0] ?? null);
+
 // Heuristic: a declared dep is "unused" when its name (or scoped prefix) never
 // appears as a target_name in unresolved_refs — that's where bare-specifier
 // imports land after the resolver fails to map them to a file. Handles scoped
-// packages (@types/node) and subpath imports (lodash/get). False positives
-// possible for indirect runtime usage (JSX runtimes, bundler magic) — flag as
-// "likely unused, verify before removing", not as authoritative.
+// packages (@types/node), subpath imports (lodash/get), dotted Python modules
+// (pandas.io) and PyPI names that differ from the module (PyYAML → yaml).
+// False positives possible for indirect runtime usage (JSX runtimes, bundler
+// magic) — flag as "likely unused, verify before removing", not as
+// authoritative.
 export const listUnusedDependencies = (db: SqliteAdapter): UnusedDepRow[] => {
   const targetRows = db
     .prepare(`SELECT DISTINCT target_name FROM unresolved_refs`)
@@ -117,6 +127,15 @@ export const listUnusedDependencies = (db: SqliteAdapter): UnusedDepRow[] => {
       if (top) used.add(top);
     }
   }
+  // Python imports name modules, not distributions; PyPI deps match them by
+  // import key below.
+  const pythonImports = db
+    .prepare(
+      `SELECT DISTINCT target_name FROM unresolved_refs
+       WHERE kind = 'imports' AND file_path LIKE '%.py'`,
+    )
+    .all() as { target_name: string }[];
+  const pythonKeys = new Set(pythonImports.flatMap((r) => importKeysOf(r.target_name)));
 
   const declared = db
     .prepare(
@@ -135,6 +154,9 @@ export const listUnusedDependencies = (db: SqliteAdapter): UnusedDepRow[] => {
       filePath?: string;
       isDevDep?: boolean;
     };
+    if (parsed.depSource === 'pypi' && distributionKeysOf(d.name).some((k) => pythonKeys.has(k))) {
+      continue;
+    }
     out.push({
       id: d.id,
       name: d.name,
@@ -157,11 +179,19 @@ export interface PhantomImportRow {
 // The mirror of unused-deps: import sites whose target_name has no matching
 // declared dependency. Often a missing-dependency bug or a typo. Scoped +
 // subpath normalization mirrors listUnusedDependencies so the two views agree.
+// Python standard-library modules need no declaration and are never phantoms;
+// other Python imports match declared PyPI deps by import key (PyYAML → yaml).
 export const listPhantomImports = (db: SqliteAdapter): PhantomImportRow[] => {
   const declared = db
-    .prepare(`SELECT name FROM nodes WHERE type = 'declared-dependency'`)
-    .all() as { name: string }[];
+    .prepare(
+      `SELECT name, json_extract(data, '$.depSource') AS source
+       FROM nodes WHERE type = 'declared-dependency'`,
+    )
+    .all() as { name: string; source: string | null }[];
   const declaredNames = new Set(declared.map((d) => d.name));
+  const pypiKeys = new Set(
+    declared.filter((d) => d.source === 'pypi').flatMap((d) => distributionKeysOf(d.name)),
+  );
 
   const rows = db
     .prepare(
@@ -180,8 +210,11 @@ export const listPhantomImports = (db: SqliteAdapter): PhantomImportRow[] => {
   }[];
 
   // Normalize subpath / scoped imports the same way listUnusedDependencies does
-  // — '@types/node/path' resolves to '@types/node', 'lodash/get' to 'lodash'.
-  const normalize = (t: string): string => {
+  // — '@types/node/path' resolves to '@types/node', 'lodash/get' to 'lodash',
+  // and from Python files 'pandas.io' to 'pandas'.
+  const normalize = (t: string, filePath: string): string => {
+    const py = filePath.endsWith('.py') ? pythonPackageOf(t) : null;
+    if (py) return py;
     if (t.startsWith('@')) {
       const parts = t.split('/');
       return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : t;
@@ -190,10 +223,14 @@ export const listPhantomImports = (db: SqliteAdapter): PhantomImportRow[] => {
   };
 
   return rows.filter((r) => {
-    const pkg = normalize(r.target_name);
+    const pkg = normalize(r.target_name, r.sample_file);
     // Relative + absolute imports never resolve to a declared dep; they're
     // file-resolution failures, not phantoms.
     if (pkg.startsWith('.') || pkg.startsWith('/')) return false;
+    if (r.sample_file.endsWith('.py')) {
+      if (PYTHON_STDLIB.has(pkg)) return false;
+      return !importKeysOf(r.target_name).some((k) => pypiKeys.has(k));
+    }
     return !declaredNames.has(pkg);
   });
 };

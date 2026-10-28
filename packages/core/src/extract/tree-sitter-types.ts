@@ -9,6 +9,10 @@ export interface ImportInfo {
   moduleName: string;
   signature: string;
   handledRefs?: boolean;
+  // Local name bound by `import x as y` ('y').
+  alias?: string;
+  // Names pulled in by `from x import a, b` (['a', 'b']).
+  importedNames?: string[];
 }
 
 export interface VariableInfo {
@@ -74,6 +78,9 @@ export interface LanguageExtractor {
   classifyClassNode?: (node: SyntaxNode) => 'class' | 'struct' | 'enum' | 'interface' | 'trait';
   resolveBody?: (node: SyntaxNode, bodyField: string) => SyntaxNode | null;
   extractImport?: (node: SyntaxNode, source: string) => ImportInfo | null;
+  // One entry per imported module, for statements that import several
+  // (`import a, b as c`). Takes precedence over extractImport.
+  extractImports?: (node: SyntaxNode, source: string) => ImportInfo[];
   extractVariables?: (node: SyntaxNode, source: string) => VariableInfo[];
   getReceiverType?: (node: SyntaxNode, source: string) => string | undefined;
   resolveTypeAliasKind?: (node: SyntaxNode, source: string) => NodeKind | undefined;

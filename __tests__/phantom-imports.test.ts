@@ -64,3 +64,67 @@ describe('A2 rig_phantom_imports', () => {
     expect(ph.find((p) => p.target_name.startsWith('.'))).toBeUndefined();
   });
 });
+
+// Python refs are dotted module paths; they normalize to the top-level package.
+describe('A2 rig_phantom_imports — Python', () => {
+  let project: string;
+  let rig: Rig;
+
+  beforeEach(async () => {
+    project = mkdtempSync(join(tmpdir(), 'rig-phantom-py-'));
+    writeFileSync(join(project, 'requirements.txt'), 'matplotlib\nPyYAML\nopencv-python\n');
+    writeFileSync(
+      join(project, 'main.py'),
+      [
+        'import __future__',
+        'import os, sys, json',
+        'import os.path',
+        'from typing import List',
+        'import yaml',
+        'import cv2',
+        'import matplotlib.pyplot as plt',
+        'import yamll.loader',
+        'from .helpers import tidy',
+        '',
+      ].join('\n'),
+    );
+    writeFileSync(join(project, 'helpers.py'), 'def tidy():\n    pass\n');
+    rig = await Rig.init(project, { embedder: new DeterministicEmbedder() });
+    await rig.indexAll();
+  });
+
+  afterEach(() => {
+    rig.close();
+    rmSync(project, { recursive: true, force: true });
+  });
+
+  test('a dotted import of a declared package is not a phantom', () => {
+    const ph = rig.getPhantomImports();
+    expect(ph.find((p) => p.target_name === 'matplotlib.pyplot')).toBeUndefined();
+  });
+
+  test('a dotted import of an undeclared package is a phantom', () => {
+    const ph = rig.getPhantomImports();
+    expect(ph.map((p) => p.target_name)).toContain('yamll.loader');
+  });
+
+  test('a declared distribution covers its import name (PyYAML → yaml)', () => {
+    const names = rig.getPhantomImports().map((p) => p.target_name);
+    expect(names).not.toContain('yaml');
+    expect(names).not.toContain('cv2'); // opencv-python
+  });
+
+  test('standard-library imports are never phantoms', () => {
+    const names = rig.getPhantomImports().map((p) => p.target_name);
+    for (const stdlib of ['__future__', 'os', 'sys', 'json', 'os.path', 'typing']) {
+      expect(names).not.toContain(stdlib);
+    }
+    // ...while the undeclared third-party import is still reported.
+    expect(names).toEqual(['yamll.loader']);
+  });
+
+  test('relative imports are never phantoms', () => {
+    const ph = rig.getPhantomImports();
+    expect(ph.find((p) => p.target_name.startsWith('.'))).toBeUndefined();
+  });
+});
