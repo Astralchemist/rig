@@ -21,6 +21,7 @@
       "Mcp(rig:rig_impact)",
       "Mcp(rig:rig_neighbors)",
       "Mcp(rig:rig_node)",
+      "Mcp(rig:rig_overview)",
       "Mcp(rig:rig_phantom_imports)",
       "Mcp(rig:rig_propose_edge)",
       "Mcp(rig:rig_pull)",

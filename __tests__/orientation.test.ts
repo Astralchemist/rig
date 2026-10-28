@@ -24,6 +24,7 @@ import {
   readmePurpose,
   refreshOverview,
 } from '../packages/core/src/orientation.ts';
+import contract from '../.contracts/tools/rig_overview.contract.ts';
 
 const write = (root: string, files: Record<string, string>): void => {
   for (const [p, body] of Object.entries(files)) {
@@ -280,7 +281,11 @@ describe('orientation map: budget', () => {
     expect(m).toMatch(/^- …\d+ more$/m);
   });
 
-  test('budgets are clamped', () => {
+  test('budgets are clamped, to the range the rig_overview contract accepts', () => {
+    expect(contract.input.safeParse({ budget: MIN_OVERVIEW_BUDGET }).success).toBe(true);
+    expect(contract.input.safeParse({ budget: MAX_OVERVIEW_BUDGET }).success).toBe(true);
+    expect(contract.input.safeParse({ budget: MIN_OVERVIEW_BUDGET - 1 }).success).toBe(false);
+    expect(contract.input.safeParse({ budget: MAX_OVERVIEW_BUDGET + 1 }).success).toBe(false);
     expect(clampBudget(undefined)).toBe(DEFAULT_OVERVIEW_BUDGET);
     expect(clampBudget(1)).toBe(MIN_OVERVIEW_BUDGET);
     expect(clampBudget(1e9)).toBe(MAX_OVERVIEW_BUDGET);

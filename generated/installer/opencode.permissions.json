@@ -20,6 +20,7 @@
     "rig_rig_impact": "allow",
     "rig_rig_neighbors": "allow",
     "rig_rig_node": "allow",
+    "rig_rig_overview": "allow",
     "rig_rig_phantom_imports": "allow",
     "rig_rig_propose_edge": "allow",
     "rig_rig_pull": "allow",

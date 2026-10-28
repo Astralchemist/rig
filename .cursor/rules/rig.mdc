@@ -156,6 +156,24 @@ return the source body — use rig_explore (heavy tier) for full source.
 Use as a cheap inspection step after rig_search to decide whether a node
 is worth pulling neighbors or callers for.
 
+### `rig_overview`
+
+Start here. Returns a compact markdown map of the repository, about 2,000
+tokens by default: project basics (languages, packages, key dependencies),
+entry points (manifest exports, bin and index files mapped to source),
+module layout with one-line purposes, the most-referenced files and
+exported symbols with signatures and file:line, request/handler surfaces
+(string-literal unions and enums, handler directories and the functions
+that dispatch to them, HTTP verb exports), where tests live and what they
+import, and recent decision waypoints. Every line names real paths.
+
+Call it once at the start of a session, before searching, and answer
+simple "where is / which file / what version" questions from it directly.
+Built from the index alone (no model) and refreshed by `rig index`,
+`rig sync` and the file watcher; generated_at says when. budget is in
+tokens (default 2000); a larger budget shows more of every section. The
+same map is the MCP resource rig://overview.
+
 ### `rig_phantom_imports`
 
 Mirror of rig_unused_deps: returns import sites whose target package name
@@ -408,6 +426,8 @@ Heavy responses are capped at about 60,000 characters. A source cut to fit ends 
 
 ## Session bootstrap
 
-At the start of a new conversation, before responding to the user, call `rig_waypoints` with `session_id="last"` and `limit=20`. The returned waypoints are the prior session's structured decision/observation markers — read them to reorient on what was decided, what constraints are in play, and what open questions remain. Do not re-derive context the prior session already settled.
+Make `rig_overview` (no arguments) the first rig call of a new conversation, and read the map it returns. The same map is the MCP resource `rig://overview`. In about 2,000 tokens it lists the packages and what they are for, the entry points, the most-referenced files and symbols with `file:line`, route and handler tables, where the tests live, and recent decisions. Answer simple "where is / which file / what version" questions from it directly, and use it to aim `rig_search` and file reads instead of exploring the tree.
+
+Then, before responding to the user, call `rig_waypoints` with `session_id="last"` and `limit=20`. The returned waypoints are the prior session's structured decision/observation markers — read them to reorient on what was decided, what constraints are in play, and what open questions remain. Do not re-derive context the prior session already settled.
 
 Drop a waypoint via `rig_drop_waypoint` when: a real decision is locked, the user states a hard constraint, an observation recurs across turns, or an open question emerges that should outlive context compaction. Aim for at most one waypoint per ~5 turns — they are not a running summary.

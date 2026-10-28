@@ -62,6 +62,9 @@
         "rig_node": {
           "approval_mode": "approve"
         },
+        "rig_overview": {
+          "approval_mode": "approve"
+        },
         "rig_phantom_imports": {
           "approval_mode": "approve"
         },

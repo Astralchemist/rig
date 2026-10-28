@@ -2022,6 +2022,53 @@
       ]
     },
     {
+      "name": "rig_overview",
+      "description": "Compact map of the repository; call first",
+      "tier": "light",
+      "stability": "experimental",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "budget": {
+            "type": "integer",
+            "minimum": 200,
+            "maximum": 20000,
+            "description": "Token budget for the map (default 2000)"
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "map": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "integer"
+          },
+          "nodes": {
+            "type": "integer"
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "map",
+          "generated_at",
+          "nodes",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED"
+      ]
+    },
+    {
       "name": "rig_phantom_imports",
       "description": "Bare imports with no matching declared dependency",
       "tier": "light",

@@ -21,6 +21,7 @@
       "mcp__rig__rig_impact",
       "mcp__rig__rig_neighbors",
       "mcp__rig__rig_node",
+      "mcp__rig__rig_overview",
       "mcp__rig__rig_phantom_imports",
       "mcp__rig__rig_propose_edge",
       "mcp__rig__rig_pull",
