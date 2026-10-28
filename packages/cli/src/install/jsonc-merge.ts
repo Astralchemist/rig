@@ -19,29 +19,11 @@ export const flattenPaths = (obj: unknown, prefix: Path = []): Leaf[] => {
   return out;
 };
 
-const valueAt = (doc: unknown, path: Path): unknown => {
-  let cur = doc;
-  for (const key of path) {
-    if (!isPlainObject(cur)) return undefined;
-    cur = cur[String(key)];
-  }
-  return cur;
-};
-
-// `pick` chooses what to write at a leaf that already holds a value (by
-// default the template's value wins).
-export const mergeJsonc = (
-  existing: string,
-  template: unknown,
-  pick?: (existing: unknown, incoming: unknown) => unknown,
-): string => {
+export const mergeJsonc = (existing: string, template: unknown): string => {
   const text = existing.trim() ? existing : '{}\n';
-  const doc = pick ? (parse(text) as unknown) : undefined;
   let result = text;
   for (const { path, value } of flattenPaths(template)) {
-    const current = pick ? valueAt(doc, path) : undefined;
-    const next = pick && current !== undefined ? pick(current, value) : value;
-    const edits = modify(result, path, next, {
+    const edits = modify(result, path, value, {
       formattingOptions: { tabSize: 2, insertSpaces: true },
     });
     result = applyEdits(result, edits);
@@ -61,6 +43,31 @@ export const expandScalarShorthands = (existing: string, template: unknown): str
     const current = doc[key];
     if (isPlainObject(value) && typeof current === 'string') {
       const edits = modify(result, [key], { '*': current }, {
+        formattingOptions: { tabSize: 2, insertSpaces: true },
+      });
+      result = applyEdits(result, edits);
+    }
+  }
+  return result;
+};
+
+// Under each of the template's top-level objects, delete the keys `owned`
+// claims but the template no longer lists (a tool rig dropped from its policy).
+export const dropStaleKeys = (
+  existing: string,
+  template: unknown,
+  owned: (key: string) => boolean,
+): string => {
+  if (!isPlainObject(template) || !existing.trim()) return existing;
+  const doc = parse(existing) as unknown;
+  if (!isPlainObject(doc)) return existing;
+  let result = existing;
+  for (const [key, value] of Object.entries(template)) {
+    const current = doc[key];
+    if (!isPlainObject(value) || !isPlainObject(current)) continue;
+    for (const k of Object.keys(current)) {
+      if (!owned(k) || Object.hasOwn(value, k)) continue;
+      const edits = modify(result, [key, k], undefined, {
         formattingOptions: { tabSize: 2, insertSpaces: true },
       });
       result = applyEdits(result, edits);

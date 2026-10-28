@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+import { isRigListEntry } from './ownership.ts';
+
 type JsonObj = Record<string, unknown>;
 
 const isObj = (v: unknown): v is JsonObj =>
@@ -44,10 +46,31 @@ export const deepMerge = (
   return out;
 };
 
-// Permission files (role 'permissions'): every list under `permissions`
-// (allow / ask / deny) is unioned, so a re-install adds rig's new entries
-// without dropping ones the user added (#8).
+// Lists under `permissions` (allow / ask / deny …) merge as a union.
 export const permissionsUnion = (path: readonly string[]): boolean => path[0] === 'permissions';
+
+// Permission files (role 'permissions', #8). rig's current policy is
+// authoritative for rig-owned entries: each ends up in exactly the list the
+// policy puts it in and is dropped from every other one, so an upgrade that
+// moves a tool from allow to ask doesn't leave it in both; rig-owned entries
+// the policy no longer lists go too. Everything else is the user's and stays
+// where it is; rig's missing entries are appended and duplicates collapse.
+export const mergePermissions = (base: unknown, policy: unknown): unknown => {
+  const merged = deepMerge(base, policy, { union: permissionsUnion });
+  if (!isObj(merged) || !isObj(merged.permissions) || !isObj(policy) || !isObj(policy.permissions)) {
+    return merged;
+  }
+  const listOf = new Map<string, string>();
+  for (const [list, entries] of Object.entries(policy.permissions)) {
+    if (Array.isArray(entries)) for (const e of entries) listOf.set(JSON.stringify(e), list);
+  }
+  const permissions = merged.permissions;
+  for (const [list, entries] of Object.entries(permissions)) {
+    if (!Array.isArray(entries)) continue;
+    permissions[list] = entries.filter((e) => !isRigListEntry(e) || listOf.get(JSON.stringify(e)) === list);
+  }
+  return merged;
+};
 
 export const jsonEqual = (a: unknown, b: unknown): boolean =>
   JSON.stringify(a) === JSON.stringify(b);

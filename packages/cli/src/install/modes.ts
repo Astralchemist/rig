@@ -2,13 +2,20 @@
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { atomicWrite } from './atomic.ts';
-import { deepMerge, permissionsUnion, type MergeOptions } from './json-merge.ts';
-import { expandScalarShorthands, mergeJsonc } from './jsonc-merge.ts';
+import { deepMerge, mergePermissions } from './json-merge.ts';
+import { dropStaleKeys, expandScalarShorthands, mergeJsonc } from './jsonc-merge.ts';
+import { isRigMapKey, isRigToolTable } from './ownership.ts';
 import { expandRelativeTo } from './paths.ts';
-import { stricter } from './strictness.ts';
 import { upsertSection, upsertSectionSafe } from './section.ts';
 import { expandTokens, type TokenContext } from './tokens.ts';
-import { buildTomlTable, flattenTables, upsertTomlKeys, upsertTomlTable } from './toml.ts';
+import {
+  buildTomlTable,
+  flattenTables,
+  listTomlTables,
+  removeTomlKeys,
+  upsertTomlKeys,
+  upsertTomlTable,
+} from './toml.ts';
 
 export interface TargetFileLike {
   role: string;
@@ -43,11 +50,11 @@ const applyMergeJson = async (
   resolvedPath: string,
   template: unknown,
   dryRun: boolean,
-  merge: MergeOptions,
+  merge: (base: unknown, template: unknown) => unknown,
 ): Promise<ApplyResult> => {
   const existing = await readOrEmpty(resolvedPath);
   const base = existing ? (JSON.parse(existing) as unknown) : {};
-  const merged = deepMerge(base, template, merge);
+  const merged = merge(base, template);
   const next = JSON.stringify(merged, null, 2) + '\n';
   if (existing === next) {
     return { path: resolvedPath, mode: 'merge-json', changed: false, status: 'unchanged' };
@@ -116,15 +123,15 @@ const applyMode = async (
   template: unknown,
   dryRun: boolean,
 ): Promise<ApplyResult> => {
+  // Permission files: rig's policy decides rig's own entries, the user's
+  // entries are kept (#8; see mergePermissions and ownership.ts).
+  const perms = file.role === 'permissions';
   if (file.mode === 'merge-json') {
-    // Permission lists are unioned so re-installs keep user-added entries (#8).
-    const merge = file.role === 'permissions' ? { union: permissionsUnion } : {};
+    const merge = perms ? mergePermissions : (b: unknown, t: unknown) => deepMerge(b, t);
     return applyMergeJson(resolvedPath, template, dryRun, merge);
   }
   if (file.mode === 'append-section') return applyAppendSection(resolvedPath, template, dryRun);
   if (file.mode === 'replace') return applyReplace(resolvedPath, template, dryRun);
-  // Permission entries are set key by key, so user additions next to them survive.
-  const perms = file.role === 'permissions';
   if (file.mode === 'write-toml') return applyWriteToml(resolvedPath, template, dryRun, perms);
   if (file.mode === 'merge-jsonc') return applyMergeJsonc(resolvedPath, template, dryRun, perms);
 
@@ -144,9 +151,12 @@ const applyMergeJsonc = async (
   permissions: boolean,
 ): Promise<ApplyResult> => {
   const existing = await readOrEmpty(resolvedPath);
-  // Permission values keep the stricter of the user's and rig's (allow < ask < deny).
-  const base = permissions ? expandScalarShorthands(existing, template) : existing;
-  const next = mergeJsonc(base, template, permissions ? stricter : undefined);
+  // Permission keys: expand the `"permission": "ask"` shorthand, drop rig
+  // keys the policy no longer lists, then set rig's values.
+  const base = permissions
+    ? dropStaleKeys(expandScalarShorthands(existing, template), template, isRigMapKey)
+    : existing;
+  const next = mergeJsonc(base, template);
   if (existing === next) {
     return { path: resolvedPath, mode: 'merge-jsonc', changed: false, status: 'unchanged' };
   }
@@ -189,15 +199,23 @@ const applyWriteToml = async (
   }
   const existing = await readOrEmpty(resolvedPath);
   let content = existing;
-  // A server entry replaces its whole table; permission tables are updated
-  // key by key so the user's other keys in them (output_token_limit) stay,
-  // and an approval_mode the user made stricter is kept.
-  const keepStricter = (existing: string | null, incoming: string | string[]) =>
-    typeof incoming === 'string' ? (stricter(existing, incoming) as string) : incoming;
-  for (const { header, body } of flattenTables(template as Record<string, unknown>)) {
+  // A server entry replaces its whole table. Permission tables are updated key
+  // by key, so the user's other keys in them (output_token_limit) stay, and
+  // rig's keys leave the tables of tools the policy no longer lists.
+  const tables = flattenTables(template as Record<string, unknown>);
+  for (const { header, body } of tables) {
     content = keyLevel
-      ? upsertTomlKeys(content, header, body, keepStricter).content
+      ? upsertTomlKeys(content, header, body).content
       : upsertTomlTable(content, header, buildTomlTable(header, body)).content;
+  }
+  if (keyLevel) {
+    const listed = new Set(tables.map((t) => t.header));
+    const keys = [...new Set(tables.flatMap((t) => Object.keys(t.body)))];
+    for (const header of listTomlTables(content)) {
+      if (isRigToolTable(header) && !listed.has(header)) {
+        content = removeTomlKeys(content, header, keys).content;
+      }
+    }
   }
   if (content === existing) {
     return { path: resolvedPath, mode: 'write-toml', changed: false, status: 'unchanged' };

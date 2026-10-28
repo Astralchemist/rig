@@ -144,16 +144,9 @@ const keyOfLine = (line: string): string | null => {
   return m ? m[1]!.replace(/^"|"$/g, '') : null;
 };
 
-// The value of a `key = "string"` line, else null.
-const stringValueOfLine = (line: string): string | null => {
-  const m = /=\s*"((?:[^"\\]|\\.)*)"\s*(?:#.*)?$/.exec(line);
-  return m ? m[1]!.replace(/\\(["\\])/g, '$1') : null;
-};
-
-export type PickValue = (
-  existing: string | null,
-  incoming: string | string[],
-) => string | string[];
+// Every `[table]` header in the file, in order (array-of-tables excluded).
+export const listTomlTables = (fileContent: string): string[] =>
+  [...fileContent.matchAll(/^\[([^[\]\n]+)\][ \t]*$/gm)].map((m) => m[1]!.trim());
 
 /**
  * Set individual keys inside `[header]` and leave the table's other keys,
@@ -164,8 +157,6 @@ export function upsertTomlKeys(
   fileContent: string,
   header: string,
   values: Record<string, string | string[]>,
-  // Chooses the value to write when the key already holds a string.
-  pick: PickValue = (_existing, incoming) => incoming,
 ): { content: string; action: 'inserted' | 'replaced' | 'unchanged' } {
   const headerLine = `[${header}]`;
   const headerIdx = findHeaderIndex(fileContent, headerLine);
@@ -176,14 +167,12 @@ export function upsertTomlKeys(
   let insertAt = 1;
   let changed = false;
   for (const [key, value] of Object.entries(values)) {
+    const line = serializeTomlTableBody({ [key]: value });
     const i = lines.findIndex((l, n) => n > 0 && keyOfLine(l) === key);
     if (i === -1) {
-      lines.splice(insertAt++, 0, serializeTomlTableBody({ [key]: value }));
+      lines.splice(insertAt++, 0, line);
       changed = true;
-      continue;
-    }
-    const line = serializeTomlTableBody({ [key]: pick(stringValueOfLine(lines[i]!), value) });
-    if (lines[i] !== line) {
+    } else if (lines[i] !== line) {
       lines[i] = line;
       changed = true;
     }
@@ -226,9 +215,9 @@ export function removeTomlTableTree(
   fileContent: string,
   header: string,
 ): { content: string; action: 'removed' | 'not-found' } {
-  const names = [...fileContent.matchAll(/^\[([^[\]\n]+)\][ \t]*$/gm)]
-    .map((m) => m[1]!.trim())
-    .filter((name) => name === header || name.startsWith(`${header}.`));
+  const names = listTomlTables(fileContent).filter(
+    (name) => name === header || name.startsWith(`${header}.`),
+  );
   let content = fileContent;
   for (const name of names) content = removeTomlTable(content, name).content;
   return names.length ? { content, action: 'removed' } : { content: fileContent, action: 'not-found' };

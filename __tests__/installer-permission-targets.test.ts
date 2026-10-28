@@ -7,7 +7,7 @@ import { parse as parseJsonc } from 'jsonc-parser';
 import { allTargetNames, getTarget } from '../packages/cli/src/install/loader.ts';
 import type { Scope } from '../packages/cli/src/install/paths.ts';
 import { installTarget } from '../packages/cli/src/install/runner.ts';
-import { stricter } from '../packages/cli/src/install/strictness.ts';
+import { isRigListEntry, isRigMapKey, isRigToolTable } from '../packages/cli/src/install/ownership.ts';
 import { buildFiles } from '../scripts/gen.ts';
 
 const GENERATED = resolve(__dirname, '../generated/installer');
@@ -51,13 +51,19 @@ describe('generated permission policies', () => {
     expect(byLevel('ask')).toEqual(tools(claude.ask).map((t) => `rig_${t}`).sort());
   });
 
-  test('stricter() keeps whichever value prompts more', () => {
-    expect(stricter('deny', 'allow')).toBe('deny');
-    expect(stricter('allow', 'ask')).toBe('ask');
-    expect(stricter('prompt', 'approve')).toBe('prompt');
-    expect(stricter('approve', 'prompt')).toBe('prompt');
-    expect(stricter('auto', 'writes')).toBe('prompt');
-    expect(stricter('something-else', 'approve')).toBe('approve');
+  test('the installer recognises every generated entry as rig-owned, and nothing else', () => {
+    const lists = [...claude.allow, ...claude.ask, ...generated('cursor.permissions.json').permissions.allow];
+    expect(lists.every(isRigListEntry)).toBe(true);
+    expect(Object.keys(generated('opencode.permissions.json').permission).every(isRigMapKey)).toBe(true);
+    const codexTools = Object.keys(generated('codex.permissions.json').mcp_servers.rig.tools);
+    expect(codexTools.every((t) => isRigToolTable(`mcp_servers.rig.tools.${t}`))).toBe(true);
+    // wildcards, server-wide rules and other servers stay the user's
+    for (const e of ['mcp__rig__*', 'mcp__rig', 'mcp__other__rig_x', 'Mcp(rig:*)', 'Bash(rig_x)']) {
+      expect(isRigListEntry(e)).toBe(false);
+    }
+    expect(isRigMapKey('rig_*')).toBe(false);
+    expect(isRigMapKey('bash')).toBe(false);
+    expect(isRigToolTable('mcp_servers.rig')).toBe(false);
   });
 });
 
@@ -76,7 +82,7 @@ describe('writing the policy', () => {
   });
   afterEach(() => rmSync(base, { recursive: true, force: true }));
 
-  test('codex: tool tables, user keys and stricter modes survive, idempotent', async () => {
+  test('codex: rig decides approval_mode, user keys and tables survive, idempotent', async () => {
     const cfg = join(home, '.codex/config.toml');
     mkdirSync(join(home, '.codex'), { recursive: true });
     writeFileSync(
@@ -95,6 +101,10 @@ describe('writing the policy', () => {
         '[mcp_servers.rig.tools.rig_explore]',
         'approval_mode = "approve"',
         '',
+        '[mcp_servers.rig.tools.rig_gone]',
+        'approval_mode = "approve"',
+        'output_token_limit = 100',
+        '',
       ].join('\n'),
     );
     await installTarget(getTarget('codex')!, opts('global'));
@@ -103,18 +113,20 @@ describe('writing the policy', () => {
     expect(toml).toContain('[[profiles]]\nname = "work"\n');
     expect(toml).toContain('command = "rig"');
     expect(toml).not.toContain('old-rig');
-    // user key kept; user's stricter mode kept
-    expect(toml).toContain('[mcp_servers.rig.tools.rig_search]\noutput_token_limit = 5000\napproval_mode = "prompt"');
-    // a looser user mode is tightened to rig's policy
+    // rig's policy sets approval_mode; the user's other keys stay
+    expect(toml).toContain('[mcp_servers.rig.tools.rig_search]\noutput_token_limit = 5000\napproval_mode = "approve"');
     expect(toml).toContain('[mcp_servers.rig.tools.rig_explore]\napproval_mode = "prompt"');
     expect(toml).toContain('[mcp_servers.rig.tools.rig_status]\napproval_mode = "approve"');
+    // a tool rig no longer ships loses rig's key but keeps the user's
+    expect(toml).toContain('[mcp_servers.rig.tools.rig_gone]\noutput_token_limit = 100');
+    expect(toml).not.toMatch(/rig_gone\]\napproval_mode/);
 
     const again = await installTarget(getTarget('codex')!, opts('global'));
     expect(again.applied.every((a) => !a.changed)).toBe(true);
     expect(readFileSync(cfg, 'utf-8')).toBe(toml);
   });
 
-  test('opencode: shorthand expanded, comments kept, stricter values win, idempotent', async () => {
+  test('opencode: shorthand expanded, comments kept, rig decides rig_* keys, idempotent', async () => {
     const cfg = join(home, '.config/opencode/opencode.jsonc');
     mkdirSync(join(home, '.config/opencode'), { recursive: true });
     writeFileSync(cfg, '{\n  // mine\n  "permission": "ask"\n}\n');
@@ -127,29 +139,39 @@ describe('writing the policy', () => {
     expect(perm.rig_rig_status).toBe('allow');
     expect(perm.rig_rig_explore).toBe('ask');
 
-    // the user denies one tool and loosens another; a re-install keeps the
-    // deny and restores rig's ask
-    writeFileSync(cfg, text.replace('"rig_rig_status": "allow"', '"rig_rig_status": "deny"').replace('"rig_rig_explore": "ask"', '"rig_rig_explore": "allow"'));
+    // edits to rig's keys are reset to rig's policy; a key for a tool rig no
+    // longer ships goes; the user's own keys stay
+    writeFileSync(
+      cfg,
+      text
+        .replace('"rig_rig_status": "allow"', '"rig_rig_status": "deny"')
+        .replace('"rig_rig_explore": "ask"', '"rig_rig_explore": "allow"')
+        .replace('"*": "ask",', '"*": "ask",\n    "rig_rig_gone": "allow",\n    "mymcp_*": "deny",'),
+    );
     await installTarget(getTarget('opencode')!, opts('global'));
     text = readFileSync(cfg, 'utf-8');
     perm = parseJsonc(text).permission;
-    expect(perm.rig_rig_status).toBe('deny');
+    expect(perm.rig_rig_status).toBe('allow');
     expect(perm.rig_rig_explore).toBe('ask');
+    expect(perm.rig_rig_gone).toBeUndefined();
+    expect(perm['mymcp_*']).toBe('deny');
+    expect(perm['*']).toBe('ask');
     const again = await installTarget(getTarget('opencode')!, opts('global'));
     expect(again.applied.every((a) => !a.changed)).toBe(true);
   });
 
-  test('cursor: .cursor/cli.json allow entries union with the user list', async () => {
+  test("cursor: .cursor/cli.json gets rig's allow entries next to the user's", async () => {
     mkdirSync(join(project, '.cursor'), { recursive: true });
     writeFileSync(
       join(project, '.cursor/cli.json'),
-      JSON.stringify({ permissions: { allow: ['Shell(git)'], deny: ['Mcp(rig:rig_undo)'] } }),
+      JSON.stringify({ permissions: { allow: ['Shell(git)'], deny: ['Shell(rm)', 'Mcp(rig:rig_status)'] } }),
     );
     await installTarget(getTarget('cursor')!, opts('project'));
     const p = JSON.parse(readFileSync(join(project, '.cursor/cli.json'), 'utf-8')).permissions;
     expect(p.allow[0]).toBe('Shell(git)');
     expect(p.allow).toContain('Mcp(rig:rig_status)');
     expect(p.allow).not.toContain('Mcp(rig:rig_explore)');
-    expect(p.deny).toEqual(['Mcp(rig:rig_undo)']);
+    // rig's policy places its own entries; the user's deny rules stay
+    expect(p.deny).toEqual(['Shell(rm)']);
   });
 });
