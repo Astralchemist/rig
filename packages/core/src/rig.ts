@@ -38,8 +38,11 @@ import {
   type GraphSnapshot,
 } from './db/graph-snapshot.ts';
 import { searchNodes as sqSearchNodes, type SearchOptions } from './db/search-queries.ts';
+import { embedAndStore } from './embed/index-embeddings.ts';
 import { selectEmbedder } from './embed/select.ts';
 import type { Embedder } from './embed/types.ts';
+import type { MatchSource } from './search/fuse.ts';
+import { HybridSearcher, type HybridSearchOptions } from './search/hybrid.ts';
 import {
   getCallees as gqGetCallees,
   getCallers as gqGetCallers,
@@ -95,6 +98,8 @@ export type { SyncResult } from './sync.ts';
 export type { WatchOptions } from './watch.ts';
 export type { TaggedEdge, NeighborsOptions } from './db/edge-queries.ts';
 export type { SearchOptions } from './db/search-queries.ts';
+export type { HybridSearchOptions } from './search/hybrid.ts';
+export type { MatchSource } from './search/fuse.ts';
 export type { FileRow } from './db/file-queries.ts';
 export type { GraphSnapshot } from './db/graph-snapshot.ts';
 export type { PendingEdgeRow } from './db/pending-edges.ts';
@@ -108,6 +113,28 @@ export type {
 } from './memory-file.ts';
 export { RigWrites, UnknownRefsError } from './rig-writes.ts';
 export type { WriteCtx, ProposeArgs, AddNodeArgs, UndoOutcome } from './rig-writes.ts';
+
+export interface SearchHit {
+  node: RigNode;
+  // Fused RRF score; higher is better. Only comparable within one search.
+  score: number;
+  matchedBy: MatchSource[];
+}
+
+export interface SearchResult {
+  hits: SearchHit[];
+  // Vectors were left out (no model, or nothing embedded yet): the hits come
+  // from exact names, aliases and keywords only.
+  degraded?: 'keyword-only';
+}
+
+export interface RelevantSkill {
+  id: string;
+  name: string;
+  tier: string;
+  summary: string | null;
+  description: string;
+}
 
 export interface RigWatchOptions extends WatchOptions {
   // How often a process that did not get the watch lock tries again, so it
@@ -126,12 +153,19 @@ export class Rig {
   // indexAll/sync runs on this connection, chained so a watcher sync never
   // interleaves with an explicit index.
   private updates: Promise<unknown> = Promise.resolve();
+  private readonly searcher: HybridSearcher;
+  // Waypoints and skills written through `writes`, waiting to be embedded in
+  // the background (embedPending), and the chain of those runs.
+  private readonly pendingEmbeds = new Set<string>();
+  private embedTimer: ReturnType<typeof setTimeout> | null = null;
+  private embedRuns: Promise<void> = Promise.resolve();
 
   constructor(opts: RigOptions) {
     this.projectRoot = opts.projectRoot;
     this.database = opts.database;
     this.embedder = opts.embedder;
-    this.writes = new RigWrites(this.database);
+    this.writes = new RigWrites(this.database, (ids) => this.scheduleEmbed(ids));
+    this.searcher = new HybridSearcher(this.database.adapter, this.embedder);
   }
 
   static async init(
@@ -209,10 +243,73 @@ export class Rig {
     return this.serialized(() => runSync(this.projectRoot, this.database, this.embedder));
   }
 
+  // Each run ends by pulling the vectors it wrote into the search index.
   private serialized<T>(run: () => Promise<T>): Promise<T> {
-    const next = this.updates.then(run, run);
+    const next = this.updates.then(run, run).finally(() => this.searcher.refreshIndex());
     this.updates = next.catch(() => {});
     return next;
+  }
+
+  // Embed written waypoints and skills after their write has committed, off
+  // the caller's path: the tool call that wrote them never waits on the model.
+  // A failure is left to the update pipeline, which embeds whatever is missing.
+  private scheduleEmbed(ids: readonly string[]): void {
+    if (!this.embedder) return;
+    for (const id of ids) this.pendingEmbeds.add(id);
+    if (this.embedTimer) return;
+    this.embedTimer = setTimeout(() => {
+      this.embedTimer = null;
+      this.embedRuns = this.embedRuns.then(() => this.embedPending());
+    }, 0);
+    this.embedTimer.unref?.();
+  }
+
+  private async embedPending(): Promise<void> {
+    const ids = [...this.pendingEmbeds];
+    this.pendingEmbeds.clear();
+    const adapter = this.database.adapter;
+    if (!this.embedder || ids.length === 0 || !adapter.open) return;
+    try {
+      const rows = adapter
+        .prepare(
+          `SELECT id, type, name, data FROM nodes WHERE id IN (${ids.map(() => '?').join(', ')})`,
+        )
+        .all(...ids) as { id: string; type: string; name: string; data: string }[];
+      await embedAndStore(
+        this.embedder,
+        adapter,
+        rows.map((r) => ({
+          id: r.id,
+          kind: r.type,
+          name: r.name,
+          data: JSON.parse(r.data) as Record<string, unknown>,
+        })),
+      );
+      this.searcher.refreshIndex();
+    } catch (e) {
+      if (adapter.open) {
+        logWarn('Background embedding failed; the next sync retries', { error: String(e) });
+      }
+    }
+  }
+
+  // Resolves once background embeds scheduled so far have finished.
+  async whenIdle(): Promise<void> {
+    for (;;) {
+      if (this.embedTimer) {
+        await new Promise((r) => setTimeout(r, 1));
+        continue;
+      }
+      const runs = this.embedRuns;
+      await runs;
+      if (runs === this.embedRuns && !this.embedTimer) return;
+    }
+  }
+
+  // Load the vector index and the embedding model in the background, so the
+  // first search doesn't wait for them. Safe to skip: search loads lazily.
+  warmSearch(): void {
+    this.searcher.warm();
   }
 
   getNode(id: NodeId): RigNode | null {
@@ -232,8 +329,25 @@ export class Rig {
     return gqGetImpactRadius(this.database.adapter, id, depth).map(toRigNode);
   }
 
+  // Keyword search (exact names and aliases first, then bm25 hits), without
+  // the embedding model. Synchronous; see search() for the hybrid.
   searchNodes(query: string, opts: SearchOptions = {}): RigNode[] {
     return sqSearchNodes(this.database.adapter, query, opts).map(toRigNode);
+  }
+
+  // Hybrid search: exact names and aliases, keywords and vector similarity,
+  // fused by reciprocal rank (search/hybrid.ts). Never throws for want of the
+  // model: without it, results come from the other lists and say so.
+  async search(query: string, opts: HybridSearchOptions = {}): Promise<SearchResult> {
+    const r = await this.searcher.search(query, opts);
+    return {
+      hits: r.hits.map((h) => ({
+        node: toRigNode(h.node),
+        score: h.score,
+        matchedBy: h.matchedBy,
+      })),
+      ...(r.degraded ? { degraded: r.degraded } : {}),
+    };
   }
 
   getNeighbors(id: NodeId, opts: NeighborsOptions = {}): TaggedEdge[] {
@@ -297,50 +411,41 @@ export class Rig {
 
   // C4 — register the AI's tool surface as skill anchors. Caller supplies the
   // tools-manifest (MCP layer owns it); core stays manifest-format-agnostic.
-  // D4 — return top-k skills most relevant to a free-text query. Mirrors
-  // rig_search but joins through to the skill payload so the caller gets the
-  // tier + description without a second roundtrip. Falls back to a name-prefix
-  // scan if FTS yields nothing (FTS quirks with short queries / underscores).
-  getRelevantSkills(
+  // D4 — return top-k skills most relevant to a free-text query: hybrid search
+  // narrowed to skill anchors (their names, descriptions and embeddings),
+  // joined through to the skill payload so the caller gets the tier +
+  // description without a second roundtrip. Falls back to a name substring
+  // scan when search finds nothing.
+  async getRelevantSkills(
     query: string,
     k = 5,
-  ): Array<{ id: string; name: string; tier: string; summary: string | null; description: string }> {
+  ): Promise<{ skills: RelevantSkill[]; degraded?: 'keyword-only' }> {
     const trimmed = query.trim();
-    if (!trimmed) return [];
-    const adapter = this.database.adapter;
-    const fts = trimmed
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((t) => `"${t.replace(/"/g, '""')}"*`)
-      .join(' ');
-    let rows = adapter
-      .prepare(
-        `SELECT n.id, n.name, n.data, bm25(nodes_fts) AS rank
-         FROM nodes_fts JOIN nodes n ON n.id = nodes_fts.node_id
-         WHERE nodes_fts MATCH ? AND n.type = 'skill'
-         ORDER BY rank
-         LIMIT ?`,
-      )
-      .all(fts, k) as { id: string; name: string; data: string; rank: number }[];
+    if (!trimmed) return { skills: [] };
+    const r = await this.searcher.search(trimmed, { kinds: ['skill'], limit: k });
+    let rows = r.hits.map((h) => ({ id: h.node.id, name: h.node.name }));
     if (rows.length === 0) {
-      rows = adapter
+      rows = this.database.adapter
         .prepare(
-          `SELECT id, name, data, 0 AS rank FROM nodes
+          `SELECT id, name FROM nodes
            WHERE type = 'skill' AND name LIKE ?
            ORDER BY name LIMIT ?`,
         )
-        .all(`%${trimmed}%`, k) as { id: string; name: string; data: string; rank: number }[];
+        .all(`%${trimmed}%`, k) as { id: string; name: string }[];
     }
-    return rows.map((r) => {
-      const d = JSON.parse(r.data) as { tier?: string; summary?: string; description?: string };
+    const dataOf = this.database.adapter.prepare(`SELECT data FROM nodes WHERE id = ?`);
+    const skills = rows.map((row) => {
+      const raw = (dataOf.get(row.id) as { data: string } | null)?.data ?? '{}';
+      const d = JSON.parse(raw) as { tier?: string; summary?: string; description?: string };
       return {
-        id: r.id,
-        name: r.name,
+        id: row.id,
+        name: row.name,
         tier: d.tier ?? 'light',
         summary: d.summary ?? null,
         description: d.description ?? '',
       };
     });
+    return r.degraded ? { skills, degraded: r.degraded } : { skills };
   }
 
   seedSkills(
@@ -370,6 +475,35 @@ export class Rig {
 
   getWaypoints(opts: ListWaypointsOpts = {}): WaypointRow[] {
     return wqList(this.database.adapter, opts);
+  }
+
+  // Waypoints most relevant to `query` (hybrid search over their titles,
+  // summaries, key terms and rationales), best first, within the same
+  // session/kind filters as getWaypoints.
+  async searchWaypoints(
+    query: string,
+    opts: ListWaypointsOpts = {},
+  ): Promise<{ waypoints: WaypointRow[]; degraded?: 'keyword-only' }> {
+    const limit = opts.limit ?? 50;
+    // Every waypoint the filters allow, so relevance decides the cut.
+    const allowed = new Map(
+      wqList(this.database.adapter, { ...opts, limit: Number.MAX_SAFE_INTEGER }).map((w) => [
+        w.id,
+        w,
+      ]),
+    );
+    if (allowed.size === 0) return { waypoints: [] };
+    const r = await this.searcher.search(query, {
+      kinds: ['conversation-waypoint'],
+      limit: Math.max(limit, allowed.size),
+    });
+    const waypoints: WaypointRow[] = [];
+    for (const h of r.hits) {
+      const w = allowed.get(h.node.id);
+      if (w) waypoints.push(w);
+      if (waypoints.length >= limit) break;
+    }
+    return r.degraded ? { waypoints, degraded: r.degraded } : { waypoints };
   }
 
   getWaypoint(id: string): WaypointRow | null {
@@ -483,8 +617,12 @@ export class Rig {
     this.watchLock = null;
   }
 
+  // Waypoints and skills still waiting for their background embed are left
+  // to the next sync.
   close(): void {
     this.unwatch();
+    if (this.embedTimer) clearTimeout(this.embedTimer);
+    this.embedTimer = null;
     this.database.close();
   }
 }

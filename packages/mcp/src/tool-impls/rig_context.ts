@@ -29,7 +29,9 @@ const toMarkdown = (blocks: readonly Block[]): string =>
 
 export async function run(args: Args, ctx: ToolContext): Promise<Result> {
   const start = Date.now();
-  const hits = ctx.rig.searchNodes(args.task, { limit: args.max_nodes });
+  // Anchors with source only: a skill or waypoint has no body to bundle.
+  const found = await ctx.rig.search(args.task, { limit: args.max_nodes, sourceOnly: true });
+  const hits = found.hits.map((h) => h.node);
   ctx.recordActivation(
     hits.map((n) => n.id),
     { queryHash: queryHash(args.task) },
@@ -52,5 +54,6 @@ export async function run(args: Args, ctx: ToolContext): Promise<Result> {
     anchor_count: items.length,
     elapsed_ms: Date.now() - start,
     truncated,
+    ...(found.degraded ? { degraded: found.degraded } : {}),
   };
 }

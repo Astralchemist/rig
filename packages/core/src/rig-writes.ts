@@ -98,7 +98,13 @@ export class UnknownRefsError extends Error {
 }
 
 export class RigWrites {
-  constructor(private readonly db: Database) {}
+  // `onEmbeddable` hears of each committed node that search embeds (waypoints,
+  // skills); Rig embeds them in the background so a write never waits on the
+  // model.
+  constructor(
+    private readonly db: Database,
+    private readonly onEmbeddable?: (nodeIds: readonly string[]) => void,
+  ) {}
 
   proposeEdge(args: ProposeArgs, ctx: WriteCtx): number {
     const adapter = this.db.adapter;
@@ -316,6 +322,7 @@ export class RigWrites {
       payload: { id, kind: args.kind, title: args.title },
       actor: ctx.actor,
     });
+    this.onEmbeddable?.([id]);
     return id;
   }
 
@@ -340,6 +347,7 @@ export class RigWrites {
          ON CONFLICT(id) DO UPDATE SET name=excluded.name, data=excluded.data, updated_at=excluded.updated_at`,
       )
       .run(id, args.name, JSON.stringify(data), now, now);
+    this.onEmbeddable?.([id]);
     return id;
   }
 

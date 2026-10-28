@@ -183,17 +183,28 @@ discover which of its tools to call — "I need to validate this externally"
 ranks browser/web tools high; "what is connected to X" ranks
 rig_pull/rig_neighbors high.
 
-Same retrieval substrate as rig_search; this just narrows to skill anchors
-and returns the tier+description so the agent has enough to pick.
+Same hybrid retrieval as rig_search (names, keywords over the
+descriptions, and semantic similarity of the embedded descriptions); this
+just narrows to skill anchors and returns the tier+description so the
+agent has enough to pick. degraded is "keyword-only" when the embedding
+model was unavailable.
 
 ### `rig_search`
 
-Find anchors by name or qualified name via SQLite FTS5. Returns
-{id, name, kind, file_path?} matches ranked by FTS relevance.
+Find anchors by name or by a plain-language description. Takes a symbol
+("AuthStore", "auth_store", "AuthStore.login", a prefix like "authStor")
+or a question ("where do we refresh expired sessions?").
 
-Use this for "where is X defined" or "find a symbol named Y" questions.
+Fuses three candidate lists by reciprocal rank: exact name and alias
+matches (always first), keyword matches (SQLite FTS5 over names,
+identifier words, signatures, docstrings and doc/waypoint text, BM25
+ranked; every word must match for symbol-like queries, any word for
+questions) and semantic matches (cosine similarity to local embeddings).
+Each hit carries score and matched_by. When the embedding model is
+unavailable the vector list is left out and degraded is "keyword-only".
+
 For "what's related to this node" use rig_pull instead — search does not
-score by graph proximity or semantic similarity.
+score by graph proximity.
 
 ### `rig_session_token`
 
@@ -236,7 +247,10 @@ authoritative dead-code report.
 
 ### `rig_waypoints`
 
-List waypoints in newest-first order. Optional filters: session_id (pass
+List waypoints in newest-first order, or by relevance to query when one is
+given (hybrid search over titles, summaries, key terms and rationales;
+degraded is "keyword-only" when the embedding model was unavailable).
+Optional filters: session_id (pass
 "last" to auto-resolve to the most recently active session with waypoints
 other than your own — useful at session start to rehydrate the previous
 thread, and it keeps finding that thread after you drop waypoints of your
@@ -250,11 +264,15 @@ session_id="last" limit=20 to pick up where the previous session ended.
 
 ### `rig_context`
 
-Build a context bundle for a task: runs the same name search as
-rig_search (FTS5 over anchor names, qualified names and aliases, BM25
-ranked) and returns the top max_nodes hits in that order with their
-source bodies, formatted for direct LLM consumption (markdown by default;
-JSON available). It does not rank by magnetic pull: call rig_pull on a
+Build a context bundle for a task: runs the same hybrid search as
+rig_search on the task text — exact names and aliases first, then
+keyword (FTS5, BM25) and semantic (local embeddings) matches fused by
+reciprocal rank — over anchors that have source in a file, and returns
+the top max_nodes in that order with their source bodies, formatted for
+direct LLM consumption (markdown by default; JSON available). A
+plain-language task ("fix the login bug") finds anchors as well as a
+symbol name does. degraded is "keyword-only" when the embedding model
+was unavailable. It does not rank by magnetic pull: call rig_pull on a
 hit for the anchors related to it.
 
 Heavy tier — the bundle carries full source bodies, so it costs far more
@@ -268,7 +286,11 @@ true; lower max_nodes or narrow the task to get whole bodies.
 ### `rig_explore`
 
 Search the index for a question and return the top-K anchors with their
-source bodies and one-hop related anchors. Returns full file slices, so
+source bodies and one-hop related anchors. Anchors come from the same
+hybrid search as rig_search (exact names, keywords and semantic
+similarity), limited to anchors with source in a file, so a
+plain-language question works; degraded is "keyword-only" when the
+embedding model was unavailable. Returns full file slices, so
 this is token-heavy: navigate with the light tools first and call this
 once you know which code you need. For lightweight metadata-only
 navigation use rig_pull or rig_neighbors.

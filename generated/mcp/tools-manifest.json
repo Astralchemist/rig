@@ -782,6 +782,11 @@
           "truncated": {
             "type": "boolean",
             "description": "True when a source was cut to fit the response cap"
+          },
+          "degraded": {
+            "type": "string",
+            "const": "keyword-only",
+            "description": "Set when semantic matching was unavailable (embedding model not loaded)"
           }
         },
         "required": [
@@ -1436,6 +1441,11 @@
           "truncated": {
             "type": "boolean",
             "description": "True when a source was cut to fit the response cap"
+          },
+          "degraded": {
+            "type": "string",
+            "const": "keyword-only",
+            "description": "Set when semantic matching was unavailable (embedding model not loaded)"
           }
         },
         "required": [
@@ -2344,6 +2354,11 @@
           },
           "elapsed_ms": {
             "type": "number"
+          },
+          "degraded": {
+            "type": "string",
+            "const": "keyword-only",
+            "description": "Set when semantic matching was unavailable (embedding model not loaded)"
           }
         },
         "required": [
@@ -2359,7 +2374,7 @@
     },
     {
       "name": "rig_search",
-      "description": "FTS5 search over anchor names",
+      "description": "Hybrid name, keyword and semantic search over anchors",
       "tier": "light",
       "stability": "stable",
       "since": "1.0",
@@ -2369,7 +2384,7 @@
           "query": {
             "type": "string",
             "minLength": 1,
-            "description": "FTS5 query string"
+            "description": "A symbol name or a plain-language description"
           },
           "kind": {
             "type": "string",
@@ -2407,18 +2422,42 @@
                 },
                 "file_path": {
                   "type": "string"
+                },
+                "score": {
+                  "type": "number",
+                  "description": "Fused relevance (reciprocal rank fusion); higher is better"
+                },
+                "matched_by": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "name",
+                      "alias",
+                      "keyword",
+                      "vector"
+                    ]
+                  },
+                  "description": "Which candidate lists found this anchor"
                 }
               },
               "required": [
                 "id",
                 "name",
-                "kind"
+                "kind",
+                "score",
+                "matched_by"
               ],
               "additionalProperties": false
             }
           },
           "elapsed_ms": {
             "type": "number"
+          },
+          "degraded": {
+            "type": "string",
+            "const": "keyword-only",
+            "description": "Set when semantic matching was unavailable (embedding model not loaded)"
           }
         },
         "required": [
@@ -2785,6 +2824,11 @@
             "minimum": 1,
             "maximum": 200,
             "default": 50
+          },
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Rank waypoints by relevance to this text instead of by recency"
           }
         },
         "additionalProperties": false,
@@ -2990,6 +3034,11 @@
           },
           "elapsed_ms": {
             "type": "number"
+          },
+          "degraded": {
+            "type": "string",
+            "const": "keyword-only",
+            "description": "Set when semantic matching was unavailable (embedding model not loaded)"
           }
         },
         "required": [

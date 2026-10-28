@@ -9,11 +9,15 @@ export default defineToolContract({
   since: '1.0',
   summary: 'Build a context bundle for a task',
   description: `
-Build a context bundle for a task: runs the same name search as
-rig_search (FTS5 over anchor names, qualified names and aliases, BM25
-ranked) and returns the top max_nodes hits in that order with their
-source bodies, formatted for direct LLM consumption (markdown by default;
-JSON available). It does not rank by magnetic pull: call rig_pull on a
+Build a context bundle for a task: runs the same hybrid search as
+rig_search on the task text — exact names and aliases first, then
+keyword (FTS5, BM25) and semantic (local embeddings) matches fused by
+reciprocal rank — over anchors that have source in a file, and returns
+the top max_nodes in that order with their source bodies, formatted for
+direct LLM consumption (markdown by default; JSON available). A
+plain-language task ("fix the login bug") finds anchors as well as a
+symbol name does. degraded is "keyword-only" when the embedding model
+was unavailable. It does not rank by magnetic pull: call rig_pull on a
 hit for the anchors related to it.
 
 Heavy tier — the bundle carries full source bodies, so it costs far more
@@ -36,6 +40,10 @@ true; lower max_nodes or narrow the task to get whole bodies.
     anchor_count: z.number().int(),
     elapsed_ms: z.number(),
     truncated: z.boolean().describe('True when a source was cut to fit the response cap'),
+    degraded: z
+      .literal('keyword-only')
+      .optional()
+      .describe('Set when semantic matching was unavailable (embedding model not loaded)'),
   }),
   // MAIN_SESSION_FORBIDDEN is no longer raised: MCP can't tell a main session
   // from a sub-agent, so the gate is gone. Removing an error code from a stable

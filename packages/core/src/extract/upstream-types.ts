@@ -92,6 +92,9 @@ export interface Node {
   // A2 lockfile resolution — concrete installed version, populated post-extract
   // by enrichDependenciesFromLockfiles when a sibling lockfile is present.
   resolvedVersion?: string;
+  // markdown-section: the start of the section's own prose (up to the next
+  // heading, code blocks left out), for search and embedding.
+  excerpt?: string;
   updatedAt: number;
 }
 

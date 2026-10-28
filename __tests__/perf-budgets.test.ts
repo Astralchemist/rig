@@ -4,6 +4,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Rig } from '../packages/core/src/index.ts';
+import { upsertEmbedding } from '../packages/core/src/db/embed-queries.ts';
+import { DeterministicEmbedder } from '../packages/core/src/embed/deterministic-embedder.ts';
 import { serveWeb } from '../packages/web/src/index.ts';
 
 // Performance budgets. Where we can't hit the target scale within a
@@ -89,6 +91,59 @@ describe('performance budgets (§1.3)', () => {
     expect(pulls.length).toBeGreaterThan(0);
     expect(elapsed).toBeLessThan(100);
   });
+
+  // Hybrid search scans every vector of the model, so it is budgeted at the
+  // size of a large repo: 20k nodes with 384-d embeddings, written straight
+  // into the graph. The embedder is the deterministic one, so the timing is
+  // rig's own work (FTS, cosine scan, fusion, row loads) once a model is up.
+  test('hybrid search < 100ms on a 20k-node graph (model loaded)', async () => {
+    const rig = await Rig.init(project, { embedder: new DeterministicEmbedder() });
+    const db = rig.database.adapter;
+    const N = 20_000;
+    const DIM = 384;
+    let seed = 42;
+    const rand = (): number => ((seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31) * 2 - 1;
+    const words = ['session', 'token', 'cache', 'invoice', 'retry', 'login', 'render', 'parse'];
+    const insert = db.prepare(
+      `INSERT INTO nodes (id, type, name, data, created_at, updated_at) VALUES (?, ?, ?, ?, 0, 0)`,
+    );
+    db.transaction(() => {
+      for (let i = 0; i < N; i++) {
+        const w = words[i % words.length]!;
+        const name = `${w}Handler${i}`;
+        insert.run(
+          `n${i}`,
+          i % 5 === 0 ? 'class' : 'function',
+          name,
+          JSON.stringify({
+            qualifiedName: `mod${i % 300}.${name}`,
+            filePath: `src/mod${i % 300}.ts`,
+            docstring: `Handles the ${w} step ${i}`,
+          }),
+        );
+        const v = new Float32Array(DIM);
+        for (let d = 0; d < DIM; d++) v[d] = rand();
+        upsertEmbedding(db, `n${i}`, 'rig-deterministic-sha256-384', v);
+      }
+    })();
+    // First search loads the vectors and the (deterministic) model.
+    await rig.search('warm up the index');
+    const queries = [
+      'where do we refresh expired sessions?',
+      'sessionHandler42',
+      'fix the login bug',
+    ];
+    let worst = 0;
+    for (const q of queries) {
+      const start = performance.now();
+      const r = await rig.search(q, { limit: 20 });
+      worst = Math.max(worst, performance.now() - start);
+      expect(r.degraded).toBeUndefined();
+      expect(r.hits.length).toBeGreaterThan(0);
+    }
+    rig.close();
+    expect(worst).toBeLessThan(100);
+  }, 60_000);
 
   test('web server cold start < 1s', async () => {
     const rig = await Rig.init(project);

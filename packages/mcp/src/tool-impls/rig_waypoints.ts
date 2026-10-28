@@ -8,11 +8,15 @@ type Result = z.infer<typeof contract.output>;
 
 export async function run(args: Args, ctx: ToolContext): Promise<Result> {
   const start = Date.now();
-  const waypoints = ctx.rig.getWaypoints({
+  const opts = {
     ...(args.session_id ? { sessionId: args.session_id } : {}),
     callerSessionId: ctx.sessionId,
     ...(args.kind ? { kind: args.kind } : {}),
     ...(args.limit !== undefined ? { limit: args.limit } : {}),
-  });
-  return { waypoints, elapsed_ms: Date.now() - start };
+  };
+  if (args.query) {
+    const { waypoints, degraded } = await ctx.rig.searchWaypoints(args.query, opts);
+    return { waypoints, elapsed_ms: Date.now() - start, ...(degraded ? { degraded } : {}) };
+  }
+  return { waypoints: ctx.rig.getWaypoints(opts), elapsed_ms: Date.now() - start };
 }

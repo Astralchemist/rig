@@ -122,4 +122,20 @@ describe('schema golden (v1 + v2)', () => {
     expect(SCHEMA).toContain('ALTER TABLE edges_semantic ADD COLUMN source_urls TEXT');
     expect(SCHEMA).toMatch(/CREATE TABLE IF NOT EXISTS meta \(\s*key TEXT PRIMARY KEY/);
   });
+
+  test('v14 rebuilds nodes_fts with search columns and adds embeddings.seq', () => {
+    expect(SCHEMA).toContain('-- v14:');
+    expect(SCHEMA).toContain('DROP TABLE IF EXISTS nodes_fts;');
+    expect(SCHEMA).toContain(
+      'name, qualified_name, tokens, signature, docstring, text, node_id UNINDEXED',
+    );
+    const v14 = SCHEMA.slice(SCHEMA.indexOf('-- v14:'));
+    // Triggers stay scoped to name/data (v7) and the existing rows are backfilled.
+    expect(v14).toContain('CREATE TRIGGER nodes_after_insert AFTER INSERT ON nodes');
+    expect(v14).toContain('CREATE TRIGGER nodes_after_update AFTER UPDATE OF name, data ON nodes');
+    expect(v14).toContain('CREATE TRIGGER nodes_after_delete AFTER DELETE ON nodes');
+    expect(v14).toMatch(/INSERT INTO nodes_fts\([^)]+\)\s+SELECT[\s\S]+FROM nodes n;/);
+    expect(v14).toContain('ALTER TABLE embeddings ADD COLUMN seq INTEGER NOT NULL DEFAULT 0');
+    expect(v14).toContain('CREATE INDEX IF NOT EXISTS idx_embeddings_model_seq');
+  });
 });

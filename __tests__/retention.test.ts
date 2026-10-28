@@ -135,6 +135,8 @@ describe('retention across index and sync', () => {
     const before = memoryState();
     expectMemoryAttached(before);
 
+    // The waypoint attachMemory dropped is embedded in the background.
+    await rig.whenIdle();
     embedder.count = 0;
     const r = await rig.indexAll();
 
@@ -148,6 +150,8 @@ describe('retention across index and sync', () => {
     attachMemory();
     const before = memoryState();
 
+    // The waypoint attachMemory dropped is embedded in the background.
+    await rig.whenIdle();
     embedder.count = 0;
     const r = await rig.indexAll({ force: true });
 
@@ -195,6 +199,8 @@ describe('retention across index and sync', () => {
       .prepare(`UPDATE files SET extractor_version = ?`)
       .run(EXTRACTOR_VERSION - 1);
 
+    // The waypoint attachMemory dropped is embedded in the background.
+    await rig.whenIdle();
     embedder.count = 0;
     const first = await rig.indexAll();
     expect(first.changed).toBe(fileCount);

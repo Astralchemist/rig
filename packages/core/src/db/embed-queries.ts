@@ -6,6 +6,9 @@ const toBlob = (v: Float32Array): Buffer => Buffer.from(v.buffer, v.byteOffset, 
 const fromBlob = (b: Buffer, dim: number): Float32Array =>
   new Float32Array(b.buffer.slice(b.byteOffset, b.byteOffset + dim * 4));
 
+// Every write stamps seq with the model's highest seq + 1 (v14). Writers are
+// serialized by SQLite's write lock, so a reader that has seen every row up
+// to seq N finds everything written since as seq > N (vector-index.ts).
 export const upsertEmbedding = (
   db: SqliteAdapter,
   nodeId: string,
@@ -14,9 +17,11 @@ export const upsertEmbedding = (
   textHash = '',
 ): void => {
   db.prepare(
-    `INSERT INTO embeddings (node_id, model, dim, vector, text_hash) VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT(node_id) DO UPDATE SET model=excluded.model, dim=excluded.dim, vector=excluded.vector, text_hash=excluded.text_hash`,
-  ).run(nodeId, model, vector.length, toBlob(vector), textHash);
+    `INSERT INTO embeddings (node_id, model, dim, vector, text_hash, seq)
+     VALUES (?, ?, ?, ?, ?, COALESCE((SELECT MAX(seq) FROM embeddings WHERE model = ?), 0) + 1)
+     ON CONFLICT(node_id) DO UPDATE SET model=excluded.model, dim=excluded.dim, vector=excluded.vector,
+       text_hash=excluded.text_hash, seq=excluded.seq`,
+  ).run(nodeId, model, vector.length, toBlob(vector), textHash, model);
 };
 
 // Used by embedAndStore to skip re-embedding nodes whose embedding text hasn't

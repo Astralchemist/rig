@@ -20,7 +20,8 @@ import type {
 // sync skip a file only when its content hash AND the version stored with it
 // match, so bump this whenever an extractor change would produce different
 // rows for the same source; otherwise unchanged files keep stale extraction.
-export const EXTRACTOR_VERSION = 1;
+// 2: markdown sections carry a body excerpt.
+export const EXTRACTOR_VERSION = 2;
 
 export async function extractFromSource(
   filePath: string,

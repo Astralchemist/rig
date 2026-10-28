@@ -66,6 +66,7 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
 ## What you get
 
 - **A map of your codebase.** Files, symbols, calls, imports, and dependencies as a navigable graph — not a file tree.
+- **Search in plain language.** "Where do we refresh expired sessions?" finds the code, not just a symbol named that: exact names, keywords and on-device embeddings fused into one ranking.
 - **Magnetic pull.** Ask "what's related to X" and get a ranked answer that blends graph distance, semantic similarity, and what's been active recently.
 - **Hubs.** The structurally important anchors surface first, so a 5k-node graph stays legible.
 - **Dependency intelligence.** "What version of X do I have?" and "what's declared but never imported?" become one-hop graph queries.
@@ -162,7 +163,7 @@ Run `rig --help` for the full list.
 
 ## How it works
 
-`.contracts/` is the declarative source of truth (tools, anchors, migrations, events); `bun run gen` emits the matching code into `generated/`. The graph is plain SQLite. Retrieval is a single magnetic-pull scoring function over structural edges, on-device embeddings, and recency. The map UI is a force-graph over WebSocket.
+`.contracts/` is the declarative source of truth (tools, anchors, migrations, events); `bun run gen` emits the matching code into `generated/`. The graph is plain SQLite. Search fuses exact names, SQLite FTS5 keyword matches and on-device embedding similarity by reciprocal rank; "what's related" is a single magnetic-pull scoring function over structural edges, on-device embeddings, and recency. The map UI is a force-graph over WebSocket.
 
 - `packages/core` — the `Rig` class: DB, extraction, graph, embeddings, magnetic pull
 - `packages/mcp` — MCP stdio server + tool dispatch

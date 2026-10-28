@@ -10,7 +10,9 @@ type Result = z.infer<typeof contract.output>;
 
 export async function run(args: Args, ctx: ToolContext): Promise<Result> {
   const start = Date.now();
-  const hits = ctx.rig.searchNodes(args.question, { limit: args.max_anchors });
+  // Anchors with source only: a skill or waypoint has no body to explore.
+  const found = await ctx.rig.search(args.question, { limit: args.max_anchors, sourceOnly: true });
+  const hits = found.hits.map((h) => h.node);
   ctx.recordActivation(
     hits.map((n) => n.id),
     { queryHash: queryHash(args.question) },
@@ -35,5 +37,10 @@ export async function run(args: Args, ctx: ToolContext): Promise<Result> {
   const { items, truncated } = fitSources(anchors, (as) =>
     JSON.stringify({ anchors: as, elapsed_ms: 0, truncated: true }),
   );
-  return { anchors: items, elapsed_ms: Date.now() - start, truncated };
+  return {
+    anchors: items,
+    elapsed_ms: Date.now() - start,
+    truncated,
+    ...(found.degraded ? { degraded: found.degraded } : {}),
+  };
 }

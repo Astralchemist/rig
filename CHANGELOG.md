@@ -6,6 +6,17 @@ All notable changes to Rig are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **Natural-language search.** `rig_search` fuses three candidate lists by reciprocal rank (k = 60): exact name and alias matches (always first), keyword matches and semantic matches from the local embeddings. A question such as "where do we refresh expired sessions?" now finds code; a symbol name still returns that symbol first. Each node carries `score` and `matched_by`.
+  - The keyword index (migration v14) also covers identifier words (`handleLogin`, `handle_login` and `handle-login` all match "handle login"), signatures, docstrings, and waypoint and doc text. Symbol-like queries keep exact and prefix matching; questions drop stopwords, match any word and rank by BM25 with column weights.
+  - The query is embedded with the project's embedder (lazily, with a small cache), and every vector of the active model is scored in memory. The vectors are loaded once and refreshed incrementally.
+  - Without the model (offline first run, model missing, still loading) search answers from names and keywords and says `degraded: "keyword-only"`. It never fails for that reason, and the MCP server never waits on the model at startup.
+- `rig_context` and `rig_explore` find their anchors with the same hybrid search, so plain-language tasks return code. `rig_relevant_skills` ranks skills semantically as well, and `rig_waypoints` takes an optional `query` that ranks waypoints by relevance instead of recency.
+- Waypoints (title, summary, key terms and rationale) and skills (name and description) are embedded. A waypoint is embedded in the background after its write, and the update pipeline embeds anything still missing. Markdown sections are embedded with an excerpt of their body.
+
+### Changed
+- Embedding text now includes identifier words, and its version is part of the stored text hash. The first `rig index` or `rig sync` after upgrading re-embeds every node once. The extractor version is bumped for markdown excerpts, so every file is re-extracted once (in place).
+
 ## [0.2.0] - 2026-10-28
 
 Agent memory now survives re-indexing. This release fixes the correctness, safety and retention bugs found in an audit of 0.1.x. Because install scope, web-map auth and the Node baseline change, it is a minor bump.

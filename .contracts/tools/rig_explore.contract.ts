@@ -27,7 +27,11 @@ export default defineToolContract({
   summary: 'Full neighborhoods + source for a question',
   description: `
 Search the index for a question and return the top-K anchors with their
-source bodies and one-hop related anchors. Returns full file slices, so
+source bodies and one-hop related anchors. Anchors come from the same
+hybrid search as rig_search (exact names, keywords and semantic
+similarity), limited to anchors with source in a file, so a
+plain-language question works; degraded is "keyword-only" when the
+embedding model was unavailable. Returns full file slices, so
 this is token-heavy: navigate with the light tools first and call this
 once you know which code you need. For lightweight metadata-only
 navigation use rig_pull or rig_neighbors.
@@ -46,6 +50,10 @@ true; lower max_anchors or narrow the question to get whole bodies.
     anchors: z.array(anchor),
     elapsed_ms: z.number(),
     truncated: z.boolean().describe('True when a source was cut to fit the response cap'),
+    degraded: z
+      .literal('keyword-only')
+      .optional()
+      .describe('Set when semantic matching was unavailable (embedding model not loaded)'),
   }),
   // MAIN_SESSION_FORBIDDEN is no longer raised: MCP can't tell a main session
   // from a sub-agent, so the gate is gone. Removing an error code from a stable
