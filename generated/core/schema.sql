@@ -1,5 +1,5 @@
 -- GENERATED FILE — DO NOT EDIT.
--- Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts, .contracts/migrations/v5.contract.ts, .contracts/migrations/v6.contract.ts, .contracts/migrations/v7.contract.ts, .contracts/migrations/v8.contract.ts, .contracts/migrations/v9.contract.ts, .contracts/migrations/v10.contract.ts, .contracts/migrations/v11.contract.ts, .contracts/migrations/v12.contract.ts
+-- Source: .contracts/migrations/v1.contract.ts, .contracts/migrations/v2.contract.ts, .contracts/migrations/v3.contract.ts, .contracts/migrations/v4.contract.ts, .contracts/migrations/v5.contract.ts, .contracts/migrations/v6.contract.ts, .contracts/migrations/v7.contract.ts, .contracts/migrations/v8.contract.ts, .contracts/migrations/v9.contract.ts, .contracts/migrations/v10.contract.ts, .contracts/migrations/v11.contract.ts, .contracts/migrations/v12.contract.ts, .contracts/migrations/v13.contract.ts
 -- Edit the .contract.ts file(s), then run `bun run gen`.
 
 -- v1: Initial Rig schema: nodes, structural + semantic edges, embeddings, activations, FTS5
@@ -306,3 +306,31 @@ CREATE TABLE IF NOT EXISTS orphaned_memory (
 );
 CREATE INDEX IF NOT EXISTS idx_orphaned_memory_anchor
   ON orphaned_memory(file_path, kind, qualified_name);
+
+-- v13: Write path: kind + source_urls on edges_semantic (backfilled), meta table
+ALTER TABLE edges_semantic ADD COLUMN kind TEXT NOT NULL DEFAULT 'related';
+ALTER TABLE edges_semantic ADD COLUMN source_urls TEXT;
+
+UPDATE edges_semantic
+SET kind = (
+      SELECT p.kind FROM pending_edges p
+      WHERE p.src = edges_semantic.src AND p.dst = edges_semantic.dst
+        AND p.provenance = edges_semantic.provenance AND p.status = 'accepted'
+      ORDER BY p.id DESC LIMIT 1
+    ),
+    source_urls = (
+      SELECT p.source_urls FROM pending_edges p
+      WHERE p.src = edges_semantic.src AND p.dst = edges_semantic.dst
+        AND p.provenance = edges_semantic.provenance AND p.status = 'accepted'
+      ORDER BY p.id DESC LIMIT 1
+    )
+WHERE EXISTS (
+  SELECT 1 FROM pending_edges p
+  WHERE p.src = edges_semantic.src AND p.dst = edges_semantic.dst
+    AND p.provenance = edges_semantic.provenance AND p.status = 'accepted'
+);
+
+CREATE TABLE IF NOT EXISTS meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
