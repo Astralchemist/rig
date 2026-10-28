@@ -60,6 +60,7 @@ import { runSync, type SyncResult } from './sync.ts';
 import type { NodeId, RigNode } from './types.ts';
 import { FileWatcher, type WatchOptions } from './watch.ts';
 import { acquireWatchLock, type WatchLock } from './watch-lock.ts';
+import { logWarn } from './errors.ts';
 import { watchDisabledReason } from './watch-policy.ts';
 
 export { DB_FILE_NAME, RIG_DIR_NAME };
@@ -394,27 +395,42 @@ export class Rig {
     return false;
   }
 
+  // Also runs from timers (lock retry, heartbeat step-down), so it never throws:
+  // a failure leaves the graph unwatched rather than crashing the server.
   private startWatching(opts: RigWatchOptions): 'started' | 'locked' | 'unavailable' {
-    const lock = acquireWatchLock(rigDirOf(this.projectRoot), {
-      // Someone took the lock over (we looked stale): step down and retry.
-      onLost: () => {
-        this.watchLock = null;
-        this.unwatch();
-        this.watch(opts);
-      },
-    });
-    if (!lock) return 'locked';
-    const watcher = new FileWatcher(this.projectRoot, () => this.sync(), opts);
-    if (!watcher.start()) {
-      lock.release();
+    let lock: WatchLock | null = null;
+    let watcher: FileWatcher;
+    try {
+      lock = acquireWatchLock(rigDirOf(this.projectRoot), {
+        // Someone took the lock over (we looked stale): step down and retry.
+        onLost: () => {
+          this.watchLock = null;
+          this.unwatch();
+          this.watch(opts);
+        },
+      });
+      if (!lock) return 'locked';
+      watcher = new FileWatcher(this.projectRoot, () => this.sync(), opts);
+      if (!watcher.start()) {
+        lock.release();
+        return 'unavailable';
+      }
+    } catch (e) {
+      logWarn('Could not start the file watcher', { error: String(e) });
+      lock?.release();
       return 'unavailable';
     }
     this.watcher = watcher;
     this.watchLock = lock;
     // Catch up on edits made while no watcher ran (never-indexed projects are
     // left to an explicit `rig index`).
-    const indexed = this.database.adapter.prepare(`SELECT 1 AS x FROM files LIMIT 1`).get();
-    if (indexed) watcher.requestSync();
+    try {
+      if (this.database.adapter.prepare(`SELECT 1 AS x FROM files LIMIT 1`).get()) {
+        watcher.requestSync();
+      }
+    } catch {
+      // the next file change syncs anyway
+    }
     return 'started';
   }
 

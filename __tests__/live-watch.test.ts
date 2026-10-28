@@ -1,11 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { hostname, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Rig } from '../packages/core/src/index.ts';
 import { DeterministicEmbedder } from '../packages/core/src/embed/deterministic-embedder.ts';
+import { FileWatcher } from '../packages/core/src/watch.ts';
 import { acquireWatchLock, WATCH_LOCK_FILE } from '../packages/core/src/watch-lock.ts';
 import { serveWeb } from '../packages/web/src/index.ts';
 
@@ -150,6 +159,57 @@ describe('Rig.watch across instances', () => {
       expect(still.rig.isWatching()).toBe(false);
     } finally {
       await still.close();
+    }
+  });
+
+  test('a .rig directory it cannot write never throws, and watching starts once it can', async () => {
+    // Root ignores the permission bits; Windows does not apply them to dirs.
+    if (process.getuid?.() === 0 || process.platform === 'win32') return;
+    const rig = await Rig.init(project, { embedder: new DeterministicEmbedder() });
+    const rigDir = join(project, '.rig');
+    try {
+      chmodSync(rigDir, 0o555);
+      expect(rig.watch({ debounceMs: 50, lockRetryMs: 20 })).toBe(false);
+      await sleep(100); // several retries hit the same error inside the timer
+      expect(rig.isWatching()).toBe(false);
+
+      chmodSync(rigDir, 0o755);
+      for (const deadline = Date.now() + 2000; !rig.isWatching() && Date.now() < deadline; ) {
+        await sleep(20);
+      }
+      expect(rig.isWatching()).toBe(true);
+    } finally {
+      chmodSync(rigDir, 0o755);
+      rig.close();
+    }
+  });
+});
+
+describe('FileWatcher retries', () => {
+  test('a new change gets a fresh set of retries after they ran out', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'rig-watch-retry-'));
+    let calls = 0;
+    let synced = 0;
+    const watcher = new FileWatcher(
+      dir,
+      async () => {
+        if (++calls <= 3) throw new Error('SQLITE_BUSY: database is locked');
+        synced++;
+        return { filesChanged: 0, durationMs: 0 };
+      },
+      { debounceMs: 10, maxRetries: 1 },
+    );
+    try {
+      watcher.requestSync();
+      await sleep(150);
+      expect(calls).toBe(2); // first attempt + one retry, then it waits
+      watcher.requestSync();
+      await sleep(150);
+      expect(calls).toBe(4);
+      expect(synced).toBe(1);
+    } finally {
+      watcher.stop();
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });

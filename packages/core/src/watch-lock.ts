@@ -10,7 +10,9 @@ import { logDebug } from './errors.ts';
 // The holder touches the file every heartbeat. A lock is stale, and taken
 // over, when its process is gone or its heartbeat is older than staleMs (a
 // frozen process, or a pid reused after a reboot). The holder re-reads the
-// lock on each heartbeat and steps down if someone else took it.
+// lock shortly after taking it and on each heartbeat, and steps down if
+// someone else took it. Nothing here throws: a lock that cannot be written is
+// simply not acquired.
 
 export const WATCH_LOCK_FILE = 'watch.lock';
 
@@ -54,17 +56,29 @@ const isAlive = (pid: number): boolean => {
   }
 };
 
-const isStale = (path: string, staleMs: number): boolean => {
-  let mtimeMs: number;
+interface LockState {
+  raw: string;
+  mtimeMs: number;
+}
+
+const readState = (path: string): LockState | null => {
   try {
-    mtimeMs = statSync(path).mtimeMs;
+    return { raw: readFileSync(path, 'utf-8'), mtimeMs: statSync(path).mtimeMs };
   } catch {
-    return true;
+    return null;
   }
-  if (Date.now() - mtimeMs > staleMs) return true;
-  const body = readBody(path);
-  // Unreadable but fresh: a holder mid-write. Leave it alone.
-  if (!body) return false;
+};
+
+const isStale = (state: LockState, staleMs: number): boolean => {
+  if (Date.now() - state.mtimeMs > staleMs) return true;
+  let body: Partial<LockBody> | null = null;
+  try {
+    body = JSON.parse(state.raw) as Partial<LockBody>;
+  } catch {
+    // Unreadable but fresh: a holder mid-write. Leave it alone.
+    return false;
+  }
+  if (typeof body?.pid !== 'number') return false;
   return body.host === hostname() && !isAlive(body.pid);
 };
 
@@ -73,7 +87,12 @@ const isStale = (path: string, staleMs: number): boolean => {
 // without hard links fall back to an exclusive create.
 const createExclusive = (path: string, content: string, token: string): boolean => {
   const tmp = `${path}.${token}.tmp`;
-  writeFileSync(tmp, content);
+  try {
+    writeFileSync(tmp, content);
+  } catch (e) {
+    logDebug('Cannot write watch lock', { path, error: String(e) });
+    return false;
+  }
   try {
     linkSync(tmp, path);
     return true;
@@ -106,14 +125,22 @@ export const acquireWatchLock = (rigDir: string, opts: WatchLockOptions = {}): W
   const content = JSON.stringify(body);
 
   let acquired = createExclusive(path, content, token);
-  if (!acquired && isStale(path, staleMs)) {
-    logDebug('Taking over stale watch lock', { path, holder: readBody(path) });
-    try {
-      unlinkSync(path);
-    } catch {
-      // another process removed it first
+  if (!acquired) {
+    const seen = readState(path);
+    if (!seen || isStale(seen, staleMs)) {
+      // Remove only the lock judged stale: if another process took it over in
+      // the meantime, its fresh lock stays and this attempt fails.
+      const now = readState(path);
+      if (seen && now && now.raw === seen.raw && now.mtimeMs === seen.mtimeMs) {
+        logDebug('Taking over stale watch lock', { path, holder: seen.raw });
+        try {
+          unlinkSync(path);
+        } catch {
+          // another process removed it first
+        }
+      }
+      acquired = createExclusive(path, content, token);
     }
-    acquired = createExclusive(path, content, token);
   }
   if (!acquired) return null;
 
@@ -122,6 +149,7 @@ export const acquireWatchLock = (rigDir: string, opts: WatchLockOptions = {}): W
   const release = (): void => {
     if (released) return;
     released = true;
+    clearTimeout(firstCheck);
     clearInterval(heartbeat);
     process.removeListener('exit', release);
     if (ours()) {
@@ -132,10 +160,15 @@ export const acquireWatchLock = (rigDir: string, opts: WatchLockOptions = {}): W
       }
     }
   };
-  const heartbeat = setInterval(() => {
+  const beat = (): void => {
+    if (released) return;
     if (!ours()) {
       release();
-      opts.onLost?.();
+      try {
+        opts.onLost?.();
+      } catch (e) {
+        logDebug('Watch lock onLost failed', { error: String(e) });
+      }
       return;
     }
     try {
@@ -144,7 +177,12 @@ export const acquireWatchLock = (rigDir: string, opts: WatchLockOptions = {}): W
     } catch {
       // transient; the next beat retries
     }
-  }, heartbeatMs);
+  };
+  // Two processes taking over the same stale lock at once is still possible
+  // in a narrow window; an early check makes the loser step down quickly.
+  const firstCheck = setTimeout(beat, Math.min(1000, heartbeatMs));
+  firstCheck.unref?.();
+  const heartbeat = setInterval(beat, heartbeatMs);
   heartbeat.unref?.();
   process.on('exit', release);
   return { path, release };

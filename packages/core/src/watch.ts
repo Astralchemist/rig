@@ -125,6 +125,8 @@ export class FileWatcher {
 
           logDebug('File change detected', { file: normalized });
           this.hasChanges = true;
+          // A new change earns a fresh set of retries.
+          this.failures = 0;
           this.scheduleSync();
         }
       );
@@ -171,6 +173,7 @@ export class FileWatcher {
   requestSync(): void {
     if (this.stopped) return;
     this.hasChanges = true;
+    this.failures = 0;
     this.scheduleSync();
   }
 
@@ -212,8 +215,9 @@ export class FileWatcher {
       const error = err instanceof Error ? err : new Error(String(err));
       logWarn('Watch sync failed', { error: error.message });
       this.onSyncError?.(error);
-      // Nothing was committed for a failed sync; try again unless it keeps
-      // failing, in which case the next file change retries.
+      // Retry: the next sync picks up whatever is still pending (changes not
+      // yet applied, nodes still missing a vector). If it keeps failing, wait
+      // for the next file change.
       if (++this.failures <= this.maxRetries) this.hasChanges = true;
     } finally {
       this.syncing = false;
