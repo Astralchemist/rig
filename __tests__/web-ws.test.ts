@@ -50,7 +50,9 @@ describe('web WS channel', () => {
       const handle = await serveWeb({ projectRoot: project, port: 0 });
       const port = new URL(handle.url).port;
 
-      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, {
+        headers: { authorization: `Bearer ${handle.token}` },
+      });
       const events: Array<{ type: string }> = [];
       ws.on('message', (m) => events.push(JSON.parse(m.toString()) as { type: string }));
       await new Promise<void>((res, rej) => {

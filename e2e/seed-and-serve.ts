@@ -1,6 +1,6 @@
 // Bun script that boots a fresh Rig project for Playwright tests.
-// Writes e2e/.state.json with { url, projectRoot, srcId, dstId, pendingId },
-// then keeps serveWeb running until SIGTERM.
+// Writes e2e/.state.json with { url, loginUrl, token, projectRoot, srcId,
+// dstId, pendingId }, then keeps serveWeb running until SIGTERM.
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -64,6 +64,10 @@ writeFileSync(
   JSON.stringify(
     {
       url: handle.url,
+      // The map requires its session token, loopback included. Specs sign in
+      // through the same /auth?t= link `rig start` opens.
+      loginUrl: `${handle.url}/auth?t=${handle.token}`,
+      token: handle.token,
       projectRoot,
       srcId: login.id,
       dstId: render.id,

@@ -16,6 +16,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': toApi,
+      '/auth': toApi, // token login: sets the session cookie for the dev origin
       '/ws': { ...toApi, target: 'ws://127.0.0.1:7474', ws: true },
     },
   },

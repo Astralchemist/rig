@@ -200,8 +200,9 @@ the map. Used when "open the rig map" comes up in chat — the agent fetches the
 token (because it has filesystem access to .rig/), the user clicks the URL,
 and the cookie gets set.
 
-Returns 'no_runtime_token' in errors when the server isn't running with auth
-enabled (loopback dev mode skips the token by default).
+The map requires this token on loopback too. Returns NO_RUNTIME_TOKEN until
+the map has been served once in this project (`rig start` or
+`rig serve --web` writes .rig/.runtime).
 
 ### `rig_status`
 

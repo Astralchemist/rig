@@ -32,7 +32,7 @@ const eventsOfType = async (page: import('@playwright/test').Page, type: string)
   );
 
 test('propose → accept → undo flow drives WS events into the page', async ({ page }) => {
-  await page.goto('/');
+  await page.goto(state.loginUrl);
   await installWsCollector(page);
 
   // The /api/graph endpoint should include the pending edge.

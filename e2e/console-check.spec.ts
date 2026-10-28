@@ -12,7 +12,7 @@ test('app boots without console errors', async ({ page }) => {
   page.on('response', (r) => {
     if (r.status() >= 400) errors.push(`http: ${r.status()} ${r.url()}`);
   });
-  await page.goto(state.url);
+  await page.goto(state.loginUrl);
   await page.waitForLoadState('networkidle');
   // Give React a beat to finish hydration.
   await page.waitForTimeout(500);

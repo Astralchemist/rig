@@ -36,8 +36,9 @@ test('mutation in tab A is visible in tab B within 1500ms', async ({ browser }) 
   const ctxB = await browser.newContext();
   const pageA = await ctxA.newPage();
   const pageB = await ctxB.newPage();
-  await pageA.goto(state.url);
-  await pageB.goto(state.url);
+  // Separate contexts: each signs in on its own.
+  await pageA.goto(state.loginUrl);
+  await pageB.goto(state.loginUrl);
   await installWsCollector(pageA, wsUrl);
   await installWsCollector(pageB, wsUrl);
 

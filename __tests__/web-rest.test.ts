@@ -33,8 +33,11 @@ describe('web REST endpoints', () => {
   });
 
   const base = (): string => `http://127.0.0.1:${PORT}`;
+  // The map requires its session token, loopback included.
+  const get = (path: string): Promise<Response> =>
+    fetch(base() + path, { headers: { authorization: `Bearer ${handle.token}` } });
   const fetchJson = async <T>(path: string): Promise<{ status: number; body: T }> => {
-    const res = await fetch(base() + path);
+    const res = await get(path);
     return { status: res.status, body: (await res.json()) as T };
   };
 
@@ -72,7 +75,7 @@ describe('web REST endpoints', () => {
   });
 
   test('GET /api/search without q returns 400', async () => {
-    const res = await fetch(base() + '/api/search');
+    const res = await get('/api/search');
     expect(res.status).toBe(400);
   });
 
@@ -93,7 +96,7 @@ describe('web REST endpoints', () => {
   });
 
   test('GET /api/node/:id returns 404 for unknown id', async () => {
-    const res = await fetch(base() + '/api/node/nope');
+    const res = await get('/api/node/nope');
     expect(res.status).toBe(404);
   });
 

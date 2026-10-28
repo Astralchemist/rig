@@ -5,7 +5,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Rig } from '@rig/core';
 import { DeterministicEmbedder } from '@rig/core/embed/deterministic-embedder.ts';
+import { cookieNameFor } from '../packages/web/src/auth.ts';
 import { serveWeb, type WebHandle } from '../packages/web/src/index.ts';
+import { tryWs } from './_try-ws.ts';
 
 describe('auth — bearer-token gate (Flavor A)', () => {
   let project: string;
@@ -26,11 +28,49 @@ describe('auth — bearer-token gate (Flavor A)', () => {
     rmSync(project, { recursive: true, force: true });
   });
 
-  test('default (loopback) leaves auth off — /api/status is open', async () => {
+  // Any page open in the browser can reach a loopback server, so loopback is
+  // no reason to skip the token.
+  test('default (loopback) requires the token: 401 without, 200 with', async () => {
     handle = await serveWeb({ projectRoot: project, port: 0 });
+    expect(handle.token).not.toBeNull();
+    const host = new URL(handle.url).host;
+    const get = (headers: Record<string, string> = {}) =>
+      handle!.app.inject({ method: 'GET', url: '/api/status', headers: { host, ...headers } });
+
+    expect((await get()).statusCode).toBe(401);
+    expect((await get({ authorization: 'Bearer wrong' })).statusCode).toBe(401);
+    expect((await get({ authorization: `Bearer ${handle.token}` })).statusCode).toBe(200);
+    const cookie = `${cookieNameFor(handle.token!)}=${handle.token}`;
+    expect((await get({ cookie })).statusCode).toBe(200);
+    // An emptied cookie doesn't shadow the ?t= login.
+    const viaQuery = await handle.app.inject({
+      url: `/api/status?t=${handle.token}`,
+      headers: { host, cookie: `${cookieNameFor(handle.token!)}=` },
+    });
+    expect(viaQuery.statusCode).toBe(200);
+    // Writes are gated the same way.
+    const undo = (headers: Record<string, string>) =>
+      handle!.app.inject({ method: 'POST', url: '/api/undo', headers: { host, ...headers } });
+    expect((await undo({})).statusCode).toBe(401);
+    expect((await undo({ cookie })).statusCode).toBe(200);
+  });
+
+  test('auth: false (rig serve --no-auth) still opens loopback without a token', async () => {
+    handle = await serveWeb({ projectRoot: project, port: 0, auth: false });
     expect(handle.token).toBeNull();
     const res = await fetch(`${handle.url}/api/status`);
     expect(res.ok).toBe(true);
+  });
+
+  test('/ws: 401 without the token; cookie, Bearer or ?t= opens it', async () => {
+    handle = await serveWeb({ projectRoot: project, port: 0 });
+    const ws = handle.url.replace(/^http/, 'ws') + '/ws';
+    const cookie = `${cookieNameFor(handle.token!)}=${handle.token}`;
+    expect(await tryWs(ws)).toBe(401);
+    expect(await tryWs(ws, { headers: { cookie: 'rig_token_000000000000=nope' } })).toBe(401);
+    expect(await tryWs(ws, { headers: { cookie } })).toBe('open');
+    expect(await tryWs(ws, { headers: { authorization: `Bearer ${handle.token}` } })).toBe('open');
+    expect(await tryWs(`${ws}?t=${handle.token}`)).toBe('open');
   });
 
   test('--auth=true generates .runtime mode 0600 + gates /api/*', async () => {
@@ -63,8 +103,22 @@ describe('auth — bearer-token gate (Flavor A)', () => {
     const res = await fetch(`${handle.url}/auth?t=${handle.token}`, { redirect: 'manual' });
     expect(res.status).toBe(302);
     const setCookie = res.headers.get('set-cookie');
-    expect(setCookie).toMatch(/rig_token=/);
+    expect(setCookie).toMatch(/^rig_token_[0-9a-f]{12}=/);
     expect(setCookie).toMatch(/HttpOnly/);
+    expect(setCookie).toMatch(/SameSite=Strict/);
+    // The cookie the browser gets back is what authenticates the map.
+    const cookie = setCookie!.split(';')[0]!;
+    const me = await fetch(`${handle.url}/api/session/me`, { headers: { cookie } });
+    expect(me.status).toBe(200);
+  });
+
+  test("each project's map gets its own cookie name, so maps on two ports don't collide", () => {
+    // Cookies ignore ports: one named `rig_token` would let logging into the
+    // second map log you out of the first.
+    const a = cookieNameFor('a'.repeat(64));
+    const b = cookieNameFor('b'.repeat(64));
+    expect(a).not.toBe(b);
+    expect(a).toMatch(/^rig_token_[0-9a-f]{12}$/);
   });
 
   test('/auth with wrong token returns 401', async () => {

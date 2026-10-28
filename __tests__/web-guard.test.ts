@@ -3,26 +3,11 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { hostname, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { WebSocket, type ClientOptions } from 'ws';
 import { Rig } from '@rig/core';
 import { DeterministicEmbedder } from '@rig/core/embed/deterministic-embedder.ts';
 import { makeRequestGuard } from '../packages/web/src/request-guard.ts';
 import { serveWeb, type WebHandle } from '../packages/web/src/index.ts';
-
-// Resolves 'open', or the HTTP status the server refused the upgrade with.
-const tryWs = (url: string, opts: ClientOptions = {}): Promise<'open' | number> =>
-  new Promise((resolve, reject) => {
-    const ws = new WebSocket(url, opts);
-    ws.on('error', reject); // no-op once settled
-    ws.once('open', () => {
-      resolve('open');
-      ws.terminate();
-    });
-    ws.once('unexpected-response', (req, res) => {
-      resolve(res.statusCode ?? -1);
-      req.destroy();
-    });
-  });
+import { tryWs } from './_try-ws.ts';
 
 describe('web guard — Host allowlist + Origin check (DNS rebinding, CSRF)', () => {
   let project: string;

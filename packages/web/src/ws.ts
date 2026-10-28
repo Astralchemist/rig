@@ -6,6 +6,7 @@ import { STATUS_CODES, type IncomingMessage, type Server as HttpServer } from 'n
 import { join, resolve } from 'node:path';
 import type { Duplex } from 'node:stream';
 import { WebSocketServer, type WebSocket } from 'ws';
+import { hasToken } from './auth.ts';
 import type { RequestGuard } from './request-guard.ts';
 import { deriveEvents } from './ws-derive.ts';
 
@@ -24,6 +25,8 @@ export interface WsEvent {
 // HTTP checks are repeated here.
 export interface WsGate {
   guard: RequestGuard;
+  // Session token the upgrade must carry (cookie, Bearer or ?t=); null = --no-auth.
+  token: string | null;
 }
 
 const RIG_DIR = '.rig';
@@ -38,6 +41,7 @@ const upgradeStatus = (req: IncomingMessage, gate: WsGate): number => {
   if (req.url?.split('?')[0] !== '/ws') return 404;
   if (!gate.guard.hostAllowed(req.headers.host)) return 403;
   if (!gate.guard.originAllowed(req.headers.origin)) return 403;
+  if (gate.token !== null && !hasToken(req, gate.token)) return 401;
   return 101;
 };
 

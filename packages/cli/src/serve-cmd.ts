@@ -40,7 +40,9 @@ export async function runServe(cwd: string): Promise<void> {
       if (handle.token) {
         process.stderr.write(`  auth: on   login: ${handle.url}/auth?t=${handle.token}\n`);
       } else {
-        process.stderr.write(`  auth: off  (loopback dev mode — pass --auth to require a token)\n`);
+        process.stderr.write(
+          `  auth: off  (--no-auth — anything on this machine can read and edit the map)\n`,
+        );
       }
     } catch (e) {
       process.stderr.write(`rig serve --web failed: ${e instanceof Error ? e.message : String(e)}\n`);

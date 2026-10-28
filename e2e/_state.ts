@@ -6,6 +6,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 
 export interface State {
   url: string;
+  loginUrl: string;
+  token: string;
   projectRoot: string;
   srcId: string;
   dstId: string;
