@@ -66,7 +66,7 @@ class BunSqliteAdapter implements SqliteAdapter {
   }
 
   transaction<T>(fn: () => T): () => T {
-    return this.db.transaction(fn);
+    return this.db.transaction(fn).immediate;
   }
 
   loadExtension(path: string): void {

@@ -13,7 +13,7 @@ interface BetterSqliteInstance {
   exec(sql: string): void;
   prepare(sql: string): BetterSqliteStmt;
   pragma(stmt: string, opts?: { simple?: boolean }): unknown;
-  transaction<T extends (...args: unknown[]) => unknown>(fn: T): T;
+  transaction<T extends (...args: unknown[]) => unknown>(fn: T): T & { immediate: T };
   loadExtension(path: string): void;
   close(): void;
   open: boolean;
@@ -60,7 +60,7 @@ class BetterSqliteAdapter implements SqliteAdapter {
   }
 
   transaction<T>(fn: () => T): () => T {
-    return this.db.transaction(fn as never) as unknown as () => T;
+    return this.db.transaction(fn).immediate;
   }
 
   loadExtension(path: string): void {

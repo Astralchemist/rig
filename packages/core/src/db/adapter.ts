@@ -18,6 +18,12 @@ export interface SqliteAdapter {
   exec(sql: string): void;
   prepare(sql: string): SqliteStatement;
   pragma(statement: string): unknown;
+  /**
+   * Wrap `fn` in a write transaction opened with BEGIN IMMEDIATE: the write
+   * lock is taken up front (waiting up to BUSY_TIMEOUT_MS), so a read-then-
+   * write body can't fail SQLITE_BUSY on the lock upgrade halfway through,
+   * where SQLite won't wait. Nested calls become savepoints.
+   */
   transaction<T>(fn: () => T): () => T;
   /**
    * Load a native SQLite extension (e.g. sqlite-vec) from a path.

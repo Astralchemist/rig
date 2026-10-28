@@ -5,6 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Subprocess } from 'bun';
+import type { SqliteAdapter } from '@rig/core/db/adapter.ts';
 import { Database } from '@rig/core/db/database.ts';
 
 // Several processes share one .rig/rig.db: each agent's MCP server, `rig
@@ -90,24 +91,56 @@ describe('Database — concurrent writers', () => {
     expect(await child.exited).toBe(0);
     expect(rows()).toEqual(['child', 'parent']);
   });
+
+  it('transaction() takes the write lock up front, so read-then-write bodies wait too', async () => {
+    // Under a deferred BEGIN the SELECT pins a read snapshot, and SQLite skips
+    // the busy handler when upgrading that to a write lock, so the INSERT
+    // would fail SQLITE_BUSY at once whatever busy_timeout says.
+    const child = await holdWriteLock(dbPath);
+    expectLocked(dbPath);
+    const seen = db.adapter.transaction(() => {
+      const { n } = db.adapter.prepare('SELECT count(*) AS n FROM probe').get() as { n: number };
+      db.adapter.prepare("INSERT INTO probe (who) VALUES ('parent')").run();
+      return n;
+    })();
+    expect(await child.exited).toBe(0);
+    // The read already saw the child's row: the lock was taken before it ran.
+    expect(seen).toBe(1);
+    expect(rows()).toEqual(['child', 'parent']);
+  });
 });
 
 describe('better-sqlite3 adapter (Node fallback)', () => {
-  it('sets busy_timeout to 5000ms on open', async () => {
-    // better-sqlite3 doesn't load under Bun; a recording stand-in shows what
-    // the adapter asks of the driver.
-    const pragmas: string[] = [];
-    class FakeBetterSqlite {
-      open = true;
-      pragma(statement: string): unknown[] {
-        pragmas.push(statement);
-        return [];
-      }
-      close(): void {}
+  // better-sqlite3 doesn't load under Bun; a recording stand-in shows what the
+  // adapter asks of the driver.
+  const calls: string[] = [];
+  class FakeBetterSqlite {
+    open = true;
+    pragma(statement: string): unknown[] {
+      calls.push(`PRAGMA ${statement}`);
+      return [];
     }
+    transaction(fn: () => unknown): (() => unknown) & { immediate: () => unknown } {
+      const begin = (sql: string) => (): unknown => (calls.push(sql), fn());
+      return Object.assign(begin('BEGIN'), { immediate: begin('BEGIN IMMEDIATE') });
+    }
+    close(): void {}
+  }
+  const openAdapter = async (): Promise<SqliteAdapter> => {
     mock.module('better-sqlite3', () => ({ default: FakeBetterSqlite }));
     const { betterSqliteFactory } = await import('@rig/core/db/better-sqlite-adapter.ts');
-    betterSqliteFactory.open(':memory:').close();
-    expect(pragmas).toContain('busy_timeout = 5000');
+    return betterSqliteFactory.open(':memory:');
+  };
+
+  it('sets busy_timeout to 5000ms on open', async () => {
+    (await openAdapter()).close();
+    expect(calls).toContain('PRAGMA busy_timeout = 5000');
+  });
+
+  it('opens transactions with BEGIN IMMEDIATE', async () => {
+    const adapter = await openAdapter();
+    expect(adapter.transaction(() => 42)()).toBe(42);
+    expect(calls.at(-1)).toBe('BEGIN IMMEDIATE');
+    adapter.close();
   });
 });
