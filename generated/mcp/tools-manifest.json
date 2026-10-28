@@ -2421,13 +2421,13 @@
         "properties": {
           "host": {
             "type": "string",
-            "default": "127.0.0.1"
+            "description": "Override the host the web server recorded"
           },
           "port": {
             "type": "integer",
             "minimum": 1,
             "maximum": 65535,
-            "default": 7474
+            "description": "Override the port the web server recorded"
           }
         },
         "additionalProperties": false,

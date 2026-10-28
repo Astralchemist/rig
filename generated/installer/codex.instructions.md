@@ -200,6 +200,11 @@ the map. Used when "open the rig map" comes up in chat — the agent fetches the
 token (because it has filesystem access to .rig/), the user clicks the URL,
 and the cookie gets set.
 
+The URL points at the host and port the web server last bound (ports are
+per project; the server records its address in .rig/.web.json), falling
+back to 127.0.0.1:7474 only when no server has recorded one. Pass host or
+port only to override that.
+
 The map requires this token on loopback too. Returns NO_RUNTIME_TOKEN until
 the map has been served once in this project (`rig start` or
 `rig serve --web` writes .rig/.runtime).
