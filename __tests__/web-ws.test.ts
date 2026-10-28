@@ -18,7 +18,9 @@ const initProject = async (): Promise<string> => {
 };
 
 const openWs = async (handle: WebHandle): Promise<WebSocket> => {
-  const ws = new WebSocket(`ws://127.0.0.1:${new URL(handle.url).port}/ws`);
+  const ws = new WebSocket(`ws://127.0.0.1:${new URL(handle.url).port}/ws`, {
+    headers: { authorization: `Bearer ${handle.token}` },
+  });
   await new Promise<void>((res, rej) => {
     ws.once('open', () => res());
     ws.once('error', rej);
@@ -91,7 +93,10 @@ describe('web WS live updates', () => {
     for (let i = 1; i <= 3; i++) {
       const res = await fetch(`${handle.url}/api/selection`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${handle.token}`,
+        },
         body: JSON.stringify({ node_id: null }),
       });
       expect(res.ok).toBe(true);
