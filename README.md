@@ -42,16 +42,19 @@ npx rig-constellation
   → 1/6 extract      ██████████████████ 212/212
   → 5/6 hubness      ████████████████░░
   ✓ indexed     1,204 nodes · 3,891 edges · 212 files · 36 skills
-  ✓ wired       claude
+  ✓ wired Claude Code  project
+      wrote     .mcp.json
+      wrote     .claude/settings.json
+      wrote     CLAUDE.md
 
   press Ctrl-C to stop the map.
 ```
 
 It initializes `.rig/`, opens the live map **first**, then indexes your code so the
-graph assembles in the already-open browser tab in real time, and wires up whichever
-agent it detects. The map title and port are derived per project, so two checkouts can
-run side by side on stable, distinct ports. Re-run any time, or use the explicit
-subcommands below.
+graph assembles in the already-open browser tab in real time, and wires whichever
+agent it detects into this project, listing every file it writes. The map title and
+port are derived per project, so two checkouts can run side by side on stable,
+distinct ports. Re-run any time, or use the explicit subcommands below.
 
 > The command is `rig` (alias: `rig-constellation`). Prefer a global install?
 > `npm i -g rig-constellation` (or `bun install -g rig-constellation`), then `rig start`.
@@ -108,13 +111,31 @@ That ranked, self-explaining retrieval — not a flat grep dump — is the diffe
 
 ## Wiring your agent
 
-`bunx rig-constellation` auto-detects and wires the agents you have installed. To wire one explicitly:
+`bunx rig-constellation` auto-detects the agents you have installed and wires them **into
+the current project** — it never edits your user-level config. To wire one explicitly:
 
 ```bash
-rig install claude      # also: cursor · codex · opencode · openrouter
+rig install claude            # also: cursor · codex · opencode
+rig install claude --global   # your user-level config instead: applies to every project
+rig uninstall claude          # remove exactly what install added (--all · --global · --dry-run)
 ```
 
-This merges Rig's MCP server into the agent's config; the agent spawns `rig serve --mcp` on demand.
+| Agent | Project (default) | `--global` |
+|---|---|---|
+| Claude Code | `.mcp.json` · `.claude/settings.json` · `CLAUDE.md` | `~/.claude.json` · `~/.claude/settings.json` · `~/.claude/CLAUDE.md` |
+| Cursor | `.cursor/mcp.json` · `.cursor/cli.json` · `.cursor/rules/rig.mdc` | `~/.cursor/mcp.json` |
+| Codex CLI | — user-level only | `~/.codex/config.toml` · `~/.codex/AGENTS.md` |
+| opencode | — user-level only | `~/.config/opencode/opencode.jsonc` · `~/.config/opencode/AGENTS.md` |
+
+Each install merges Rig's MCP server entry, Rig's per-tool approval policy (in the
+agent's own permission format), and a short usage guide between `<!-- rig:begin -->`
+markers, leaving the rest of each file alone — re-running it is safe. The agent spawns
+`rig serve --mcp` on demand; Claude Code asks you once to approve a server from a
+project's `.mcp.json`. In a directory without `.rig/`, the server still starts and every
+tool answers with how to fix it (`rig init` or `rig start`).
+
+OpenRouter is an API, not an MCP host: `rig install openrouter` only writes a reference
+config to copy into the MCP client you use with it.
 
 ---
 
@@ -123,10 +144,12 @@ This merges Rig's MCP server into the agent's config; the agent spawns `rig serv
 | Command | What it does |
 |---|---|
 | `rig start` | One-shot: init + index + wire agent + open the live map |
+| `rig install <agent>` | Wire an agent into this project (`--global` for your user-level config) |
+| `rig uninstall <agent>` | Remove exactly what install added (`--all`, `--global`, `--dry-run`) |
 | `rig index` | Extract + write nodes (`--include` / `--exclude <glob>`) |
 | `rig sync` | Incremental update |
 | `rig query` | CLI search |
-| `rig serve --all` | Start MCP and/or the web map (`--mcp` / `--web` / `--no-auth`) |
+| `rig serve --all` | Start MCP and/or the web map (`--mcp` / `--web` / `--no-auth`; `--path <dir>` for another project) |
 | `rig status` | Index health |
 | `rig doctor` | Diagnose environment, db, model cache, agent configs |
 | `rig export-docs` | Render waypoints into a markdown doc tree |

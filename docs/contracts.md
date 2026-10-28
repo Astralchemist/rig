@@ -70,7 +70,7 @@ export const rig_random = async (rig: Rig, args: { kind?: string }) => {
 
 ### 4. Done
 
-No other edits. The handler stub imports your body, validates input/output, applies tier middleware (activation recording for light tools), and is registered automatically via the generated handlers index. Permission JSONs and instructions markdowns for all 5 targets update on the next install.
+No other edits. The handler stub imports your body, validates input/output, applies tier middleware (activation recording for light tools), and is registered automatically via the generated handlers index. Every target's instructions markdown, and the permission policy of each target that writes one, update on the next install.
 
 ---
 
@@ -112,15 +112,21 @@ defineTargetContract({
   display_name: 'Claude Code',
   detect: async () => existsSync(...),
   files: [
+    // project scope (default): paths relative to the project root
+    { role: 'mcp_config', path: '.mcp.json', mode: 'merge-json', template: { ... }, note: 'printed by the installer' },
+    { role: 'permissions', path: '.claude/settings.json', mode: 'merge-json', template: '{{GENERATED:claude.permissions.json}}' },
+    { role: 'instructions', path: 'CLAUDE.md', mode: 'append-section', section_marker: '## Rig', template: '{{GENERATED:claude.instructions.md}}' },
+    // user scope (`rig install --global`): `~/…` paths
     { role: 'mcp_config', path: '~/.claude.json', mode: 'merge-json', template: { ... } },
-    { role: 'permissions', path: '~/.claude/settings.json', mode: 'merge-json', template: '{{GENERATED:claude.permissions.json}}' },
-    { role: 'instructions', path: '~/.claude/CLAUDE.md', mode: 'append-section', section_marker: '## Rig', template: '{{GENERATED:claude.instructions.md}}' },
+    // …
   ],
   uninstall_strategy: 'reverse',
 });
 ```
 
-Per-tool permissions and instructions sections are composed from BOTH the target contract and every tool contract's `permissions[<target>]` field. Add a tool → all 5 target outputs refresh on next `gen`.
+A file's path is its scope: `~/…` is user-level and written only by `rig install --global`; any other path is relative to the project root and written by `rig install` / `rig start`. A target with files in only one scope (Codex, opencode) is installed in that scope when named explicitly, and skipped by `rig start`. `rig uninstall` removes each file's rig content in reverse order.
+
+Per-tool permissions and instructions sections are composed from BOTH the target contract and every tool contract's `permissions[<target>]` field. Add a tool → every target's outputs refresh on next `gen`. A permissions file is generated only for targets that declare a `permissions` file, in that host's own format (`PERMISSION_FORMATS` in `scripts/gen/emitters/target.ts`): Claude Code `mcp__rig__<tool>` allow/ask lists, the Cursor CLI's `Mcp(rig:<tool>)` allow list, Codex `[mcp_servers.rig.tools.<tool>] approval_mode`, opencode `permission.rig_<tool>`. On re-install, rig's current policy decides where its own entries go (`packages/cli/src/install/ownership.ts`); everything else in the file is the user's and is kept.
 
 ### Migrations — `.contracts/migrations/v<N>.contract.ts`
 
@@ -173,7 +179,7 @@ Enforced at `bun run gen` (and therefore at pre-commit + CI + `bun test`):
 |---|---|
 | Add a tool | Write one `.contracts/tools/*.contract.ts`, write the body in `packages/mcp/src/tool-impls/`, `bun run gen` |
 | Add an anchor type | Write one `.contracts/anchors/*.contract.ts`, extend extractor if `extractor: 'tree-sitter'`, `bun run gen` |
-| Add a target | Write one `.contracts/targets/*.contract.ts`, run `bun run gen`. Permissions and instructions compose from existing tool contracts automatically |
+| Add a target | Write one `.contracts/targets/*.contract.ts`, run `bun run gen`. Instructions compose from existing tool contracts automatically; a `permissions` file also needs the host's format in `PERMISSION_FORMATS` |
 | Add a migration | Write `.contracts/migrations/v(N+1).contract.ts` with `version: N+1`, `bun run gen`, update `schema-golden.test.ts` expectations |
 | Add a WS event | Write one `.contracts/events/*.contract.ts`, point `emitted_by` at the tool(s) that emit it, `bun run gen` |
 | Force regen after pulling | `bun run gen` (or pre-commit will block stale commits anyway) |
