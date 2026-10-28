@@ -20,14 +20,22 @@ export const makeFileNode = (id: string, filePath: string, language: Language): 
 
 export const fileIdOf = (filePath: string): string => generateNodeId(filePath, 'file', filePath, 0);
 
-export const declKindOf = (type: string, ex: LanguageExtractor): NodeKind | null => {
+// `inClass`: the nearest enclosing declaration is a class. A node type listed
+// as both function and method (Python's function_definition) is a method only
+// directly in a class body; nested in a function or method it is a function.
+export const declKindOf = (
+  type: string,
+  ex: LanguageExtractor,
+  inClass = false,
+): NodeKind | null => {
   if (ex.classTypes.includes(type)) return 'class';
   if (ex.interfaceTypes.includes(type)) return ex.interfaceKind ?? 'interface';
   if (ex.structTypes.includes(type)) return 'struct';
   if (ex.enumTypes.includes(type)) return 'enum';
   if (ex.typeAliasTypes.includes(type)) return 'type_alias';
-  if (ex.methodTypes.includes(type)) return 'method';
-  if (ex.functionTypes.includes(type)) return 'function';
+  const isFunction = ex.functionTypes.includes(type);
+  if (ex.methodTypes.includes(type) && (inClass || !isFunction)) return 'method';
+  if (isFunction) return 'function';
   return null;
 };
 

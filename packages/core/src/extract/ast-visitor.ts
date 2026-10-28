@@ -3,11 +3,19 @@ import { Node as SyntaxNode } from 'web-tree-sitter';
 import { calleeNameOf, declKindOf, nameFor } from './node-builders.ts';
 import { generateNodeId, getPrecedingDocstring } from './tree-sitter-helpers.ts';
 import type { LanguageExtractor } from './tree-sitter-types.ts';
-import type { Edge, EdgeKind, Language, Node, UnresolvedReference } from './upstream-types.ts';
+import type {
+  Edge,
+  EdgeKind,
+  Language,
+  Node,
+  NodeKind,
+  UnresolvedReference,
+} from './upstream-types.ts';
 
 interface ScopeFrame {
   id: string;
   name: string;
+  kind: NodeKind;
 }
 
 export interface VisitCtx {
@@ -111,7 +119,8 @@ export function visit(node: SyntaxNode, ctx: VisitCtx): void {
     return;
   }
 
-  const kind = declKindOf(node.type, ctx.extractor);
+  const enclosing = ctx.scope[ctx.scope.length - 1];
+  const kind = declKindOf(node.type, ctx.extractor, enclosing?.kind === 'class');
   if (kind) {
     const name = nameFor(node, ctx.extractor);
     if (name) {
@@ -138,11 +147,10 @@ export function visit(node: SyntaxNode, ctx: VisitCtx): void {
         updatedAt: Date.now(),
       });
       // Direct `contains` edge from the enclosing scope to this declaration.
-      const parent = ctx.scope[ctx.scope.length - 1];
-      if (parent) {
-        ctx.edges.push({ source: parent.id, target: id, kind: 'contains' });
+      if (enclosing) {
+        ctx.edges.push({ source: enclosing.id, target: id, kind: 'contains' });
       }
-      ctx.scope.push({ id, name });
+      ctx.scope.push({ id, name, kind });
       for (let i = 0; i < node.namedChildCount; i++) {
         const c = node.namedChild(i);
         if (c) visit(c, ctx);
