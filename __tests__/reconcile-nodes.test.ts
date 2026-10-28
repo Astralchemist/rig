@@ -91,6 +91,21 @@ describe('reconcileNodes', () => {
     expect(r.nodes.find((n) => n.node.kind === 'declared-dependency')!.storedId).toBe(depBefore.id);
   });
 
+  test('duplicate ids within one extraction collapse into one node, last one winning', async () => {
+    const fresh = await extract(
+      'package.json',
+      JSON.stringify({ dependencies: { zod: '^3.22' }, devDependencies: { zod: '^3.23' } }),
+    );
+    const deps = fresh.filter((n) => n.kind === 'declared-dependency');
+    expect(deps).toHaveLength(2);
+    expect(deps[0]!.id).toBe(deps[1]!.id);
+    const r = reconcileNodes([], fresh, () => false);
+    const kept = r.nodes.filter((n) => n.node.kind === 'declared-dependency');
+    expect(kept.map((n) => [n.node.id, n.node.qualifiedName])).toEqual([
+      [deps[0]!.id, 'npm:zod@^3.23'],
+    ]);
+  });
+
   test('removed symbols are reported and never re-used for new ones', async () => {
     const before = await extract(
       'a.ts',

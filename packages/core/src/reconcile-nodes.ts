@@ -18,6 +18,10 @@ import type { Node as ExtractNode } from './extract/upstream-types.ts';
 // file holds it (or anything else in the DB does); then the id is re-hashed
 // deterministically in the same `prefix:32-hex` format. Unmatched stored nodes
 // are removed.
+//
+// Nodes of one extraction that share a generated id (e.g. a package listed in
+// both dependencies and devDependencies) are one node, as when each was
+// upserted in turn: the last occurrence wins.
 
 export interface StoredNode {
   id: string;
@@ -79,10 +83,14 @@ const reHash = (id: string, salt: number): string => {
 
 export const reconcileNodes = (
   stored: readonly StoredNode[],
-  extracted: readonly ExtractNode[],
+  extractedNodes: readonly ExtractNode[],
   // Is this id held by a node outside `stored`?
   isTakenElsewhere: (id: string) => boolean,
 ): Reconciliation => {
+  const byGeneratedId = new Map<string, ExtractNode>();
+  for (const n of extractedNodes) byGeneratedId.set(n.id, n);
+  const extracted = [...byGeneratedId.values()];
+
   // 1. key + ordinal
   const storedOrdinals = positionOrdinals(stored);
   const storedBySlot = new Map<string, StoredNode>();
