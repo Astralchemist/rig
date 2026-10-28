@@ -1,5 +1,5 @@
 // GENERATED FILE — DO NOT EDIT.
-// Source: .contracts/events/alias-added.contract.ts, .contracts/events/edge-accepted.contract.ts, .contracts/events/edge-proposed.contract.ts, .contracts/events/edge-rejected.contract.ts, .contracts/events/focus-requested.contract.ts, .contracts/events/index-progress.contract.ts, .contracts/events/node-added.contract.ts, .contracts/events/node-promoted.contract.ts, .contracts/events/selection-changed.contract.ts
+// Source: .contracts/events/alias-added.contract.ts, .contracts/events/edge-accepted.contract.ts, .contracts/events/edge-proposed.contract.ts, .contracts/events/edge-rejected.contract.ts, .contracts/events/focus-requested.contract.ts, .contracts/events/index-progress.contract.ts, .contracts/events/node-added.contract.ts, .contracts/events/node-annotated.contract.ts, .contracts/events/node-promoted.contract.ts, .contracts/events/selection-changed.contract.ts, .contracts/events/waypoint-dropped.contract.ts
 // Edit the .contract.ts file(s), then run `bun run gen`.
 
 // alias:added
@@ -186,6 +186,30 @@
 //   "$schema": "http://json-schema.org/draft-07/schema#"
 // }
 
+// node:annotated
+// payload (JSON Schema):
+// {
+//   "type": "object",
+//   "properties": {
+//     "node_id": {
+//       "type": "string"
+//     },
+//     "annotation_id": {
+//       "type": "integer"
+//     },
+//     "note": {
+//       "type": "string"
+//     }
+//   },
+//   "required": [
+//     "node_id",
+//     "annotation_id",
+//     "note"
+//   ],
+//   "additionalProperties": false,
+//   "$schema": "http://json-schema.org/draft-07/schema#"
+// }
+
 // node:promoted
 // payload (JSON Schema):
 // {
@@ -225,6 +249,48 @@
 //   "$schema": "http://json-schema.org/draft-07/schema#"
 // }
 
+// waypoint:dropped
+// payload (JSON Schema):
+// {
+//   "type": "object",
+//   "properties": {
+//     "id": {
+//       "type": "string"
+//     },
+//     "kind": {
+//       "type": "string"
+//     },
+//     "title": {
+//       "type": "string"
+//     },
+//     "session_id": {
+//       "type": "string"
+//     },
+//     "constellation_refs": {
+//       "type": "array",
+//       "items": {
+//         "type": "string"
+//       }
+//     },
+//     "predecessors": {
+//       "type": "array",
+//       "items": {
+//         "type": "string"
+//       }
+//     }
+//   },
+//   "required": [
+//     "id",
+//     "kind",
+//     "title",
+//     "session_id",
+//     "constellation_refs",
+//     "predecessors"
+//   ],
+//   "additionalProperties": false,
+//   "$schema": "http://json-schema.org/draft-07/schema#"
+// }
+
 export type WsEvent =
   | { type: 'alias:added'; payload: unknown /* see schema above */ }
   | { type: 'edge:accepted'; payload: unknown /* see schema above */ }
@@ -233,5 +299,7 @@ export type WsEvent =
   | { type: 'focus:requested'; payload: unknown /* see schema above */ }
   | { type: 'index:progress'; payload: unknown /* see schema above */ }
   | { type: 'node:added'; payload: unknown /* see schema above */ }
+  | { type: 'node:annotated'; payload: unknown /* see schema above */ }
   | { type: 'node:promoted'; payload: unknown /* see schema above */ }
-  | { type: 'selection:changed'; payload: unknown /* see schema above */ };
+  | { type: 'selection:changed'; payload: unknown /* see schema above */ }
+  | { type: 'waypoint:dropped'; payload: unknown /* see schema above */ };

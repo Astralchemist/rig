@@ -142,6 +142,15 @@ export const listWaypoints = (db: SqliteAdapter, opts: ListWaypointsOpts = {}): 
   return rows.map(parse);
 };
 
+export const getWaypoint = (db: SqliteAdapter, id: string): WaypointRow | null => {
+  const row = db
+    .prepare(
+      `SELECT id, name, data, created_at FROM nodes WHERE id = ? AND type = 'conversation-waypoint'`,
+    )
+    .get(id) as RawNode | null;
+  return row ? parse(row) : null;
+};
+
 // Walk predecessor chain starting at `waypointId`. Follows waypoint_succeeds
 // edges (waypoint → predecessor) up to `maxDepth` hops. Returns a list from
 // the seed back through history; the seed itself is index 0.

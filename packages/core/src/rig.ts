@@ -26,6 +26,7 @@ import {
   type UnusedDepRow,
 } from './db/dep-queries.ts';
 import {
+  getWaypoint as wqGet,
   getWaypointChain as wqChain,
   listWaypoints as wqList,
   type ListWaypointsOpts,
@@ -352,6 +353,10 @@ export class Rig {
 
   getWaypoints(opts: ListWaypointsOpts = {}): WaypointRow[] {
     return wqList(this.database.adapter, opts);
+  }
+
+  getWaypoint(id: string): WaypointRow | null {
+    return wqGet(this.database.adapter, id);
   }
 
   getWaypointChain(id: string, maxDepth = 10): WaypointRow[] {

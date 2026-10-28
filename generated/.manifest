@@ -51,6 +51,6 @@
     "mcp/handlers/rig_unused_deps.handler.ts": "79d099728b1a2de6",
     "mcp/handlers/rig_waypoints.handler.ts": "29f87f767a3b27e2",
     "mcp/tools-manifest.json": "79ac5a0d512ef0f2",
-    "web/ws-events.ts": "e974a13abab1e2c2"
+    "web/ws-events.ts": "6a53cfff6cafb689"
   }
 }

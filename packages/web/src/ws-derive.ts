@@ -8,7 +8,9 @@ export interface DerivedEvent {
 }
 
 // Map mutation_log rows into typed WS events. Some kinds require an extra
-// lookup (propose_edge → pending_edges row) to assemble the full payload.
+// lookup (propose_edge → pending_edges row, drop_waypoint → the waypoint,
+// annotate → the note) to assemble the full payload; a write undone before
+// the lookup emits nothing.
 export const deriveEvents = (rig: Rig, mutations: MutationRow[]): DerivedEvent[] => {
   const out: DerivedEvent[] = [];
   for (const m of mutations) {
@@ -71,6 +73,36 @@ export const deriveEvents = (rig: Rig, mutations: MutationRow[]): DerivedEvent[]
           payload: { node_id: p.nodeId, alias: p.alias },
         });
         break;
+      case 'drop_waypoint': {
+        const w = rig.getWaypoint(String(p.id));
+        if (w) {
+          out.push({
+            type: 'waypoint:dropped',
+            ts: m.ts,
+            payload: {
+              id: w.id,
+              kind: w.kind,
+              title: w.title,
+              session_id: w.session_id,
+              constellation_refs: w.constellation_refs,
+              predecessors: w.predecessors,
+            },
+          });
+        }
+        break;
+      }
+      case 'annotate': {
+        const nodeId = String(p.nodeId);
+        const note = rig.getAnnotations(nodeId).find((a) => a.id === Number(p.annotationId));
+        if (note) {
+          out.push({
+            type: 'node:annotated',
+            ts: m.ts,
+            payload: { node_id: nodeId, annotation_id: note.id, note: note.note },
+          });
+        }
+        break;
+      }
       case 'promote_hub':
         out.push({
           type: 'node:promoted',
@@ -97,7 +129,6 @@ export const deriveEvents = (rig: Rig, mutations: MutationRow[]): DerivedEvent[]
         });
         break;
       default:
-        // annotate has no UI event for now
         break;
     }
   }
