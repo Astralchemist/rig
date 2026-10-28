@@ -117,6 +117,9 @@ export interface UnresolvedReference {
   // Imports only: the local name `import pandas as pd` binds ('pd'), kept for
   // automatic aliasing (backlog A3).
   alias?: string;
+  // Imports only: the names `from pkg import a, b` pulls in, which may be
+  // submodules of pkg.
+  importedNames?: string[];
 }
 
 export interface ExtractionError {

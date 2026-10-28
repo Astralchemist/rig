@@ -103,6 +103,7 @@ export function visit(node: SyntaxNode, ctx: VisitCtx): void {
         filePath: ctx.filePath,
         language: ctx.language,
         ...(info.alias !== undefined ? { alias: info.alias } : {}),
+        ...(info.importedNames !== undefined ? { importedNames: info.importedNames } : {}),
       });
     }
   }

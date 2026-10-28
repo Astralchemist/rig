@@ -11,6 +11,8 @@ export interface ImportInfo {
   handledRefs?: boolean;
   // Local name bound by `import x as y` ('y').
   alias?: string;
+  // Names pulled in by `from x import a, b` (['a', 'b']).
+  importedNames?: string[];
 }
 
 export interface VariableInfo {

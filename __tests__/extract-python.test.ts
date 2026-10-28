@@ -41,7 +41,7 @@ const IMPORTS_PY = `import os
 import pandas as pd
 import os.path, numpy as np
 import matplotlib.pyplot as plt
-from .base import Base
+from .base import Base, Mixin as M
 from pkg.sub import *
 `;
 
@@ -60,6 +60,15 @@ describe('python extraction', () => {
       { module: '.base', alias: undefined, line: 5 },
       { module: 'pkg.sub', alias: undefined, line: 6 },
     ]);
+  });
+
+  test('from-imports keep the names they pull in, for submodule resolution', async () => {
+    const { unresolvedReferences } = await extractFromSource('app/main.py', IMPORTS_PY);
+    const names = (module: string): string[] | undefined =>
+      unresolvedReferences.find((r) => r.referenceName === module)?.importedNames;
+    expect(names('.base')).toEqual(['Base', 'Mixin']);
+    expect(names('pkg.sub')).toBeUndefined(); // wildcard
+    expect(names('pandas')).toBeUndefined(); // plain import
   });
 
   test('module-level defs are functions, defs in a class body are methods', async () => {
