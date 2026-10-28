@@ -28,11 +28,9 @@ export default defineToolContract({
   description: `
 Search the index for a question and return the top-K anchors with their
 source bodies and one-hop related anchors. Returns full file slices, so
-this is token-heavy.
-
-NEVER call this in the main agent session — spawn a sub-agent. The
-two-tier gate is enforced by the dispatcher (MAIN_SESSION_FORBIDDEN).
-For lightweight metadata-only navigation use rig_pull or rig_neighbors.
+this is token-heavy: navigate with the light tools first and call this
+once you know which code you need. For lightweight metadata-only
+navigation use rig_pull or rig_neighbors.
   `.trim(),
   input: z
     .object({
@@ -44,6 +42,9 @@ For lightweight metadata-only navigation use rig_pull or rig_neighbors.
     anchors: z.array(anchor),
     elapsed_ms: z.number(),
   }),
+  // MAIN_SESSION_FORBIDDEN is no longer raised: MCP can't tell a main session
+  // from a sub-agent, so the gate is gone. Removing an error code from a stable
+  // tool is a breaking change, so it stays declared until a major manifest bump.
   errors: ['NOT_INITIALIZED', 'MAIN_SESSION_FORBIDDEN'],
   permissions: {
     claude: 'ask',
@@ -53,5 +54,4 @@ For lightweight metadata-only navigation use rig_pull or rig_neighbors.
     openrouter: 'ask',
   },
   records_activation: true,
-  main_session_forbidden: true,
 });

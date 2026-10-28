@@ -23,15 +23,10 @@ export const emitToolsManifest = (tools: LoadedContract<'tools'>[]): GeneratedFi
   };
 };
 
+// No guard for the heavy tier: MCP can't tell a main session from a sub-agent,
+// so a main-session gate would refuse every call.
 const tierGuards = (t: LoadedContract<'tools'>): string => {
   const lines: string[] = [];
-  if (t.data.tier === 'heavy') {
-    lines.push(
-      `    if (ctx.isMainSession) {`,
-      `      throw new ToolError('MAIN_SESSION_FORBIDDEN', '${t.data.name} cannot run in the main session');`,
-      `    }`,
-    );
-  }
   if (t.data.tier === 'write') {
     lines.push(
       `    if (!ctx.provenance) {`,
@@ -56,7 +51,6 @@ export const emitToolHandlerStubs = (tools: LoadedContract<'tools'>[]): Generate
   tools.map((t) => {
     const camel = t.basename.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
     const flags =
-      (t.data.main_session_forbidden ? `  mainSessionForbidden: true,\n` : '') +
       (t.data.provenance_required ? `  provenanceRequired: true,\n` : '') +
       (t.data.requires_rationale ? `  requiresRationale: true,\n` : '');
     const body = `${tsHeader([t.file])}import type { ToolHandler } from '@rig/mcp/dispatch.ts';

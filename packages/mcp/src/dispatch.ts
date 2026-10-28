@@ -5,7 +5,6 @@ import { recordActivation } from '@rig/core/db/activation-queries.ts';
 export interface ToolContext {
   rig: Rig;
   sessionId: string;
-  isMainSession: boolean;
   provenance: string | null;
   // Record that a tool query touched a specific anchor. Feeds the recency term
   // in magnetic pull. Safe to call on a missing node — just a no-op insert.
@@ -25,7 +24,6 @@ export const makeActivationRecorder =
 export interface ToolHandler {
   name: string;
   tier: 'light' | 'heavy' | 'write' | 'live';
-  mainSessionForbidden?: boolean;
   provenanceRequired?: boolean;
   requiresRationale?: boolean;
   run(args: unknown, ctx: ToolContext): Promise<unknown>;

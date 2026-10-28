@@ -36,7 +36,6 @@ describe('rig_session_token login URL', () => {
   const ctx = (): ToolContext => ({
     rig,
     sessionId: 'test',
-    isMainSession: false,
     provenance: null,
     recordActivation: () => {},
   });

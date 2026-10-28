@@ -80,11 +80,10 @@ Each contract kind lives under `.contracts/<kind>/` and has a `define*Contract` 
 
 ### Tools — `.contracts/tools/*.contract.ts`
 
-Tiers: `light` (safe in main session), `heavy` (sub-agent only — main-session-forbidden middleware), `write` (provenance + rationale enforced, broadcasts a WS event, paired with an inverse for undo), `live` (long-poll subscription).
+Tiers: `light` (metadata-sized responses), `heavy` (returns source bodies; no session gate, because MCP can't tell a main session from a sub-agent), `write` (provenance + rationale enforced, broadcasts a WS event, paired with an inverse for undo), `live` (long-poll subscription).
 
 Tier-specific fields:
 - `light`: `records_activation?: boolean`
-- `heavy`: `main_session_forbidden: true`
 - `write`: `provenance_required: true`, `broadcasts: WsEventName`, `inverse?: ToolName`, `requires_rationale: true`
 - `live`: `subscription_kind: string`
 

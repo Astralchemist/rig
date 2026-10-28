@@ -243,19 +243,17 @@ Build a context bundle of the top-K anchors most relevant to a task,
 formatted for direct LLM consumption (markdown by default; JSON
 available). Uses search + magnetic-pull ranking.
 
-Heavy tier — must be invoked from a sub-agent, not the main session.
-Use rig_explore for raw exploration; use rig_context when you want a
-single ready-to-prompt block.
+Heavy tier — the bundle carries full source bodies, so it costs far more
+context than the light tools. Use rig_explore for raw exploration; use
+rig_context when you want a single ready-to-prompt block.
 
 ### `rig_explore`
 
 Search the index for a question and return the top-K anchors with their
 source bodies and one-hop related anchors. Returns full file slices, so
-this is token-heavy.
-
-NEVER call this in the main agent session — spawn a sub-agent. The
-two-tier gate is enforced by the dispatcher (MAIN_SESSION_FORBIDDEN).
-For lightweight metadata-only navigation use rig_pull or rig_neighbors.
+this is token-heavy: navigate with the light tools first and call this
+once you know which code you need. For lightweight metadata-only
+navigation use rig_pull or rig_neighbors.
 
 ## write tools
 
@@ -340,9 +338,9 @@ rejected, nodes added). Polling every 2s is a good default.
 Use this to inject "user is now looking at <anchor>" context into your
 next agent turn without the user typing.
 
-## Two-tier gate
+## Context budget
 
-NEVER call `rig_explore` or `rig_context` directly in the main session — spawn a sub-agent for these.
+`rig_explore` and `rig_context` return full source bodies, so a call costs far more context than the light tools. Navigate with the light tools first and call a heavy tool once you know which code you need. They work from any session; if you can hand heavy exploration to a sub-agent, doing so keeps the main context lean.
 
 ## Session bootstrap
 

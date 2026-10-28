@@ -135,8 +135,9 @@ async function main(): Promise<void> {
   const r4text = (responses[4] as { result?: { content?: Array<{ text?: string }> } } | undefined)?.result?.content?.[0]?.text;
   const searchResult = r4text ? (JSON.parse(r4text) as { nodes?: unknown[] }) : null;
   check('rig_search "AuthStore" → ≥1 hit', (searchResult?.nodes?.length ?? 0) >= 1);
-  const r5 = responses[5] as { error?: { data?: { rigError?: string } } } | undefined;
-  check('rig_explore → MAIN_SESSION_FORBIDDEN (heavy gate)', r5?.error?.data?.rigError === 'MAIN_SESSION_FORBIDDEN');
+  const r5text = (responses[5] as { result?: { content?: Array<{ text?: string }> } } | undefined)?.result?.content?.[0]?.text;
+  const exploreResult = r5text ? (JSON.parse(r5text) as { anchors?: unknown[] }) : null;
+  check('rig_explore "auth" → ≥1 anchor (heavy tools run over MCP)', (exploreResult?.anchors?.length ?? 0) >= 1);
 
   section('installer');
   for (const target of ['claude', 'cursor', 'codex', 'opencode', 'openrouter']) {

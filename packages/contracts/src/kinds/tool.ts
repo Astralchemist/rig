@@ -35,7 +35,6 @@ export const toolContractSchema = z
       .optional(),
     // tier-specific (validated by refinement below)
     records_activation: z.boolean().optional(),
-    main_session_forbidden: z.boolean().optional(),
     provenance_required: z.boolean().optional(),
     broadcasts: z.string().optional(),
     inverse: z.string().optional(),
@@ -44,9 +43,6 @@ export const toolContractSchema = z
   })
   .strict()
   .superRefine((c, ctx) => {
-    if (c.tier === 'heavy' && c.main_session_forbidden !== true) {
-      ctx.addIssue({ code: 'custom', message: 'heavy tier requires main_session_forbidden: true' });
-    }
     if (c.tier === 'write' && !c.provenance_required) {
       ctx.addIssue({ code: 'custom', message: 'write tier requires provenance_required: true' });
     }
@@ -72,7 +68,6 @@ export interface ToolContract {
   deprecated_in?: string;
   replaced_by?: string;
   records_activation?: boolean;
-  main_session_forbidden?: boolean;
   provenance_required?: boolean;
   broadcasts?: string;
   inverse?: string;

@@ -13,9 +13,9 @@ Build a context bundle of the top-K anchors most relevant to a task,
 formatted for direct LLM consumption (markdown by default; JSON
 available). Uses search + magnetic-pull ranking.
 
-Heavy tier — must be invoked from a sub-agent, not the main session.
-Use rig_explore for raw exploration; use rig_context when you want a
-single ready-to-prompt block.
+Heavy tier — the bundle carries full source bodies, so it costs far more
+context than the light tools. Use rig_explore for raw exploration; use
+rig_context when you want a single ready-to-prompt block.
   `.trim(),
   input: z
     .object({
@@ -29,6 +29,9 @@ single ready-to-prompt block.
     anchor_count: z.number().int(),
     elapsed_ms: z.number(),
   }),
+  // MAIN_SESSION_FORBIDDEN is no longer raised: MCP can't tell a main session
+  // from a sub-agent, so the gate is gone. Removing an error code from a stable
+  // tool is a breaking change, so it stays declared until a major manifest bump.
   errors: ['NOT_INITIALIZED', 'MAIN_SESSION_FORBIDDEN'],
   permissions: {
     claude: 'ask',
@@ -38,5 +41,4 @@ single ready-to-prompt block.
     openrouter: 'ask',
   },
   records_activation: true,
-  main_session_forbidden: true,
 });

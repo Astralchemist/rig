@@ -36,7 +36,6 @@ describe('activation recording', () => {
   const ctxOf = (): ToolContext => ({
     rig,
     sessionId: 'test',
-    isMainSession: false,
     provenance: null,
     recordActivation: makeActivationRecorder(rig, 'test'),
   });
