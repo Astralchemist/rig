@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { z } from 'zod';
 import contract from '../../../../.contracts/tools/rig_explore.contract.ts';
-import type { ToolContext } from '../dispatch.ts';
+import { queryHash, type ToolContext } from '../dispatch.ts';
 import { fitSources } from './_budget.ts';
 import { readSnippet, viewOf } from './_snippet.ts';
 
@@ -11,6 +11,10 @@ type Result = z.infer<typeof contract.output>;
 export async function run(args: Args, ctx: ToolContext): Promise<Result> {
   const start = Date.now();
   const hits = ctx.rig.searchNodes(args.question, { limit: args.max_anchors });
+  ctx.recordActivation(
+    hits.map((n) => n.id),
+    { queryHash: queryHash(args.question) },
+  );
   const anchors = await Promise.all(
     hits.map(async (n) => {
       const v = viewOf(n);

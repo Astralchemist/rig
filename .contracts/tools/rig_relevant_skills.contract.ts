@@ -42,5 +42,5 @@ and returns the tier+description so the agent has enough to pick.
     opencode: 'allow',
     openrouter: 'auto-allow',
   },
-  records_activation: false,
+  records_activation: true,
 });

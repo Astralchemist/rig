@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { z } from 'zod';
 import contract from '../../../../.contracts/tools/rig_context.contract.ts';
-import type { ToolContext } from '../dispatch.ts';
+import { queryHash, type ToolContext } from '../dispatch.ts';
 import { fitSources } from './_budget.ts';
 import { readSnippet, viewOf, type NodeView } from './_snippet.ts';
 
@@ -30,6 +30,10 @@ const toMarkdown = (blocks: readonly Block[]): string =>
 export async function run(args: Args, ctx: ToolContext): Promise<Result> {
   const start = Date.now();
   const hits = ctx.rig.searchNodes(args.task, { limit: args.max_nodes });
+  ctx.recordActivation(
+    hits.map((n) => n.id),
+    { queryHash: queryHash(args.task) },
+  );
   const blocks: Block[] = await Promise.all(
     hits.map(async (n) => {
       const v = viewOf(n);
