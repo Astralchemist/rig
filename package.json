@@ -1,6 +1,6 @@
 {
   "name": "rig-constellation",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "private": false,
   "type": "module",
   "description": "Local-first semantic knowledge graph",
@@ -63,7 +63,7 @@
     "build": "bun run build:web && bun run build:cli",
     "build:web": "cd packages/web && bunx vite build",
     "build:cli": "bun run gen:wasm && bun run scripts/build-cli.ts",
-    "prepublishOnly": "bun run build && bun test && bun run gen:check && bun run check:compat && bun run check:migrations"
+    "prepublishOnly": "bun run build && bun run typecheck && bun test && bun run gen:check && bun run check:compat && bun run check:migrations"
   },
   "dependencies": {
     "@fastify/compress": "8.3.1",

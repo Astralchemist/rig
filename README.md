@@ -69,7 +69,7 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
 - **Magnetic pull.** Ask "what's related to X" and get a ranked answer that blends graph distance, semantic similarity, and what's been active recently.
 - **Hubs.** The structurally important anchors surface first, so a 5k-node graph stays legible.
 - **Dependency intelligence.** "What version of X do I have?" and "what's declared but never imported?" become one-hop graph queries.
-- **Waypoints.** Your agent drops durable markers at decisions and constraints that survive context-window compaction — so a new session picks up oriented.
+- **Waypoints.** Your agent drops durable markers at decisions and constraints. They live in the graph, outside the context window, and stay attached to the code they reference when you re-index. The installed instructions tell each new session to load the previous session's waypoints, and `rig export-memory` backs them up.
 - **An MCP tool surface** your agent calls directly: search, pull, callers/callees, impact, hubs, deps, and more.
 
 ---

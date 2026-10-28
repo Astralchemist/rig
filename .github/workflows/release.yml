@@ -2,7 +2,13 @@ name: Release
 
 # Publish to npm + cut a GitHub Release when a version tag is pushed.
 # Flow: bump package.json → merge to main → `git tag vX.Y.Z && git push origin vX.Y.Z`.
-# Auth via repo secret NPM_TOKEN (automation token with publish + bypass-2FA).
+#
+# Auth: npm trusted publishing (OIDC) once the package's trusted publisher is
+# registered on npmjs.com (package → Settings → Trusted publishing → GitHub
+# Actions: Astralchemist/rig, workflow release.yml). npm then mints a
+# short-lived token from this job's OIDC identity, and no secret is needed.
+# Until then npm falls back to the NPM_TOKEN repo secret. Either way the
+# tarball is published with a provenance attestation.
 on:
   push:
     tags: ['v*.*.*']
@@ -10,6 +16,7 @@ on:
 
 permissions:
   contents: write # cut the GitHub Release
+  id-token: write # npm trusted publishing + provenance
 
 jobs:
   publish:
@@ -29,6 +36,10 @@ jobs:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
 
+      # Trusted publishing needs npm >= 11.5.1; Node 22 bundles npm 10.
+      - name: Use npm 11
+        run: npm install -g npm@^11.5.1
+
       - name: Install
         run: bun install --frozen-lockfile
 
@@ -47,10 +58,10 @@ jobs:
           echo "tag=$TAG package.json=$PKG"
           [ "$TAG" = "$PKG" ] || { echo "::error::tag $TAG != package.json $PKG"; exit 1; }
 
-      # `npm publish` runs prepublishOnly (build + tests + gen:check + compat +
-      # migrations) before uploading, so the gate is enforced here too.
+      # `npm publish` runs prepublishOnly (build + typecheck + tests + gen:check
+      # + compat + migrations) before uploading, so the gate is enforced here too.
       - name: Publish to npm
-        run: npm publish --access public
+        run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
