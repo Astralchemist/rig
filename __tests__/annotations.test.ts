@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Database as BunSqlite } from 'bun:sqlite';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MIGRATIONS } from '../generated/core/migrations.ts';
+import { Rig } from '../packages/core/src/index.ts';
 import { Database } from '../packages/core/src/db/database.ts';
+import { DeterministicEmbedder } from '../packages/core/src/embed/deterministic-embedder.ts';
 
 // Annotations used to live in nodes.data.annotations, which every re-extract
 // rewrites. v12 moves them into their own table; this locks in the data
@@ -98,6 +100,46 @@ describe('annotations table (v12)', () => {
       expect(n.n).toBe(0);
     } finally {
       db.close();
+    }
+  });
+
+  test('annotateNode writes a row to the table and leaves nodes.data alone', async () => {
+    writeFileSync(join(dir, 'a.ts'), `export function helper(): number { return 1; }\n`);
+    const rig = await Rig.init(dir, { embedder: new DeterministicEmbedder() });
+    try {
+      await rig.indexAll();
+      const helper = rig.searchNodes('helper').find((n) => n.name === 'helper')!;
+      const dataBefore = (
+        rig.database.adapter.prepare(`SELECT data FROM nodes WHERE id = ?`).get(helper.id) as {
+          data: string;
+        }
+      ).data;
+      const ctx = { sessionId: 's1', actor: 'ai:test' };
+      expect(
+        rig.writes.annotateNode({ nodeId: helper.id, note: 'auth boundary', rationale: 'r1' }, ctx),
+      ).toBe(true);
+      expect(
+        rig.writes.annotateNode({ nodeId: 'function:missing', note: 'x', rationale: 'r2' }, ctx),
+      ).toBe(false);
+
+      const rows = rig.getAnnotations(helper.id);
+      expect(rows.map((r) => [r.note, r.actor, r.rationale])).toEqual([
+        ['auth boundary', 'ai:test', 'r1'],
+      ]);
+      const dataAfter = (
+        rig.database.adapter.prepare(`SELECT data FROM nodes WHERE id = ?`).get(helper.id) as {
+          data: string;
+        }
+      ).data;
+      expect(dataAfter).toBe(dataBefore);
+      const mutation = rig.writes.mutationsSince(0).find((m) => m.kind === 'annotate');
+      expect(mutation?.payload).toEqual({
+        nodeId: helper.id,
+        annotationId: rows[0]!.id,
+        noteCount: 1,
+      });
+    } finally {
+      rig.close();
     }
   });
 });

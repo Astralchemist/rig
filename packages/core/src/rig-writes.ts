@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { addAlias as aqAdd, removeAlias as aqRemove } from './db/alias-queries.ts';
+import { addAnnotation, listAnnotations } from './db/annotation-queries.ts';
 import type { Database } from './db/database.ts';
 import {
   lastUndoableMutation,
@@ -135,23 +136,25 @@ export class RigWrites {
     return id;
   }
 
+  // Notes go to the annotations table, not nodes.data — extraction rewrites
+  // data on every re-extract, which used to drop them.
   annotateNode(args: AnnotateArgs, ctx: WriteCtx): boolean {
     const adapter = this.db.adapter;
-    const row = adapter
-      .prepare(`SELECT data FROM nodes WHERE id = ?`)
-      .get(args.nodeId) as { data: string } | null;
-    if (!row) return false;
-    const data = JSON.parse(row.data) as Record<string, unknown>;
-    const arr = Array.isArray(data.annotations) ? (data.annotations as unknown[]) : [];
-    arr.push({ note: args.note, ts: Date.now(), actor: ctx.actor, rationale: args.rationale });
-    data.annotations = arr;
-    adapter
-      .prepare(`UPDATE nodes SET data = ?, updated_at = ? WHERE id = ?`)
-      .run(JSON.stringify(data), Date.now(), args.nodeId);
+    const annotationId = addAnnotation(adapter, {
+      nodeId: args.nodeId,
+      note: args.note,
+      actor: ctx.actor,
+      rationale: args.rationale,
+    });
+    if (annotationId === null) return false;
     recordMutation(adapter, {
       sessionId: ctx.sessionId,
       kind: 'annotate',
-      payload: { nodeId: args.nodeId, noteCount: arr.length },
+      payload: {
+        nodeId: args.nodeId,
+        annotationId,
+        noteCount: listAnnotations(adapter, args.nodeId).length,
+      },
       actor: ctx.actor,
     });
     return true;

@@ -48,6 +48,7 @@ import {
 import { runIndexAll } from './index-all.ts';
 import { computeMagneticPull, type PullResult } from './pull.ts';
 import { listAliases, type AliasRow } from './db/alias-queries.ts';
+import { listAnnotations, type AnnotationRow } from './db/annotation-queries.ts';
 import { computeCriticalPath, type CriticalStep } from './graph/critical-path.ts';
 import { drillFromHub, type DrillResult } from './graph/hub-drill.ts';
 import { getTopHubs, hubsOf, promoteHub, type HubRef } from './graph/hubness.ts';
@@ -66,6 +67,7 @@ export type { HubRef } from './graph/hubness.ts';
 export type { DrillResult } from './graph/hub-drill.ts';
 export type { CriticalStep } from './graph/critical-path.ts';
 export type { AliasRow } from './db/alias-queries.ts';
+export type { AnnotationRow } from './db/annotation-queries.ts';
 export type {
   DepRow,
   DepConflictRow,
@@ -220,6 +222,10 @@ export class Rig {
 
   getAliases(id: NodeId): AliasRow[] {
     return listAliases(this.database.adapter, id);
+  }
+
+  getAnnotations(id: NodeId): AnnotationRow[] {
+    return listAnnotations(this.database.adapter, id);
   }
 
   getDependencies(manifestPath?: string): DepRow[] {
