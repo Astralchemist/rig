@@ -41,6 +41,8 @@ import { searchNodes as sqSearchNodes, type SearchOptions } from './db/search-qu
 import { embedAndStore } from './embed/index-embeddings.ts';
 import { selectEmbedder } from './embed/select.ts';
 import type { Embedder } from './embed/types.ts';
+import type { MatchSource } from './search/fuse.ts';
+import { HybridSearcher, type HybridSearchOptions } from './search/hybrid.ts';
 import {
   getCallees as gqGetCallees,
   getCallers as gqGetCallers,
@@ -96,6 +98,8 @@ export type { SyncResult } from './sync.ts';
 export type { WatchOptions } from './watch.ts';
 export type { TaggedEdge, NeighborsOptions } from './db/edge-queries.ts';
 export type { SearchOptions } from './db/search-queries.ts';
+export type { HybridSearchOptions } from './search/hybrid.ts';
+export type { MatchSource } from './search/fuse.ts';
 export type { FileRow } from './db/file-queries.ts';
 export type { GraphSnapshot } from './db/graph-snapshot.ts';
 export type { PendingEdgeRow } from './db/pending-edges.ts';
@@ -109,6 +113,20 @@ export type {
 } from './memory-file.ts';
 export { RigWrites, UnknownRefsError } from './rig-writes.ts';
 export type { WriteCtx, ProposeArgs, AddNodeArgs, UndoOutcome } from './rig-writes.ts';
+
+export interface SearchHit {
+  node: RigNode;
+  // Fused RRF score; higher is better. Only comparable within one search.
+  score: number;
+  matchedBy: MatchSource[];
+}
+
+export interface SearchResult {
+  hits: SearchHit[];
+  // Vectors were left out (no model, or nothing embedded yet): the hits come
+  // from exact names, aliases and keywords only.
+  degraded?: 'keyword-only';
+}
 
 export interface RigWatchOptions extends WatchOptions {
   // How often a process that did not get the watch lock tries again, so it
@@ -127,6 +145,7 @@ export class Rig {
   // indexAll/sync runs on this connection, chained so a watcher sync never
   // interleaves with an explicit index.
   private updates: Promise<unknown> = Promise.resolve();
+  private readonly searcher: HybridSearcher;
   // Waypoints and skills written through `writes`, waiting to be embedded in
   // the background (embedPending), and the chain of those runs.
   private readonly pendingEmbeds = new Set<string>();
@@ -138,6 +157,7 @@ export class Rig {
     this.database = opts.database;
     this.embedder = opts.embedder;
     this.writes = new RigWrites(this.database, (ids) => this.scheduleEmbed(ids));
+    this.searcher = new HybridSearcher(this.database.adapter, this.embedder);
   }
 
   static async init(
@@ -215,8 +235,9 @@ export class Rig {
     return this.serialized(() => runSync(this.projectRoot, this.database, this.embedder));
   }
 
+  // Each run ends by pulling the vectors it wrote into the search index.
   private serialized<T>(run: () => Promise<T>): Promise<T> {
-    const next = this.updates.then(run, run);
+    const next = this.updates.then(run, run).finally(() => this.searcher.refreshIndex());
     this.updates = next.catch(() => {});
     return next;
   }
@@ -256,6 +277,7 @@ export class Rig {
           data: JSON.parse(r.data) as Record<string, unknown>,
         })),
       );
+      this.searcher.refreshIndex();
     } catch (e) {
       if (adapter.open) {
         logWarn('Background embedding failed; the next sync retries', { error: String(e) });
@@ -276,6 +298,12 @@ export class Rig {
     }
   }
 
+  // Load the vector index and the embedding model in the background, so the
+  // first search doesn't wait for them. Safe to skip: search loads lazily.
+  warmSearch(): void {
+    this.searcher.warm();
+  }
+
   getNode(id: NodeId): RigNode | null {
     const n = gqGetNode(this.database.adapter, id);
     return n ? toRigNode(n) : null;
@@ -293,8 +321,25 @@ export class Rig {
     return gqGetImpactRadius(this.database.adapter, id, depth).map(toRigNode);
   }
 
+  // Keyword search (exact names and aliases first, then bm25 hits), without
+  // the embedding model. Synchronous; see search() for the hybrid.
   searchNodes(query: string, opts: SearchOptions = {}): RigNode[] {
     return sqSearchNodes(this.database.adapter, query, opts).map(toRigNode);
+  }
+
+  // Hybrid search: exact names and aliases, keywords and vector similarity,
+  // fused by reciprocal rank (search/hybrid.ts). Never throws for want of the
+  // model: without it, results come from the other lists and say so.
+  async search(query: string, opts: HybridSearchOptions = {}): Promise<SearchResult> {
+    const r = await this.searcher.search(query, opts);
+    return {
+      hits: r.hits.map((h) => ({
+        node: toRigNode(h.node),
+        score: h.score,
+        matchedBy: h.matchedBy,
+      })),
+      ...(r.degraded ? { degraded: r.degraded } : {}),
+    };
   }
 
   getNeighbors(id: NodeId, opts: NeighborsOptions = {}): TaggedEdge[] {

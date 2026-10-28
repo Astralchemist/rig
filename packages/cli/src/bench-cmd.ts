@@ -91,10 +91,16 @@ const runBench = async (rig: Rig): Promise<void> => {
   for (let i = 0; i < N; i++) sample.push(allIds[Math.floor(Math.random() * allIds.length)]!);
   const queries = ['Rig', 'Module', 'route', 'class', 'function', 'auth', 'web'];
 
+  // Load the search vectors and the embedding model outside the timings.
+  await rig.search('warm up', { waitMs: 60_000 });
   const sql: Result[] = [
     await measure('status', N, () => rig.status()),
     await measure('searchNodes (FTS5 + alias)', N, () =>
       rig.searchNodes(queries[Math.floor(Math.random() * queries.length)]!, { limit: 20 }),
+    ),
+    // Includes embedding the query (cached after the first time per query).
+    await measure('search (hybrid)', N, () =>
+      rig.search(queries[Math.floor(Math.random() * queries.length)]!, { limit: 20 }),
     ),
     await measure('getNode', N, () => rig.getNode(sample[Math.floor(Math.random() * sample.length)]!)),
     await measure('getNeighbors', N, () =>
