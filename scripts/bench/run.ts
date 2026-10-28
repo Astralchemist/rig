@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { runAgent } from './agent.ts';
-import { makeArm, parseArms } from './arms.ts';
+import { GREP_ARMS, makeArm, parseArms } from './arms.ts';
 import { RG_BIN, rgAvailable } from './tools-baseline.ts';
 import { checkAnswer, validateExpected } from './criteria.ts';
 import { judgeAnswer } from './judge.ts';
@@ -26,7 +26,7 @@ const USAGE = `usage: bun scripts/bench/run.ts [options]
   --repo <path>            target checkout (default $BENCH_REPO or ~/Development/rig-bench/next-auth)
   --provider <name>        openrouter | anthropic (default $BENCH_PROVIDER, else by which key is set)
   --model <id>             model id (default ${DEFAULT_MODELS.openrouter} / ${DEFAULT_MODELS.anthropic})
-  --arms <list>            comma-separated: baseline,rig,rig-search (default all)
+  --arms <list>            comma-separated: baseline,rig,rig-search,grep+rig (default all)
   --queries <ids>          comma-separated query ids (default all)
   --trials <n>             trials per (query, arm) (default 3)
   --max-turns <n>          model calls per run before giving up (default 12)
@@ -98,6 +98,8 @@ const main = async (): Promise<void> => {
   const commitOk = head === qf.target.commit;
   const version = rigVersion();
   const runsPerArm = queries.length * trials;
+  const usesGrep = arms.some((a) => GREP_ARMS.includes(a));
+  const grepArms = arms.filter((a) => GREP_ARMS.includes(a)).join(' and ');
 
   if (dryRun) {
     const estimateFrom = argValue('--estimate-from');
@@ -131,10 +133,8 @@ const main = async (): Promise<void> => {
       `target:    ${repo}`,
       `commit:    ${head ?? 'missing'}${commitOk ? ' (pinned)' : ` — expected ${qf.target.commit}`}`,
       `index:     ${existsSync(repo) ? indexState(repo, version.fingerprint) : 'missing'}`,
-      ...(arms.includes('baseline')
-        ? [
-            `ripgrep:   ${rgAvailable() ? RG_BIN : `MISSING (${RG_BIN}); the baseline arm needs it`}`,
-          ]
+      ...(usesGrep
+        ? [`ripgrep:   ${rgAvailable() ? RG_BIN : `MISSING (${RG_BIN}); ${grepArms} need it`}`]
         : []),
       `arms:      ${arms.join(', ')}`,
       `queries:   ${queries.length} (${queries.filter((q) => q.category === 'natural').length} natural-language)`,
@@ -162,9 +162,9 @@ const main = async (): Promise<void> => {
         `Run \`git -C ${repo} checkout ${qf.target.commit}\` or pass --allow-commit-mismatch.`,
     );
   }
-  if (arms.includes('baseline') && !flag('--index-only') && !rgAvailable()) {
+  if (usesGrep && !flag('--index-only') && !rgAvailable()) {
     throw new Error(
-      `ripgrep not found (${RG_BIN}); the baseline arm needs it. ` +
+      `ripgrep not found (${RG_BIN}); ${grepArms} need it. ` +
         'Install it (brew install ripgrep) or point BENCH_RG at the binary.',
     );
   }

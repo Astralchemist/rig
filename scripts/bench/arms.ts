@@ -7,7 +7,16 @@ import { RIG_TOOLS, runRigTool } from './tools-rig.ts';
 import { RIG_SEARCH_TOOLS, makeRigSearchRunner } from './tools-rig-search.ts';
 import type { ArmName, ToolDef } from './types.ts';
 
-export const ARM_NAMES: readonly ArmName[] = ['baseline', 'rig', 'rig-search'];
+export const ARM_NAMES: readonly ArmName[] = ['baseline', 'rig', 'rig-search', 'grep+rig'];
+
+// Arms that hand the model ripgrep.
+export const GREP_ARMS: readonly ArmName[] = ['baseline', 'grep+rig'];
+
+// grep+rig is what an agent has in real use: the baseline tools to read
+// source, plus the rig-search tools through the same real-handler path. No
+// routing hint; the model picks.
+export const GREP_RIG_TOOLS: readonly ToolDef[] = [...BASELINE_TOOLS, ...RIG_SEARCH_TOOLS];
+const BASELINE_NAMES = new Set(BASELINE_TOOLS.map((t) => t.name));
 
 export interface Arm {
   name: ArmName;
@@ -31,7 +40,13 @@ export const parseArms = (raw: string | undefined): ArmName[] => {
 };
 
 export const armTools = (name: ArmName): readonly ToolDef[] =>
-  name === 'baseline' ? BASELINE_TOOLS : name === 'rig' ? RIG_TOOLS : RIG_SEARCH_TOOLS;
+  name === 'baseline'
+    ? BASELINE_TOOLS
+    : name === 'rig'
+      ? RIG_TOOLS
+      : name === 'rig-search'
+        ? RIG_SEARCH_TOOLS
+        : GREP_RIG_TOOLS;
 
 export const makeArm = (name: ArmName, repoRoot: string, rig: Rig | null): Arm => {
   if (name === 'baseline') {
@@ -45,5 +60,12 @@ export const makeArm = (name: ArmName, repoRoot: string, rig: Rig | null): Arm =
   if (name === 'rig') {
     return { name, tools: RIG_TOOLS, exec: async (tool, input) => runRigTool(rig, tool, input) };
   }
-  return { name, tools: RIG_SEARCH_TOOLS, exec: makeRigSearchRunner(rig) };
+  const rigSearch = makeRigSearchRunner(rig);
+  if (name === 'rig-search') return { name, tools: RIG_SEARCH_TOOLS, exec: rigSearch };
+  return {
+    name,
+    tools: GREP_RIG_TOOLS,
+    exec: async (tool, input) =>
+      BASELINE_NAMES.has(tool) ? runBaselineTool(repoRoot, tool, input) : rigSearch(tool, input),
+  };
 };

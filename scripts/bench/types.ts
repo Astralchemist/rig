@@ -10,7 +10,7 @@ export interface ToolDef {
   input_schema: Record<string, unknown>;
 }
 
-export type ArmName = 'baseline' | 'rig' | 'rig-search';
+export type ArmName = 'baseline' | 'rig' | 'rig-search' | 'grep+rig';
 export type ProviderName = 'openrouter' | 'anthropic';
 
 // A pattern is a case-insensitive substring, or a regex written "/source/flags".

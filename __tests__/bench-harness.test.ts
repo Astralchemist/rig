@@ -8,7 +8,7 @@ import { join, resolve } from 'node:path';
 import { Rig } from '../packages/core/src/index.ts';
 import { DeterministicEmbedder } from '../packages/core/src/embed/deterministic-embedder.ts';
 import { runAgent } from '../scripts/bench/agent.ts';
-import { parseArms, type Arm } from '../scripts/bench/arms.ts';
+import { makeArm, parseArms, type Arm } from '../scripts/bench/arms.ts';
 import { checkAnswer, validateExpected } from '../scripts/bench/criteria.ts';
 import { judgeAnswer, parseVerdict } from '../scripts/bench/judge.ts';
 import { estimatePlan } from '../scripts/bench/plan.ts';
@@ -29,6 +29,7 @@ import {
   resolveProviderName,
 } from '../scripts/bench/providers.ts';
 import { aggregate, renderMarkdown } from '../scripts/bench/report.ts';
+import { BASELINE_TOOLS } from '../scripts/bench/tools-baseline.ts';
 import { RIG_SEARCH_TOOLS, makeRigSearchRunner } from '../scripts/bench/tools-rig-search.ts';
 import type { BenchFile, QueriesFile, RunResult } from '../scripts/bench/types.ts';
 
@@ -548,6 +549,23 @@ describe('report aggregation', () => {
     expect(r.failures).toHaveLength(0);
   });
 
+  test('every non-baseline arm, grep+rig included, gets a paired row', () => {
+    const withGrepRig: BenchFile = {
+      ...file,
+      arms: ['baseline', 'rig', 'grep+rig'],
+      results: [
+        ...file.results,
+        ...file.results
+          .filter((r) => r.arm === 'rig')
+          .map((r) => ({ ...r, arm: 'grep+rig' as const })),
+      ],
+    };
+    const r = aggregate(withGrepRig);
+    expect(r.arms.map((a) => a.arm)).toEqual(['baseline', 'rig', 'grep+rig']);
+    expect(r.arms[2]!.paired).toEqual(r.arms[1]!.paired);
+    expect(renderMarkdown(r)).toContain('| grep+rig | 3 | 20.0% | 160.0% | 1 | 1 | 1 | 0 |');
+  });
+
   test('renders markdown with every section', () => {
     const md = renderMarkdown(aggregate(file));
     expect(md).toContain('## Per arm');
@@ -611,7 +629,8 @@ describe('pricing and plan', () => {
     expect(resolveProviderName(undefined, { ANTHROPIC_API_KEY: 'y' })).toBe('anthropic');
     expect(resolveProviderName(undefined, {})).toBe('openrouter');
     expect(() => resolveProviderName('openai', {})).toThrow('unknown provider');
-    expect(parseArms(undefined)).toEqual(['baseline', 'rig', 'rig-search']);
+    expect(parseArms(undefined)).toEqual(['baseline', 'rig', 'rig-search', 'grep+rig']);
+    expect(parseArms('grep+rig')).toEqual(['grep+rig']);
     expect(parseArms('rig-search, baseline')).toEqual(['rig-search', 'baseline']);
     expect(() => parseArms('grep')).toThrow('unknown arm');
   });
@@ -677,5 +696,32 @@ describe('rig-search arm', () => {
     expect(await exec('rig_node', { id: 'nope' })).toStartWith('error: NODE_NOT_FOUND');
     expect(await exec('rig_search', {})).toStartWith('error: INPUT_INVALID');
     expect(await exec('rig_deps', {})).toBe('error: unknown tool rig_deps');
+  });
+
+  test('grep+rig offers the baseline tools plus the rig-search tools, and routes each', async () => {
+    const arm = makeArm('grep+rig', project, rig);
+    expect(arm.tools.map((t) => t.name)).toEqual([
+      'rg',
+      'read_file',
+      'list_dir',
+      'rig_search',
+      'rig_context',
+      'rig_explore',
+      'rig_node',
+      'rig_callers',
+      'rig_neighbors',
+      'rig_files',
+    ]);
+    // Same definitions as the arms it combines, so no description changes.
+    expect(arm.tools).toEqual([...BASELINE_TOOLS, ...RIG_SEARCH_TOOLS]);
+    expect(await arm.exec('read_file', { path: 'auth.ts', limit: 1 })).toBe(
+      '    1: export class AuthStore {',
+    );
+    const search = JSON.parse(await arm.exec('rig_search', { query: 'AuthStore' })) as {
+      nodes: { name: string }[];
+    };
+    expect(search.nodes.some((n) => n.name === 'AuthStore')).toBe(true);
+    expect(await arm.exec('rig_search', {})).toStartWith('error: INPUT_INVALID');
+    expect(await arm.exec('rig_deps', {})).toBe('error: unknown tool rig_deps');
   });
 });

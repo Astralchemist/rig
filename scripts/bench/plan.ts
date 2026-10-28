@@ -12,11 +12,13 @@ export interface RunProfile {
 }
 
 // Baseline re-sends grep output and file slices on every call; the rig arms
-// send short node lists, rig-search sometimes a source bundle.
+// send short node lists, rig-search sometimes a source bundle. grep+rig is
+// assumed to cost about what baseline does until a run says otherwise.
 export const DEFAULT_PROFILES: Record<ArmName, RunProfile> = {
   baseline: { prompt_tokens: 60_000, completion_tokens: 1_500, model_calls: 6 },
   rig: { prompt_tokens: 20_000, completion_tokens: 1_000, model_calls: 5 },
   'rig-search': { prompt_tokens: 30_000, completion_tokens: 1_000, model_calls: 4 },
+  'grep+rig': { prompt_tokens: 60_000, completion_tokens: 1_500, model_calls: 6 },
 };
 
 // A judge call: question, reference and answer in, a one-line verdict out.
