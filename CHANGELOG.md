@@ -6,6 +6,10 @@ All notable changes to Rig are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-29
+
+Natural-language search, measured. Benchmark (Claude Haiku 5.5 via OpenRouter, next-auth, 3 trials): with grep and rig together, the agent now uses 126% of grep-alone's median tokens (153% on 0.2.0). On natural-language questions it is cheaper than grep alone. With rig's search tools alone, correctness rose from 85% to 96%. See `scripts/bench/results/`.
+
 ### Added
 - **Natural-language search.** `rig_search` fuses three candidate lists by reciprocal rank (k = 60): exact name and alias matches (always first), keyword matches and semantic matches from the local embeddings. A question such as "where do we refresh expired sessions?" now finds code; a symbol name still returns that symbol first. Each node carries `score` and `matched_by`.
   - The keyword index (migration v14) also covers identifier words (`handleLogin`, `handle_login` and `handle-login` all match "handle login"), signatures, docstrings, and waypoint and doc text. Symbol-like queries keep exact and prefix matching; questions drop stopwords, match any word and rank by BM25 with column weights.
@@ -13,6 +17,13 @@ All notable changes to Rig are documented here. The format follows
   - Without the model (offline first run, model missing, still loading) search answers from names and keywords and says `degraded: "keyword-only"`. It never fails for that reason, and the MCP server never waits on the model at startup.
 - `rig_context` and `rig_explore` find their anchors with the same hybrid search, so plain-language tasks return code. `rig_relevant_skills` ranks skills semantically as well, and `rig_waypoints` takes an optional `query` that ranks waypoints by relevance instead of recency.
 - Waypoints (title, summary, key terms and rationale) and skills (name and description) are embedded. A waypoint is embedded in the background after its write, and the update pipeline embeds anything still missing. Markdown sections are embedded with an excerpt of their body.
+
+- Benchmark harness (`bun run bench:run` / `bench:report`):
+  - runs through OpenRouter or Anthropic
+  - four arms: grep-only, rig, rig-search, grep+rig
+  - next-auth target pinned to a fixed commit, with 16 machine-checked questions, 6 of them natural-language
+  - per-run cost, plus paired comparisons against grep-only
+  - the 0.2.0 and 0.3.0 runs are recorded
 
 ### Changed
 - Embedding text now includes identifier words, and its version is part of the stored text hash. The first `rig index` or `rig sync` after upgrading re-embeds every node once. The extractor version is bumped for markdown excerpts, so every file is re-extracted once (in place).
@@ -132,6 +143,7 @@ Agent memory now survives re-indexing. This release fixes the correctness, safet
 ### Changed (licensing)
 - Relicensed from MIT to **Apache-2.0**. CodeGraph-derived portions remain under their original MIT terms (see `NOTICE` / `LICENSE-CODEGRAPH.txt`).
 
-[Unreleased]: https://github.com/Astralchemist/rig/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Astralchemist/rig/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Astralchemist/rig/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Astralchemist/rig/compare/v0.1.5...v0.2.0
 [0.1.0]: https://github.com/Astralchemist/rig/releases/tag/v0.1.0
