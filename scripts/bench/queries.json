@@ -1,65 +1,164 @@
 {
-  "target_hint": "nextauthjs/next-auth (Auth.js v5) — clone it locally and run `rig init && rig index` once before benchmarking.",
+  "target": {
+    "repo": "nextauthjs/next-auth",
+    "url": "https://github.com/nextauthjs/next-auth.git",
+    "commit": "e293b3746616660f0844347a68d09eac54b95c6f",
+    "tag": "next-auth@5.0.0-beta.32"
+  },
   "queries": [
     {
       "id": "dep-version",
-      "ask": "What version of @auth/core does this project declare?",
-      "judge_hint": "answer should name a concrete version spec from package.json",
-      "expected_winner_hypothesis": "rig — single rig_deps call vs grep-then-cat-package.json"
+      "category": "lookup",
+      "ask": "What version range of `jose` does the @auth/core package declare as a dependency?",
+      "reference": "packages/core/package.json declares \"jose\": \"^6.0.6\".",
+      "expected": { "all": ["6.0.6"] }
     },
     {
       "id": "where-handled",
+      "category": "lookup",
       "ask": "Where is the GitHub OAuth provider implemented? Name the file.",
-      "judge_hint": "expect packages/core/src/providers/github.ts or equivalent",
-      "expected_winner_hypothesis": "rig — rig_search 'github' filtered to file kind"
+      "reference": "packages/core/src/providers/github.ts (default export GitHub).",
+      "expected": { "all": ["providers/github.ts"] }
     },
     {
       "id": "callers-of",
-      "ask": "What functions call the `encode` function from the JWT module? List up to 5 callsites.",
-      "judge_hint": "callers should be other functions inside @auth/core",
-      "expected_winner_hypothesis": "rig — rig_callers is one tool call"
+      "category": "lookup",
+      "ask": "What functions call the `encode` function from @auth/core's JWT module (packages/core/src/jwt.ts)? List up to 5 call sites.",
+      "reference": "Directly, in packages/core/src/lib/actions/callback/oauth/checks.ts: sealCookie, state.create and webauthnChallenge.create. Through options.jwt.encode (jwt.encode by default): session() in lib/actions/session.ts and callback() in lib/actions/callback/index.ts.",
+      "expected": {
+        "all": ["sealCookie"],
+        "any": ["webauthnChallenge", "/state\\.create/", "actions/session", "callback/index"]
+      }
     },
     {
       "id": "routes",
-      "ask": "List the HTTP route handlers exported by the core package. Just the route paths.",
-      "judge_hint": "looking for /api/auth/* or equivalent route definitions",
-      "expected_winner_hypothesis": "rig — rig_search filtered to route kind, if those anchors exist"
+      "category": "lookup",
+      "ask": "Which auth actions (URL path segments such as `/signin`) does @auth/core route requests to? List them all.",
+      "reference": "The AuthAction union in packages/core/src/types.ts (also listed in lib/utils/actions.ts): providers, session, csrf, signin, signout, callback, verify-request, error, webauthn-options.",
+      "expected": {
+        "all": [
+          "/\\bsignin\\b/i",
+          "/\\bsignout\\b/i",
+          "/\\bcallback\\b/i",
+          "/\\bsession\\b/i",
+          "/\\bcsrf\\b/i",
+          "/\\bproviders\\b/i"
+        ],
+        "any": ["verify-request", "webauthn-options"]
+      }
     },
     {
       "id": "file-summary",
-      "ask": "Summarize what the file `packages/core/src/index.ts` does in 3 sentences.",
-      "judge_hint": "rig might lose this — summaries want file content, not just symbols",
-      "expected_winner_hypothesis": "baseline — Rig has no summary primitive"
+      "category": "lookup",
+      "ask": "Summarize what `packages/core/src/index.ts` does in 3 sentences. Name its main exported function and say what it takes and returns.",
+      "reference": "It is the @auth/core entry point. Its main export is the Auth function, which takes a standard web Request and an AuthConfig and returns a Response (a ResponseInternal when called with raw). It also re-exports helpers such as setEnvDefaults, createActionURL, isAuthAction and skipCSRFCheck.",
+      "expected": {
+        "all": ["/\\bAuth\\b(?!\\.js)/", "/\\bRequest\\b/", "/\\bResponse\\b/"],
+        "any": ["AuthConfig", "config"]
+      }
     },
     {
       "id": "db-init",
+      "category": "lookup",
       "ask": "Where is the database adapter interface defined?",
-      "judge_hint": "expect Adapter or DatabaseAdapter interface",
-      "expected_winner_hypothesis": "rig — rig_search 'Adapter' with kind=interface"
+      "reference": "packages/core/src/adapters.ts: `export interface Adapter`.",
+      "expected": { "all": ["adapters.ts", "/\\bAdapter\\b/"] }
     },
     {
       "id": "tests-for",
+      "category": "lookup",
       "ask": "Which test files cover the JWT encode/decode flow?",
-      "judge_hint": "expect *.test.ts files that import the JWT module",
-      "expected_winner_hypothesis": "rig — tests edges exist; rig_neighbors on the encode function gives them"
+      "reference": "packages/core/test/jwt.test.ts imports encode/decode from the JWT module; packages/core/test/actions/session.test.ts and test/actions/callback.test.ts also encode and decode session tokens.",
+      "expected": { "all": ["jwt.test.ts"] }
     },
     {
-      "id": "unused-deps",
-      "ask": "Are there any dependencies declared in package.json that aren't imported anywhere in source?",
-      "judge_hint": "tools-only-tools like @types/* are valid hits; runtime deps might be transitive",
-      "expected_winner_hypothesis": "rig — rig_unused_deps is one call"
+      "id": "error-class",
+      "category": "lookup",
+      "ask": "When an action is rejected because the CSRF token is missing, which error class is thrown, and in which file is that class defined?",
+      "reference": "validateCSRF (packages/core/src/lib/actions/callback/oauth/csrf-token.ts) throws MissingCSRF, which is defined in packages/core/src/errors.ts and extends SignInError.",
+      "expected": { "all": ["MissingCSRF", "errors.ts"] }
     },
     {
       "id": "entry-point",
+      "category": "lookup",
       "ask": "What's the main entry point of the @auth/core package?",
-      "judge_hint": "package.json main/exports field, or the file path it points to",
-      "expected_winner_hypothesis": "tie — both can answer this cheaply"
+      "reference": "packages/core/package.json exports \".\" as ./index.js (types ./index.d.ts), built from packages/core/src/index.ts, whose main export is Auth.",
+      "expected": { "any": ["index.js", "index.ts"] }
     },
     {
       "id": "type-def",
+      "category": "lookup",
       "ask": "Where is the `Session` type defined? Show me the file and signature.",
-      "judge_hint": "expect a type alias or interface named Session",
-      "expected_winner_hypothesis": "rig — rig_search 'Session' with kind=type_alias"
+      "reference": "packages/core/src/types.ts: `export interface Session extends DefaultSession {}`; DefaultSession has `user?: User` and `expires: ISODateString`.",
+      "expected": { "all": ["types.ts", "DefaultSession"] }
+    },
+    {
+      "id": "nl-session-refresh",
+      "category": "natural",
+      "ask": "Where do we push back a session's expiry date when the user keeps using the app?",
+      "reference": "session() in packages/core/src/lib/actions/session.ts. With JWT sessions it re-encodes the token with a new expiry (fromDate(maxAge)) and re-sets the cookie; with database sessions it calls adapter.updateSession once the session is older than session.updateAge.",
+      "expected": {
+        "all": ["/actions\\/session/"],
+        "any": [
+          "updateSession",
+          "updateAge",
+          "jwt.encode",
+          "fromDate",
+          "sessionIsDueToBeUpdatedDate",
+          "/re-?(en)?cod|re-?sign/i"
+        ]
+      }
+    },
+    {
+      "id": "nl-csrf",
+      "category": "natural",
+      "ask": "How do we stop another website from submitting our sign-in form on a user's behalf?",
+      "reference": "A double-submit CSRF token: createCSRFToken and validateCSRF in packages/core/src/lib/actions/callback/oauth/csrf-token.ts. init.ts sets options.csrfTokenVerified and lib/index.ts calls validateCSRF on POSTs to signin, signout, callback and session.",
+      "expected": {
+        "all": ["csrf"],
+        "any": ["csrf-token.ts", "createCSRFToken", "validateCSRF"]
+      }
+    },
+    {
+      "id": "nl-magic-link",
+      "category": "natural",
+      "ask": "When someone signs in with just their email address, where is the one-time login link created, and how is its token stored?",
+      "reference": "sendToken in packages/core/src/lib/actions/signin/send-token.ts makes a random token, builds the callback URL, calls provider.sendVerificationRequest, and stores a hash of token + secret through adapter.createVerificationToken.",
+      "expected": {
+        "all": ["send-token", "createVerificationToken"],
+        "any": ["hash"]
+      }
+    },
+    {
+      "id": "nl-cookie-size",
+      "category": "natural",
+      "ask": "What happens when the login cookie gets too big for the browser?",
+      "reference": "SessionStore in packages/core/src/lib/utils/cookie.ts splits the value into numbered chunks (name.0, name.1, …) of CHUNK_SIZE = 4096 − 160 bytes and joins them again when reading.",
+      "expected": {
+        "all": ["cookie.ts", "chunk"],
+        "any": ["SessionStore", "CHUNK_SIZE", "4096"]
+      }
+    },
+    {
+      "id": "nl-redirect",
+      "category": "natural",
+      "ask": "After someone logs in, how do we decide which page they land on, and what stops us from sending them to another website?",
+      "reference": "callbacks.redirect. The default (defaultCallbacks.redirect in packages/core/src/lib/init.ts) allows relative URLs and same-origin URLs and otherwise falls back to baseUrl; createCallbackUrl in lib/utils/callback-url.ts runs it on the callbackUrl parameter or cookie.",
+      "expected": {
+        "all": ["redirect", "/baseUrl|origin/i"],
+        "any": ["init.ts", "callback-url", "defaultCallbacks", "createCallbackUrl"]
+      }
+    },
+    {
+      "id": "nl-oauth-checks",
+      "category": "natural",
+      "ask": "How do we make sure the response coming back from the OAuth provider belongs to the login we started?",
+      "reference": "packages/core/src/lib/actions/callback/oauth/checks.ts: state, PKCE (code_verifier) and nonce checks, each sealed in a short-lived encrypted cookie (sealCookie) and verified on the callback (useCookie/parseCookie), called from handleOAuth in callback.ts.",
+      "expected": {
+        "all": ["checks.ts"],
+        "any": ["/\\bstate\\b/i", "/pkce|code.?verifier/i", "nonce"],
+        "any_min": 2
+      }
     }
   ]
 }

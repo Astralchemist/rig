@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { execFileSync } from 'node:child_process';
-import { readFileSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import type { ToolDef } from './types.ts';
 
-export interface ToolDef {
-  name: string;
-  description: string;
-  input_schema: Record<string, unknown>;
-}
+export type { ToolDef } from './types.ts';
 
 export const BASELINE_TOOLS: ToolDef[] = [
   {
@@ -46,26 +43,60 @@ export const BASELINE_TOOLS: ToolDef[] = [
   },
 ];
 
-interface RgArgs { args: string[]; }
-interface ReadArgs { path: string; offset?: number; limit?: number; }
-interface ListArgs { path: string; }
+interface RgArgs {
+  args: string[];
+}
+interface ReadArgs {
+  path: string;
+  offset?: number;
+  limit?: number;
+}
+interface ListArgs {
+  path: string;
+}
 
-export const runBaselineTool = (
-  repoRoot: string,
-  name: string,
-  input: unknown,
-): string => {
+// ripgrep binary; BENCH_RG points at one that is not on PATH.
+export const RG_BIN = process.env.BENCH_RG ?? 'rg';
+
+export const rgAvailable = (): boolean => {
+  try {
+    execFileSync(RG_BIN, ['--version'], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// The cap rig's heavy tools use, so one minified line can't flood the context.
+const MAX_CHARS = 60_000;
+const capChars = (s: string): string =>
+  s.length <= MAX_CHARS
+    ? s
+    : `${s.slice(0, MAX_CHARS)}\n... (truncated at ${MAX_CHARS} characters)`;
+
+export const runBaselineTool = (repoRoot: string, name: string, input: unknown): string => {
   try {
     if (name === 'rg') {
       const { args } = input as RgArgs;
-      const out = execFileSync('rg', args, {
-        cwd: repoRoot,
-        encoding: 'utf-8',
-        maxBuffer: 4 * 1024 * 1024,
-      });
+      let out: string;
+      try {
+        out = execFileSync(RG_BIN, args, {
+          cwd: repoRoot,
+          encoding: 'utf-8',
+          maxBuffer: 4 * 1024 * 1024,
+          // No stdin: given a pipe and no path, rg would search the empty pipe.
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+      } catch (err) {
+        // Exit 1 is ripgrep's "no matches", not a failure.
+        if ((err as { status?: number }).status === 1) return '(no matches)';
+        throw err;
+      }
       const lines = out.split('\n');
-      if (lines.length <= 200) return out;
-      return lines.slice(0, 200).join('\n') + `\n... (${lines.length - 200} more lines truncated)`;
+      if (lines.length <= 200) return capChars(out);
+      return capChars(
+        lines.slice(0, 200).join('\n') + `\n... (${lines.length - 200} more lines truncated)`,
+      );
     }
     if (name === 'read_file') {
       const { path, offset = 0, limit = 500 } = input as ReadArgs;
@@ -73,7 +104,9 @@ export const runBaselineTool = (
       if (!abs.startsWith(resolve(repoRoot))) return 'error: path escapes repo root';
       const content = readFileSync(abs, 'utf-8').split('\n');
       const slice = content.slice(offset, offset + limit);
-      return slice.map((l, i) => `${(offset + i + 1).toString().padStart(5)}: ${l}`).join('\n');
+      return capChars(
+        slice.map((l, i) => `${(offset + i + 1).toString().padStart(5)}: ${l}`).join('\n'),
+      );
     }
     if (name === 'list_dir') {
       const { path } = input as ListArgs;
