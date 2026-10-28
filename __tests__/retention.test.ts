@@ -291,6 +291,28 @@ describe('retention across index and sync', () => {
     ).not.toBeNull();
   });
 
+  test('after an upgrade, --include keeps the other files’ edges until they are re-extracted', async () => {
+    // A v11 database once v12 has run: nodes and edges in place, but no
+    // extractor_version and no per-file artifacts yet.
+    rig.database.adapter.exec(
+      `UPDATE files SET extractor_version = NULL; DELETE FROM file_refs; DELETE FROM file_edges;`,
+    );
+    const fileCount = one<{ n: number }>(`SELECT COUNT(*) AS n FROM files`).n;
+    const others = (): string[] => [...edgesFromFile('a.ts'), ...edgesFromFile('b.ts')];
+    const before = others();
+
+    write('c.ts', `export class Widget { run(): void {} stop(): void {} }\n`);
+    const partial = await rig.indexAll({ include: ['c.ts'] });
+    expect(partial.changed).toBe(1);
+    expect(others()).toEqual(before);
+
+    // The next full run re-extracts the legacy files once, in place.
+    const full = await rig.indexAll();
+    expect(full.changed).toBe(fileCount - 1);
+    expect(others()).toEqual(before);
+    expect((await rig.indexAll()).changed).toBe(0);
+  });
+
   test('a new same-named symbol elsewhere turns a unique call into an unresolved ref', async () => {
     const main = nodeId('main', 'function');
     const helper = nodeId('helper', 'function');
