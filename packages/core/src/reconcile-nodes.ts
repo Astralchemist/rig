@@ -14,6 +14,10 @@ import type { Node as ExtractNode } from './extract/upstream-types.ts';
 //  2. Among the nodes still unmatched, equal generated ids: the extractor's own
 //     identity, e.g. a declared dependency whose spec (and so qualifiedName)
 //     changed, or a method whose class was renamed on the same line.
+//  3. Last resort, among the nodes still unmatched: callables (function,
+//     method) with the same qualifiedName and ordinal whose kind changed, e.g.
+//     a Python def an older extractor typed `method` and the current one types
+//     `function`.
 // Unmatched new nodes keep their generated id unless another node of the
 // file holds it (or anything else in the DB does); then the id is re-hashed
 // deterministically in the same `prefix:32-hex` format. Unmatched stored nodes
@@ -50,6 +54,10 @@ export interface Reconciliation {
 type Positioned = Pick<StoredNode, 'kind' | 'qualifiedName' | 'startLine' | 'startColumn'>;
 
 const keyOf = (kind: string, qualifiedName: string): string => `${kind}\u0000${qualifiedName}`;
+
+// Kinds that can turn into each other when the extractor's typing changes,
+// without the symbol changing: matched across as a last resort.
+export const CALLABLE_KINDS: ReadonlySet<string> = new Set(['function', 'method']);
 
 // Ordinal of each node among the nodes with the same (kind, qualifiedName),
 // ordered by start line, then column, then input order.
@@ -117,6 +125,23 @@ export const reconcileNodes = (
     matchOf[i] = s;
     claimed.add(s.id);
     leftoverById.delete(s.id);
+  });
+
+  // 3. callables whose kind changed, by qualifiedName + ordinal
+  const leftoverCallables = new Map<string, StoredNode>();
+  stored.forEach((s, i) => {
+    if (claimed.has(s.id) || !CALLABLE_KINDS.has(s.kind)) return;
+    const k = `${s.qualifiedName}#${storedOrdinals[i]}`;
+    if (!leftoverCallables.has(k)) leftoverCallables.set(k, s);
+  });
+  extracted.forEach((n, i) => {
+    if (matchOf[i] || !CALLABLE_KINDS.has(n.kind)) return;
+    const k = `${n.qualifiedName}#${freshOrdinals[i]}`;
+    const s = leftoverCallables.get(k);
+    if (!s) return;
+    matchOf[i] = s;
+    claimed.add(s.id);
+    leftoverCallables.delete(k);
   });
 
   // Final ids. Stored ids (matched or about to be removed) are never handed to

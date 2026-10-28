@@ -143,6 +143,30 @@ describe('reconcileNodes', () => {
     expect(r.nodes.map((n) => n.node.id)).toEqual(['method:second', 'method:first']);
   });
 
+  test('a callable whose kind changed matches as a last resort; other kinds never do', () => {
+    const mk = (id: string, kind: Node['kind'], qualifiedName: string, line: number): Node => ({
+      id,
+      kind,
+      name: qualifiedName,
+      qualifiedName,
+      filePath: 'a.py',
+      language: 'python',
+      startLine: line,
+      endLine: line,
+      startColumn: 0,
+      endColumn: 0,
+      updatedAt: 0,
+    });
+    const old = [mk('method:f', 'method', 'f', 1), mk('class:K', 'class', 'K', 5)];
+    const fresh = [mk('function:f', 'function', 'f', 1), mk('function:K', 'function', 'K', 5)];
+    const r = reconcileNodes(stored(old), fresh, () => false);
+    expect(r.nodes.map((n) => [n.node.kind, n.node.id, n.storedId])).toEqual([
+      ['function', 'method:f', 'method:f'],
+      ['function', 'function:K', null],
+    ]);
+    expect(r.removed.map((s) => s.id)).toEqual(['class:K']);
+  });
+
   test('ids taken elsewhere in the DB are avoided', async () => {
     const fresh = await extract('a.ts', `export function f(): void {}\n`);
     const f = fresh.find((n) => n.name === 'f')!;

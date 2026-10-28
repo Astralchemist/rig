@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { positionOrdinals } from '../reconcile-nodes.ts';
+import { CALLABLE_KINDS, positionOrdinals } from '../reconcile-nodes.ts';
 import type { SqliteAdapter } from './adapter.ts';
 import { DERIVED_EDGE_PROVENANCE, EXTRACTED_KINDS } from './extracted-nodes.ts';
 
@@ -245,12 +245,14 @@ interface Match {
 }
 
 // Re-attach orphaned memory to freshly written nodes whose anchor and ordinal
-// match an orphan row, then drop the row. An edge comes back once its other
-// endpoint exists; until then it waits in an 'endpoint-missing' row anchored
-// at that endpoint (an agent-written endpoint that is gone is gone for good).
-// A re-attached waypoint_references edge also gets its waypoint's
-// constellation_refs rewritten to the new id. Returns the number of orphan
-// rows re-attached.
+// match an orphan row, then drop the row. As a last resort, a callable whose
+// kind changed (function <-> method, e.g. a Python def an older extractor
+// typed `method`) matches a leftover row on qualified_name + ordinal. An edge
+// comes back once its other endpoint exists; until then it waits in an
+// 'endpoint-missing' row anchored at that endpoint (an agent-written endpoint
+// that is gone is gone for good). A re-attached waypoint_references edge also
+// gets its waypoint's constellation_refs rewritten to the new id. Returns the
+// number of orphan rows re-attached.
 export const reattachOrphans = (db: SqliteAdapter, nodes: readonly AnchoredNode[]): number => {
   const files = new Set(
     (
@@ -267,20 +269,31 @@ export const reattachOrphans = (db: SqliteAdapter, nodes: readonly AnchoredNode[
   // memory linking two re-created nodes is restored whichever comes first.
   const matches: Match[] = [];
   const idMap = new Map<string, string>();
-  for (const n of nodes) {
-    if (!files.has(n.filePath)) continue;
-    const rows = byAnchor.all(n.filePath, n.kind, n.qualifiedName) as {
+  const usedRows = new Set<number>();
+  const matchedNodes = new Set<string>();
+  const pair = (n: AnchoredNode, kind: string): void => {
+    const rows = byAnchor.all(n.filePath, kind, n.qualifiedName) as {
       id: number;
       node_id: string;
       payload: string;
       orphaned_at: number;
     }[];
     for (const r of rows) {
+      if (usedRows.has(r.id)) continue;
       const payload = JSON.parse(r.payload) as OrphanPayload;
       if ((payload.ordinal ?? 0) !== n.ordinal) continue;
       matches.push({ rowId: r.id, oldId: r.node_id, node: n, orphanedAt: r.orphaned_at, payload });
       idMap.set(r.node_id, n.id);
+      usedRows.add(r.id);
+      matchedNodes.add(n.id);
     }
+  };
+  const candidates = nodes.filter((n) => files.has(n.filePath));
+  for (const n of candidates) pair(n, n.kind);
+  // Last resort, among the leftovers: the callable kind it used to have.
+  for (const n of candidates) {
+    if (matchedNodes.has(n.id) || !CALLABLE_KINDS.has(n.kind)) continue;
+    for (const kind of CALLABLE_KINDS) if (kind !== n.kind) pair(n, kind);
   }
   if (matches.length === 0) return 0;
 

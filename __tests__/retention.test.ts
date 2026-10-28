@@ -8,6 +8,7 @@ import { recordActivation } from '../packages/core/src/db/activation-queries.ts'
 import { getEmbedding } from '../packages/core/src/db/embed-queries.ts';
 import { DeterministicEmbedder } from '../packages/core/src/embed/deterministic-embedder.ts';
 import { EXTRACTOR_VERSION } from '../packages/core/src/extract/extractor.ts';
+import { generateNodeId } from '../packages/core/src/extract/tree-sitter-helpers.ts';
 
 // Retention: re-index and sync must keep the graph's structural edges and the
 // memory agents attached to code. Each case reproduces a loss measured on the
@@ -17,6 +18,7 @@ import { EXTRACTOR_VERSION } from '../packages/core/src/extract/extractor.ts';
 const B_TS = `export function helper(x: number): number { return x * 2; }\n`;
 const A_TS = `import { helper } from './b';\nexport function main(): number { return helper(21); }\n`;
 const C_TS = `export class Widget { run(): void {} }\n`;
+const PY = `def scale(x):\n    return x * 2\n\nclass Box:\n    def open(self):\n        return 1\n`;
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -333,6 +335,69 @@ describe('retention across index and sync', () => {
     const healed = await rig.sync();
     expect(healed.filesChanged).toBe(0);
     expect(getEmbedding(rig.database.adapter, delta)).not.toBeNull();
+  });
+
+  // A database written before module-level Python defs were typed as
+  // functions holds them as `method` rows with method-style ids.
+  const asPreUpgradeMethod = (file: string, name: string): string => {
+    const db = rig.database.adapter;
+    const fn = one<{ id: string; data: string }>(
+      `SELECT id, data FROM nodes WHERE name = ? AND type = 'function'`,
+      name,
+    );
+    const { startLine } = JSON.parse(fn.data) as { startLine: number };
+    const oldId = generateNodeId(file, 'method', name, startLine);
+    db.transaction(() => {
+      db.prepare(`DELETE FROM nodes WHERE id = ?`).run(fn.id);
+      db.prepare(
+        `INSERT INTO nodes (id, type, name, data, created_at, updated_at)
+         VALUES (?, 'method', ?, ?, 1, 1)`,
+      ).run(oldId, name, fn.data);
+      db.prepare(`UPDATE files SET extractor_version = NULL WHERE path = ?`).run(file);
+    })();
+    return oldId;
+  };
+
+  test('a def re-typed from method to function keeps its id and memory', async () => {
+    write('tools.py', PY);
+    await rig.sync();
+    const scale = asPreUpgradeMethod('tools.py', 'scale');
+    const open = nodeId('open', 'method');
+    const widget = nodeId('Widget', 'class');
+    rig.writes.addAlias({ nodeId: scale, alias: 'scaler', rationale: 'test alias' }, ctx);
+    rig.writes.annotateNode({ nodeId: scale, note: 'pure', rationale: 'test annotate' }, ctx);
+    rig.writes.proposeEdge({ src: scale, dst: widget, rationale: 'scale sizes widgets' }, ctx);
+
+    const r = await rig.indexAll();
+
+    expect(r.changed).toBe(1);
+    expect(all(`SELECT id, type FROM nodes WHERE name = 'scale'`)).toEqual([
+      { id: scale, type: 'function' },
+    ]);
+    expect(nodeId('open', 'method')).toBe(open);
+    expect(rig.getAliases(scale).map((a) => a.alias)).toEqual(['scaler']);
+    expect(rig.getAnnotations(scale).map((a) => a.note)).toEqual(['pure']);
+    expect(all(`SELECT src, dst FROM pending_edges`)).toEqual([{ src: scale, dst: widget }]);
+    expect((await rig.status()).orphans).toBe(0);
+  });
+
+  test('memory orphaned while a def was typed method comes back with it as a function', async () => {
+    write('tools.py', PY);
+    await rig.sync();
+    const scale = asPreUpgradeMethod('tools.py', 'scale');
+    rig.writes.addAlias({ nodeId: scale, alias: 'scaler', rationale: 'test alias' }, ctx);
+
+    write('tools.py', PY.replace(/^def scale[\s\S]*?\n\n/, ''));
+    await rig.sync();
+    expect(all(`SELECT kind, qualified_name FROM orphaned_memory`)).toEqual([
+      { kind: 'method', qualified_name: 'scale' },
+    ]);
+
+    write('tools.py', PY);
+    const restored = await rig.sync();
+    expect(restored.reattached).toBe(1);
+    expect(rig.getAliases(nodeId('scale', 'function')).map((a) => a.alias)).toEqual(['scaler']);
+    expect((await rig.status()).orphans).toBe(0);
   });
 
   test('editing a file and syncing rebuilds its outgoing calls/imports edges', async () => {
