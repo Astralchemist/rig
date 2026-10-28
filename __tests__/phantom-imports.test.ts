@@ -75,7 +75,16 @@ describe('A2 rig_phantom_imports — Python', () => {
     writeFileSync(join(project, 'requirements.txt'), 'matplotlib\n');
     writeFileSync(
       join(project, 'main.py'),
-      ['import matplotlib.pyplot as plt', 'import yamll.loader', 'from .helpers import tidy', ''].join('\n'),
+      [
+        'import __future__',
+        'import os, sys, json',
+        'import os.path',
+        'from typing import List',
+        'import matplotlib.pyplot as plt',
+        'import yamll.loader',
+        'from .helpers import tidy',
+        '',
+      ].join('\n'),
     );
     writeFileSync(join(project, 'helpers.py'), 'def tidy():\n    pass\n');
     rig = await Rig.init(project, { embedder: new DeterministicEmbedder() });
@@ -95,6 +104,15 @@ describe('A2 rig_phantom_imports — Python', () => {
   test('a dotted import of an undeclared package is a phantom', () => {
     const ph = rig.getPhantomImports();
     expect(ph.map((p) => p.target_name)).toContain('yamll.loader');
+  });
+
+  test('standard-library imports are never phantoms', () => {
+    const names = rig.getPhantomImports().map((p) => p.target_name);
+    for (const stdlib of ['__future__', 'os', 'sys', 'json', 'os.path', 'typing']) {
+      expect(names).not.toContain(stdlib);
+    }
+    // ...while the undeclared third-party import is still reported.
+    expect(names).toEqual(['yamll.loader']);
   });
 
   test('relative imports are never phantoms', () => {

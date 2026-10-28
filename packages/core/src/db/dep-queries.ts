@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { SqliteAdapter } from './adapter.ts';
+import { PYTHON_STDLIB } from './python-stdlib.ts';
 
 export interface DepRow {
   id: string;
@@ -174,6 +175,7 @@ export interface PhantomImportRow {
 // The mirror of unused-deps: import sites whose target_name has no matching
 // declared dependency. Often a missing-dependency bug or a typo. Scoped +
 // subpath normalization mirrors listUnusedDependencies so the two views agree.
+// Python standard-library modules need no declaration and are never phantoms.
 export const listPhantomImports = (db: SqliteAdapter): PhantomImportRow[] => {
   const declared = db
     .prepare(`SELECT name FROM nodes WHERE type = 'declared-dependency'`)
@@ -214,6 +216,7 @@ export const listPhantomImports = (db: SqliteAdapter): PhantomImportRow[] => {
     // Relative + absolute imports never resolve to a declared dep; they're
     // file-resolution failures, not phantoms.
     if (pkg.startsWith('.') || pkg.startsWith('/')) return false;
+    if (r.sample_file.endsWith('.py') && PYTHON_STDLIB.has(pkg)) return false;
     return !declaredNames.has(pkg);
   });
 };
