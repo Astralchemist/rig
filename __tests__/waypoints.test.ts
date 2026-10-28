@@ -282,3 +282,63 @@ describe('rig_drop_waypoint: rationale and references', () => {
     expect(count(`SELECT COUNT(*) AS n FROM edges WHERE kind = 'waypoint_references'`)).toBe(1);
   });
 });
+
+describe('rig_waypoints session_id="last"', () => {
+  let project: string;
+  let rig: Rig;
+
+  const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+  const dropIn = (sessionId: string, title: string): string =>
+    rig.writes.dropWaypoint(
+      { kind: 'decision', title, summary: `dropped in ${sessionId}` },
+      { sessionId, actor: 'ai:test' },
+    );
+  // What `rig_waypoints session_id="last"` returns to the given MCP session.
+  const lastFor = async (sessionId: string): Promise<string[]> => {
+    const ctx: ToolContext = { rig, sessionId, provenance: 'ai:test', recordActivation: () => {} };
+    const r = (await rigWaypointsHandler.run({ session_id: 'last', limit: 20 }, ctx)) as {
+      waypoints: { title: string }[];
+    };
+    return r.waypoints.map((w) => w.title);
+  };
+
+  beforeEach(async () => {
+    project = mkdtempSync(join(tmpdir(), 'rig-wp-last-'));
+    rig = await Rig.init(project, { embedder: new DeterministicEmbedder() });
+    await rig.indexAll();
+  });
+
+  afterEach(() => {
+    rig.close();
+    rmSync(project, { recursive: true, force: true });
+  });
+
+  test('a session that has not dropped waypoints gets the most recent session', async () => {
+    dropIn('older', 'older decision');
+    await sleep(5);
+    dropIn('newer', 'newer decision');
+    expect(await lastFor('fresh')).toEqual(['newer decision']);
+  });
+
+  test('a session that has dropped waypoints still gets the previous session, not its own', async () => {
+    dropIn('previous', 'previous decision');
+    await sleep(5);
+    dropIn('current', 'my own decision');
+    expect(await lastFor('current')).toEqual(['previous decision']);
+    // Only the caller has waypoints: nothing from a previous session.
+    expect(await lastFor('previous')).toEqual(['my own decision']);
+  });
+
+  test('skips a session whose waypoints were all undone', async () => {
+    dropIn('older', 'older decision');
+    await sleep(5);
+    dropIn('newer', 'undone decision');
+    rig.writes.undoLast({ sessionId: 'newer', actor: 'ai:test' });
+    expect(await lastFor('fresh')).toEqual(['older decision']);
+  });
+
+  test('is empty when no other session has waypoints', async () => {
+    dropIn('current', 'my own decision');
+    expect(await lastFor('current')).toEqual([]);
+  });
+});
