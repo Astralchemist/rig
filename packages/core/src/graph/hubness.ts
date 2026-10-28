@@ -61,6 +61,9 @@ export const recomputeHubness = (db: SqliteAdapter, scopeTypes?: Set<string>): v
   });
 
   // Pick top 5% by hubness per type as is_hub. Any explicit-marked node is a hub.
+  // A zero score never qualifies: in a type where nothing has fanout or heat
+  // (waypoints, declared deps, markdown sections) the "top" member is an
+  // arbitrary tie, and flagging it would hand it rig_pull's hub bonus.
   const byType = new Map<string, typeof scored>();
   for (const s of scored) {
     const arr = byType.get(s.type) ?? [];
@@ -72,7 +75,8 @@ export const recomputeHubness = (db: SqliteAdapter, scopeTypes?: Set<string>): v
     arr.sort((a, b) => b.hubness - a.hubness);
     const k = Math.max(1, Math.ceil(arr.length * TOP_PERCENT));
     for (let i = 0; i < arr.length; i++) {
-      if (i < k || arr[i]!.explicit) hubIds.add(arr[i]!.id);
+      const s = arr[i]!;
+      if ((i < k && s.hubness > 0) || s.explicit) hubIds.add(s.id);
     }
   }
 
