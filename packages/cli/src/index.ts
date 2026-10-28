@@ -14,6 +14,7 @@ import { runServe } from './serve-cmd.ts';
 import { runStart } from './start.ts';
 import { runStatus } from './status.ts';
 import { runSync } from './sync-cmd.ts';
+import { runUninstall } from './uninstall-cmd.ts';
 import { runUpdate } from './update-cmd.ts';
 import { suggestCommand } from './suggest.ts';
 
@@ -26,6 +27,7 @@ const COMMANDS: Record<string, (cwd: string) => void | Promise<void>> = {
   query: runQuery,
   files: runFiles,
   install: runInstall,
+  uninstall: runUninstall,
   serve: runServe,
   doctor: runDoctor,
   bench: runBenchCmd,
@@ -45,7 +47,10 @@ commands:
   sync        incremental update
   query       CLI search
   files       list indexed files
-  install     wire Rig into Claude Code / Cursor / Codex / opencode / openrouter
+  install     wire Rig into Claude Code / Cursor / Codex / opencode — writes into this
+              project by default; --global writes your user-level config
+              (openrouter: writes a reference config only — it isn't an MCP host)
+  uninstall   remove exactly what install added: <target…> | --all  [--global] [--dry-run]
   serve       start MCP and/or web server (--mcp / --web / --all [--no-auth])
   doctor      diagnose environment, db, model cache, agent configs
   bench       benchmark SQL + analytical surfaces (--fixture <N> for synthetic stress test, --json for raw)

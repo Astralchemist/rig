@@ -2,12 +2,20 @@
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { atomicWrite } from './atomic.ts';
-import { deepMerge } from './json-merge.ts';
-import { mergeJsonc } from './jsonc-merge.ts';
-import { expandHome } from './paths.ts';
+import { deepMerge, mergePermissions } from './json-merge.ts';
+import { dropStaleKeys, expandScalarShorthands, mergeJsonc } from './jsonc-merge.ts';
+import { isRigMapKey, isRigToolTable } from './ownership.ts';
+import { expandRelativeTo } from './paths.ts';
 import { upsertSection, upsertSectionSafe } from './section.ts';
 import { expandTokens, type TokenContext } from './tokens.ts';
-import { buildTomlTable, flattenSingleTable, upsertTomlTable } from './toml.ts';
+import {
+  buildTomlTable,
+  flattenTables,
+  listTomlTables,
+  removeTomlKeys,
+  upsertTomlKeys,
+  upsertTomlTable,
+} from './toml.ts';
 
 export interface TargetFileLike {
   role: string;
@@ -15,14 +23,24 @@ export interface TargetFileLike {
   mode: string;
   template: unknown;
   section_marker?: string | undefined;
+  note?: string | undefined;
 }
 
 export interface ApplyResult {
   path: string;
   mode: string;
+  role?: string;
   changed: boolean;
   status: 'wrote' | 'unchanged' | 'dry-run' | 'skipped-unimplemented';
   reason?: string;
+  note?: string;
+}
+
+export interface ApplyOptions {
+  dryRun?: boolean | undefined;
+  home?: string | undefined;
+  // Base for project-scoped (non-`~/`) paths; defaults to the process cwd.
+  projectRoot?: string | undefined;
 }
 
 const readOrEmpty = async (path: string): Promise<string> =>
@@ -32,10 +50,11 @@ const applyMergeJson = async (
   resolvedPath: string,
   template: unknown,
   dryRun: boolean,
+  merge: (base: unknown, template: unknown) => unknown,
 ): Promise<ApplyResult> => {
   const existing = await readOrEmpty(resolvedPath);
   const base = existing ? (JSON.parse(existing) as unknown) : {};
-  const merged = deepMerge(base, template);
+  const merged = merge(base, template);
   const next = JSON.stringify(merged, null, 2) + '\n';
   if (existing === next) {
     return { path: resolvedPath, mode: 'merge-json', changed: false, status: 'unchanged' };
@@ -90,17 +109,31 @@ void upsertSection; // re-exported elsewhere; keep the import live for typecheck
 export async function applyFile(
   file: TargetFileLike,
   ctx: TokenContext,
-  opts: { dryRun?: boolean | undefined; home?: string | undefined } = {},
+  opts: ApplyOptions = {},
 ): Promise<ApplyResult> {
-  const dryRun = !!opts.dryRun;
-  const resolvedPath = expandHome(file.path, opts.home);
+  const resolvedPath = expandRelativeTo(file.path, opts.projectRoot ?? process.cwd(), opts.home);
   const template = await expandTokens(file.template, ctx);
+  const result = await applyMode(file, resolvedPath, template, !!opts.dryRun);
+  return { ...result, role: file.role, ...(file.note ? { note: file.note } : {}) };
+}
 
-  if (file.mode === 'merge-json') return applyMergeJson(resolvedPath, template, dryRun);
+const applyMode = async (
+  file: TargetFileLike,
+  resolvedPath: string,
+  template: unknown,
+  dryRun: boolean,
+): Promise<ApplyResult> => {
+  // Permission files: rig's policy decides rig's own entries, the user's
+  // entries are kept (#8; see mergePermissions and ownership.ts).
+  const perms = file.role === 'permissions';
+  if (file.mode === 'merge-json') {
+    const merge = perms ? mergePermissions : (b: unknown, t: unknown) => deepMerge(b, t);
+    return applyMergeJson(resolvedPath, template, dryRun, merge);
+  }
   if (file.mode === 'append-section') return applyAppendSection(resolvedPath, template, dryRun);
   if (file.mode === 'replace') return applyReplace(resolvedPath, template, dryRun);
-  if (file.mode === 'write-toml') return applyWriteToml(resolvedPath, template, dryRun);
-  if (file.mode === 'merge-jsonc') return applyMergeJsonc(resolvedPath, template, dryRun);
+  if (file.mode === 'write-toml') return applyWriteToml(resolvedPath, template, dryRun, perms);
+  if (file.mode === 'merge-jsonc') return applyMergeJsonc(resolvedPath, template, dryRun, perms);
 
   return {
     path: resolvedPath,
@@ -109,15 +142,21 @@ export async function applyFile(
     status: 'skipped-unimplemented',
     reason: `mode '${file.mode}' is not implemented`,
   };
-}
+};
 
 const applyMergeJsonc = async (
   resolvedPath: string,
   template: unknown,
   dryRun: boolean,
+  permissions: boolean,
 ): Promise<ApplyResult> => {
   const existing = await readOrEmpty(resolvedPath);
-  const next = mergeJsonc(existing, template);
+  // Permission keys: expand the `"permission": "ask"` shorthand, drop rig
+  // keys the policy no longer lists, then set rig's values.
+  const base = permissions
+    ? dropStaleKeys(expandScalarShorthands(existing, template), template, isRigMapKey)
+    : existing;
+  const next = mergeJsonc(base, template);
   if (existing === next) {
     return { path: resolvedPath, mode: 'merge-jsonc', changed: false, status: 'unchanged' };
   }
@@ -153,18 +192,35 @@ const applyWriteToml = async (
   resolvedPath: string,
   template: unknown,
   dryRun: boolean,
+  keyLevel: boolean,
 ): Promise<ApplyResult> => {
   if (!template || typeof template !== 'object') {
     throw new Error('write-toml template must be an object');
   }
-  const { header, body } = flattenSingleTable(template as Record<string, unknown>);
-  const block = buildTomlTable(header, body);
   const existing = await readOrEmpty(resolvedPath);
-  const result = upsertTomlTable(existing, header, block);
-  if (result.action === 'unchanged') {
+  let content = existing;
+  // A server entry replaces its whole table. Permission tables are updated key
+  // by key, so the user's other keys in them (output_token_limit) stay, and
+  // rig's keys leave the tables of tools the policy no longer lists.
+  const tables = flattenTables(template as Record<string, unknown>);
+  for (const { header, body } of tables) {
+    content = keyLevel
+      ? upsertTomlKeys(content, header, body).content
+      : upsertTomlTable(content, header, buildTomlTable(header, body)).content;
+  }
+  if (keyLevel) {
+    const listed = new Set(tables.map((t) => t.header));
+    const keys = [...new Set(tables.flatMap((t) => Object.keys(t.body)))];
+    for (const header of listTomlTables(content)) {
+      if (isRigToolTable(header) && !listed.has(header)) {
+        content = removeTomlKeys(content, header, keys).content;
+      }
+    }
+  }
+  if (content === existing) {
     return { path: resolvedPath, mode: 'write-toml', changed: false, status: 'unchanged' };
   }
-  if (!dryRun) await atomicWrite(resolvedPath, result.content);
+  if (!dryRun) await atomicWrite(resolvedPath, content);
   return {
     path: resolvedPath,
     mode: 'write-toml',

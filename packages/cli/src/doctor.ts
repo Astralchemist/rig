@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { homedir, platform } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -15,6 +15,9 @@ const dirSizeBytes = (dir: string): number => {
 };
 import { Rig, RIG_DIR_NAME } from '@rig/core';
 import { resolvePort } from '@rig/web';
+import { allTargetNames, getTarget } from './install/loader.ts';
+import { displayPath } from './install/paths.ts';
+import { wiredLocations } from './install/uninstall.ts';
 
 interface Check {
   name: string;
@@ -50,24 +53,24 @@ const isRigServer = (port: number): Promise<boolean> =>
     .then((b) => b?.name === 'rig-web')
     .catch(() => false);
 
-const detectAgents = (): { name: string; configPath: string; present: boolean }[] => {
+// Every agent rig is wired into (this project's config or the user-level one),
+// plus detected agents it isn't wired into yet.
+const agentChecks = async (root: string): Promise<Check[]> => {
   const home = homedir();
-  return [
-    { name: 'Claude Code', configPath: join(home, '.claude.json') },
-    { name: 'Cursor', configPath: join(home, '.cursor/mcp.json') },
-    { name: 'Codex CLI', configPath: join(home, '.codex/config.toml') },
-    { name: 'opencode', configPath: join(home, '.config/opencode/opencode.jsonc') },
-    { name: 'openrouter', configPath: join(home, '.config/openrouter/mcp.json') },
-  ].map((a) => ({ ...a, present: existsSync(a.configPath) }));
-};
-
-const hasRigEntry = (configPath: string): boolean => {
-  try {
-    const raw = readFileSync(configPath, 'utf-8');
-    return raw.includes('"rig"') || raw.includes('[mcp_servers.rig]');
-  } catch {
-    return false;
+  const checks: Check[] = [];
+  for (const name of allTargetNames()) {
+    const target = getTarget(name)!;
+    const wired = wiredLocations(target, root, home);
+    if (wired.length) {
+      const where = wired.map((w) => displayPath(w.path, root, home)).join(', ');
+      checks.push(ok(`agent: ${target.display_name}`, `rig wired in ${where}`));
+    } else if (await target.detect()) {
+      checks.push(
+        warn(`agent: ${target.display_name}`, 'installed, but rig is not wired', `run \`rig install ${name}\``),
+      );
+    }
   }
+  return checks;
 };
 
 export async function runDoctor(cwd: string): Promise<void> {
@@ -134,21 +137,8 @@ export async function runDoctor(cwd: string): Promise<void> {
     );
   }
 
-  // 5. agent configs
-  for (const a of detectAgents()) {
-    if (a.present) {
-      const wired = hasRigEntry(a.configPath);
-      if (wired) checks.push(ok(`agent: ${a.name}`, `rig MCP entry present in ${a.configPath}`));
-      else
-        checks.push(
-          warn(
-            `agent: ${a.name}`,
-            `${a.configPath} exists but no rig entry`,
-            `run \`rig install ${a.name.toLowerCase().split(' ')[0]}\``,
-          ),
-        );
-    }
-  }
+  // 5. agent configs — project-level and user-level
+  checks.push(...(await agentChecks(root)));
 
   // 6. map session token (written the first time the map is served)
   const runtimePath = join(rigDir, '.runtime');

@@ -8,27 +8,78 @@ export const emitTargetArtifacts = (
 ): GeneratedFile[] => {
   const out: GeneratedFile[] = [];
   for (const t of targets) {
-    out.push(buildPermissions(t, tools));
+    // Only hosts with a per-tool approval config get a policy file; nothing
+    // would read one for the others.
+    if (t.data.files.some((f) => f.role === 'permissions')) out.push(buildPermissions(t, tools));
     out.push(buildInstructions(t, tools));
   }
   return out;
+};
+
+interface Policy {
+  allow: string[];
+  ask: string[];
+}
+
+// The MCP server name every target registers rig under.
+const SERVER = 'rig';
+
+// Each host spells "run without asking" / "ask first" for one MCP tool in its
+// own config format:
+//   claude    settings.json permissions.allow / .ask with mcp__<server>__<tool>
+//             https://code.claude.com/docs/en/permissions#mcp
+//   cursor    .cursor/cli.json permissions.allow with Mcp(<server>:<tool>);
+//             there is no ask list, unlisted tools prompt (Cursor CLI only)
+//             https://cursor.com/docs/cli/reference/permissions
+//   codex     [mcp_servers.<server>.tools.<tool>] approval_mode = approve | prompt
+//             https://developers.openai.com/codex/config-reference
+//   opencode  permission.<server>_<tool> = allow | ask
+//             https://opencode.ai/docs/tools/ · https://opencode.ai/docs/permissions/
+const PERMISSION_FORMATS: Record<string, (p: Policy) => unknown> = {
+  claude: ({ allow, ask }) => ({
+    permissions: {
+      allow: allow.map((t) => `mcp__${SERVER}__${t}`),
+      ask: ask.map((t) => `mcp__${SERVER}__${t}`),
+    },
+  }),
+  cursor: ({ allow }) => ({ permissions: { allow: allow.map((t) => `Mcp(${SERVER}:${t})`) } }),
+  codex: ({ allow, ask }) => ({
+    mcp_servers: {
+      [SERVER]: {
+        tools: Object.fromEntries([
+          ...allow.map((t) => [t, { approval_mode: 'approve' }]),
+          ...ask.map((t) => [t, { approval_mode: 'prompt' }]),
+        ]),
+      },
+    },
+  }),
+  opencode: ({ allow, ask }) => ({
+    permission: Object.fromEntries([
+      ...allow.map((t) => [`${SERVER}_${t}`, 'allow']),
+      ...ask.map((t) => [`${SERVER}_${t}`, 'ask']),
+    ]),
+  }),
 };
 
 const buildPermissions = (
   target: LoadedContract<'targets'>,
   tools: LoadedContract<'tools'>[],
 ): GeneratedFile => {
+  const format = PERMISSION_FORMATS[target.data.name];
+  if (!format) {
+    throw new Error(`${target.file}: declares a permissions file but no permission format is known for '${target.data.name}'`);
+  }
   const allow: string[] = [];
   const ask: string[] = [];
   for (const tool of tools) {
     const level = tool.data.permissions?.[target.data.name];
-    const id = `mcp__rig__${tool.data.name}`;
+    const id = tool.data.name;
     if (level === 'auto-allow' || level === 'allow') allow.push(id);
     else if (level === 'ask') ask.push(id);
   }
   return {
     path: `installer/${target.data.name}.permissions.json`,
-    content: JSON.stringify({ permissions: { allow, ask } }, null, 2) + '\n',
+    content: JSON.stringify(format({ allow, ask }), null, 2) + '\n',
     source: [target.file, ...tools.map((t) => t.file)],
   };
 };

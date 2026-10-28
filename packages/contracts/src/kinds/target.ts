@@ -15,6 +15,9 @@ export type FileMode = (typeof FILE_MODES)[number];
 export const FILE_ROLES = ['mcp_config', 'permissions', 'instructions'] as const;
 export type FileRole = (typeof FILE_ROLES)[number];
 
+// A file's path also sets its scope: `~/…` is user-level (written by
+// `rig install --global`); any other path is relative to the project root
+// (project scope, the default).
 const targetFileSchema = z
   .object({
     role: z.enum(FILE_ROLES),
@@ -22,6 +25,8 @@ const targetFileSchema = z
     mode: z.enum(FILE_MODES),
     section_marker: z.string().optional(),
     template: z.unknown(),
+    // Printed by the installer alongside this file, e.g. a step the host needs.
+    note: z.string().optional(),
   })
   .strict();
 
@@ -41,6 +46,7 @@ export interface TargetFile {
   mode: FileMode;
   section_marker?: string;
   template: unknown;
+  note?: string;
 }
 
 export interface TargetContract {

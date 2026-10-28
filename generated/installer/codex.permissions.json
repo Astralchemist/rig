@@ -1,44 +1,116 @@
 {
-  "permissions": {
-    "allow": [
-      "mcp__rig__rig_aliases",
-      "mcp__rig__rig_annotate",
-      "mcp__rig__rig_callees",
-      "mcp__rig__rig_callers",
-      "mcp__rig__rig_chain",
-      "mcp__rig__rig_cluster",
-      "mcp__rig__rig_cold",
-      "mcp__rig__rig_critical_path",
-      "mcp__rig__rig_dep_conflicts",
-      "mcp__rig__rig_deps",
-      "mcp__rig__rig_drill",
-      "mcp__rig__rig_drop_waypoint",
-      "mcp__rig__rig_files",
-      "mcp__rig__rig_focus",
-      "mcp__rig__rig_hotspots",
-      "mcp__rig__rig_hub_of",
-      "mcp__rig__rig_hubs",
-      "mcp__rig__rig_impact",
-      "mcp__rig__rig_neighbors",
-      "mcp__rig__rig_node",
-      "mcp__rig__rig_phantom_imports",
-      "mcp__rig__rig_propose_edge",
-      "mcp__rig__rig_pull",
-      "mcp__rig__rig_relevant_skills",
-      "mcp__rig__rig_search",
-      "mcp__rig__rig_session_token",
-      "mcp__rig__rig_status",
-      "mcp__rig__rig_subscribe",
-      "mcp__rig__rig_unused_deps",
-      "mcp__rig__rig_waypoints"
-    ],
-    "ask": [
-      "mcp__rig__rig_add_alias",
-      "mcp__rig__rig_add_node",
-      "mcp__rig__rig_context",
-      "mcp__rig__rig_explore",
-      "mcp__rig__rig_promote",
-      "mcp__rig__rig_undo"
-    ]
+  "mcp_servers": {
+    "rig": {
+      "tools": {
+        "rig_aliases": {
+          "approval_mode": "approve"
+        },
+        "rig_annotate": {
+          "approval_mode": "approve"
+        },
+        "rig_callees": {
+          "approval_mode": "approve"
+        },
+        "rig_callers": {
+          "approval_mode": "approve"
+        },
+        "rig_chain": {
+          "approval_mode": "approve"
+        },
+        "rig_cluster": {
+          "approval_mode": "approve"
+        },
+        "rig_cold": {
+          "approval_mode": "approve"
+        },
+        "rig_critical_path": {
+          "approval_mode": "approve"
+        },
+        "rig_dep_conflicts": {
+          "approval_mode": "approve"
+        },
+        "rig_deps": {
+          "approval_mode": "approve"
+        },
+        "rig_drill": {
+          "approval_mode": "approve"
+        },
+        "rig_drop_waypoint": {
+          "approval_mode": "approve"
+        },
+        "rig_files": {
+          "approval_mode": "approve"
+        },
+        "rig_focus": {
+          "approval_mode": "approve"
+        },
+        "rig_hotspots": {
+          "approval_mode": "approve"
+        },
+        "rig_hub_of": {
+          "approval_mode": "approve"
+        },
+        "rig_hubs": {
+          "approval_mode": "approve"
+        },
+        "rig_impact": {
+          "approval_mode": "approve"
+        },
+        "rig_neighbors": {
+          "approval_mode": "approve"
+        },
+        "rig_node": {
+          "approval_mode": "approve"
+        },
+        "rig_phantom_imports": {
+          "approval_mode": "approve"
+        },
+        "rig_propose_edge": {
+          "approval_mode": "approve"
+        },
+        "rig_pull": {
+          "approval_mode": "approve"
+        },
+        "rig_relevant_skills": {
+          "approval_mode": "approve"
+        },
+        "rig_search": {
+          "approval_mode": "approve"
+        },
+        "rig_session_token": {
+          "approval_mode": "approve"
+        },
+        "rig_status": {
+          "approval_mode": "approve"
+        },
+        "rig_subscribe": {
+          "approval_mode": "approve"
+        },
+        "rig_unused_deps": {
+          "approval_mode": "approve"
+        },
+        "rig_waypoints": {
+          "approval_mode": "approve"
+        },
+        "rig_add_alias": {
+          "approval_mode": "prompt"
+        },
+        "rig_add_node": {
+          "approval_mode": "prompt"
+        },
+        "rig_context": {
+          "approval_mode": "prompt"
+        },
+        "rig_explore": {
+          "approval_mode": "prompt"
+        },
+        "rig_promote": {
+          "approval_mode": "prompt"
+        },
+        "rig_undo": {
+          "approval_mode": "prompt"
+        }
+      }
+    }
   }
 }

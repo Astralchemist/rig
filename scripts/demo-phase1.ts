@@ -81,8 +81,10 @@ const sendMcp = async (
 
 const runInstall = (target: string): Promise<{ code: number; stdout: string }> =>
   new Promise((res) => {
+    // Install into the demo project: project-scoped files (.mcp.json,
+    // .cursor/…) must not land in the repo, as rig.mdc once did.
     const child = spawn('bun', [CLI, 'install', target], {
-      cwd: REPO_ROOT,
+      cwd: FIXTURE,
       env: { ...process.env, HOME: INSTALL_HOME },
       stdio: ['ignore', 'pipe', 'pipe'],
     });

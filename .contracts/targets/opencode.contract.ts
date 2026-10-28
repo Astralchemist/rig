@@ -7,7 +7,8 @@ import { defineTargetContract } from '@rig/contracts';
 // opencode uses an mcp.<name> wrapper (not mcpServers), takes `command` as a
 // combined string-array, and includes an explicit `enabled` flag. Reads and
 // writes go through jsonc-parser so user comments in opencode.jsonc survive
-// idempotent re-runs.
+// idempotent re-runs. Tool approvals go in `permission`, keyed by tool name —
+// MCP tools are named <server>_<tool>, so rig's are rig_rig_*.
 export default defineTargetContract({
   name: 'opencode',
   display_name: 'opencode',
@@ -30,6 +31,12 @@ export default defineTargetContract({
           },
         },
       },
+    },
+    {
+      role: 'permissions',
+      path: '~/.config/opencode/opencode.jsonc',
+      mode: 'merge-jsonc',
+      template: '{{GENERATED:opencode.permissions.json}}',
     },
     {
       role: 'instructions',

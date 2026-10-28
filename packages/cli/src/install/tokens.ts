@@ -4,7 +4,6 @@ import { join } from 'node:path';
 
 export interface TokenContext {
   rigBin: string;
-  cursorPath: string;
   generatedDir: string;
 }
 
@@ -12,7 +11,7 @@ const WHOLE = /^\{\{GENERATED:([^}]+)\}\}$/;
 const INLINE = /\{\{GENERATED:([^}]+)\}\}/g;
 
 const substituteScalars = (s: string, ctx: TokenContext): string =>
-  s.replaceAll('{{RIG_BIN}}', ctx.rigBin).replaceAll('{{CURSOR_PATH}}', ctx.cursorPath);
+  s.replaceAll('{{RIG_BIN}}', ctx.rigBin);
 
 const loadRaw = (name: string, ctx: TokenContext): Promise<string> =>
   readFile(join(ctx.generatedDir, name), 'utf-8');
