@@ -4,6 +4,8 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { TargetContract } from '../packages/contracts/src/index.ts';
+import { getTarget } from '../packages/cli/src/install/loader.ts';
+import { installTarget } from '../packages/cli/src/install/runner.ts';
 import { describeWiring, wireDetectedAgents } from '../packages/cli/src/install/wire.ts';
 
 const GENERATED = resolve(__dirname, '../generated/installer');
@@ -73,6 +75,14 @@ describe('rig start — agent wiring', () => {
       'unchanged .claude/settings.json',
       'unchanged CLAUDE.md',
     ]);
+  });
+
+  test('points out a leftover user-wide install, with the command that removes it', async () => {
+    await installTarget(getTarget('claude')!, { rigBin: 'rig', generatedDir: GENERATED, home, projectRoot: project, scope: 'global' });
+    const lines = describeWiring(await wire(detectOnly('claude')), project, home);
+    expect(lines[0]!.files.at(-1)).toBe(
+      'note      also wired user-wide in ~/.claude.json — `rig uninstall claude --global` removes that',
+    );
   });
 
   test('does nothing in the home directory', async () => {

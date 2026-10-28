@@ -7,6 +7,7 @@ import { parseArgs } from './install/args.ts';
 import { allTargetNames, getTarget } from './install/loader.ts';
 import { displayPath, type Scope } from './install/paths.ts';
 import { hasScope, installTarget, type InstallOptions } from './install/runner.ts';
+import { wiredLocations } from './install/uninstall.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const GENERATED_DIR = join(findAssetRoot(HERE), 'generated/installer');
@@ -75,6 +76,15 @@ export async function runInstall(cwd: string): Promise<void> {
       );
       if (a.reason) process.stdout.write(`      ${a.reason}\n`);
       if (a.note) process.stdout.write(`      note: ${a.note}\n`);
+    }
+    // Upgrading from user-wide wiring: say where the old entry still lives.
+    if (scope === 'project') {
+      for (const w of wiredLocations(contract, projectRoot, home).filter((l) => l.scope === 'global')) {
+        process.stdout.write(
+          `  note: rig is also wired user-wide in ${displayPath(w.path, projectRoot, home)} — ` +
+            `\`rig uninstall ${name} --global\` removes that.\n`,
+        );
+      }
     }
   }
 }

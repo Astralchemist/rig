@@ -6,6 +6,7 @@ import { allTargetNames, getTarget } from './loader.ts';
 import { displayPath } from './paths.ts';
 import { hasScope, installTarget, type InstallResult } from './runner.ts';
 import type { TokenContext } from './tokens.ts';
+import { wiredLocations } from './uninstall.ts';
 
 export interface WireOptions extends TokenContext {
   projectRoot: string;
@@ -18,6 +19,8 @@ export interface WireReport {
   wired: InstallResult[];
   // Detected agents whose rig config is user-level only (Codex, opencode).
   userLevelOnly: string[];
+  // Wired agents that an older, user-wide install also still wires.
+  alsoUserLevel: Array<{ target: string; paths: string[] }>;
   // The project root is $HOME, where project files would be user config.
   skippedHome: boolean;
 }
@@ -27,7 +30,7 @@ export interface WireReport {
 // so the user opts in with `rig install <name>`.
 export const wireDetectedAgents = async (opts: WireOptions): Promise<WireReport> => {
   const home = opts.home ?? homedir();
-  const report: WireReport = { wired: [], userLevelOnly: [], skippedHome: false };
+  const report: WireReport = { wired: [], userLevelOnly: [], alsoUserLevel: [], skippedHome: false };
   if (resolve(opts.projectRoot) === resolve(home)) return { ...report, skippedHome: true };
   const detect = opts.detect ?? ((t: TargetContract) => t.detect());
   for (const name of allTargetNames()) {
@@ -47,6 +50,8 @@ export const wireDetectedAgents = async (opts: WireOptions): Promise<WireReport>
         dryRun: false,
       }),
     );
+    const userLevel = wiredLocations(contract, opts.projectRoot, home).filter((w) => w.scope === 'global');
+    if (userLevel.length) report.alsoUserLevel.push({ target: name, paths: userLevel.map((w) => w.path) });
   }
   return report;
 };
@@ -84,6 +89,11 @@ export const describeWiring = (
     files: [
       ...w.applied.map((a) => `${a.status.padEnd(9)} ${displayPath(a.path, projectRoot, home)}`),
       ...w.applied.filter((a) => a.note && a.changed).map((a) => `note      ${a.note}`),
+      ...(report.alsoUserLevel.find((u) => u.target === w.target)?.paths ?? []).map(
+        (p) =>
+          `note      also wired user-wide in ${displayPath(p, projectRoot, home)} — ` +
+          `\`rig uninstall ${w.target} --global\` removes that`,
+      ),
     ],
   }));
   for (const name of report.userLevelOnly) {

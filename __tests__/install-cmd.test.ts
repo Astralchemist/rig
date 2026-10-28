@@ -44,6 +44,14 @@ describe('rig install — scope', () => {
     expect(readdirSync(project)).toEqual([]);
   });
 
+  test('a project install points out an older user-wide one', () => {
+    runCli(['install', 'claude', '--global'], { cwd: project, home });
+    const r = runCli(['install', 'claude'], { cwd: project, home });
+    expect(r.stdout).toContain(
+      'note: rig is also wired user-wide in ~/.claude.json — `rig uninstall claude --global` removes that.',
+    );
+  });
+
   test('refuses a project-scoped install in the home directory', () => {
     const r = runCli(['install', 'claude'], { cwd: home, home });
     expect(r.code).toBe(2);
