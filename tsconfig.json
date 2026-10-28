@@ -30,6 +30,7 @@
   },
   "include": [
     "packages/*/src/**/*.ts",
+    "packages/*/src/**/*.tsx",
     "scripts/**/*.ts",
     ".contracts/**/*.ts",
     "generated/**/*.ts"

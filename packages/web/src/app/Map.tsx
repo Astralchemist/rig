@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
 import { useTheme } from './theme.tsx';
 
@@ -126,7 +126,7 @@ export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, select
     return { nodes, links };
   }, [snapshot, hiddenKinds, hubsOnly]);
 
-  const ref = useRef<ForceGraphMethods<GraphNode, GraphLink>>();
+  const ref = useRef<ForceGraphMethods<GraphNode, GraphLink>>(undefined);
   const [size, setSize] = useState({ w: 800, h: 600 });
   const [hovered, setHovered] = useState<SnapshotPending | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
