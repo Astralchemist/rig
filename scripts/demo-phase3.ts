@@ -61,7 +61,13 @@ async function main(): Promise<void> {
 
   section('serve + ws');
   const handle = await serveWeb({ projectRoot: PROJECT, port: PORT });
-  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);
+  // The map wants its session token, loopback included.
+  const api = (path: string, init: RequestInit = {}): Promise<Response> =>
+    fetch(`http://127.0.0.1:${PORT}${path}`, {
+      ...init,
+      headers: { authorization: `Bearer ${handle.token}` },
+    });
+  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws?t=${handle.token}`);
   const events: Array<{ type: string; payload?: unknown }> = [];
   ws.addEventListener('message', (ev) => {
     events.push(JSON.parse(ev.data as string) as { type: string });
@@ -72,7 +78,7 @@ async function main(): Promise<void> {
   check('ws connected', ws.readyState === ws.OPEN);
 
   section('propose → accept');
-  const proposeRes = await fetch(`http://127.0.0.1:${PORT}/api/status`).then((r) => r.json());
+  const proposeRes = await api('/api/status').then((r) => r.json());
   check('server up', !!proposeRes);
 
   // Propose an edge directly via Rig.writes (simulating an MCP write tool call).
@@ -97,13 +103,11 @@ async function main(): Promise<void> {
   );
 
   // List pending via REST
-  const pending = (await fetch(`http://127.0.0.1:${PORT}/api/pending-edges`).then((x) =>
-    x.json(),
-  )) as Array<{ id: number }>;
+  const pending = (await api('/api/pending-edges').then((x) => x.json())) as Array<{ id: number }>;
   check(`REST lists 1 pending edge`, pending.length === 1);
 
   // Accept via REST
-  const accept = await fetch(`http://127.0.0.1:${PORT}/api/pending-edges/${pendingId}/accept`, {
+  const accept = await api(`/api/pending-edges/${pendingId}/accept`, {
     method: 'POST',
   });
   check('accept returns 200', accept.status === 200);
@@ -125,9 +129,9 @@ async function main(): Promise<void> {
   r2.close();
 
   section('undo');
-  const undo = (await fetch(`http://127.0.0.1:${PORT}/api/undo`, { method: 'POST' }).then((x) =>
-    x.json(),
-  )) as { undone: { kind: string } | null };
+  const undo = (await api('/api/undo', { method: 'POST' }).then((x) => x.json())) as {
+    undone: { kind: string } | null;
+  };
   check(`undo last (kind=${undo.undone?.kind})`, undo.undone?.kind === 'accept_edge');
 
   const r3 = await Rig.open(PROJECT);

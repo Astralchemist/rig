@@ -5,7 +5,8 @@ Rig reads your **entire codebase** to build its graph and runs a local server th
 ## What Rig does with your data
 
 - **Everything is local.** The graph lives in `.rig/rig.db` inside your project. Embeddings run on-device. **No code, query, or graph data is uploaded anywhere.**
-- The web map binds to **loopback (`127.0.0.1`) by default**. Binding to a non-loopback address *requires* a bearer token (`--auth`); Rig refuses to bind externally without one.
+- The web map binds to **loopback (`127.0.0.1`) by default** and requires a per-project session token (`.rig/.runtime`) even there, because any web page open in your browser can reach a loopback server. `rig start` opens the map already signed in; your agent's `rig_session_token` tool hands you a login link. `rig serve --no-auth` turns the token off, but only on loopback: Rig refuses to bind a non-loopback address without one.
+- The map server also refuses requests whose `Host` isn't one of its own names (DNS rebinding) and writes or WebSocket connections from any origin but its own (CSRF), and it sends no CORS headers.
 - `rig install` writes MCP server entries into your agent's config files (e.g. `.claude.json`). It merges, never clobbers.
 - The first run downloads an embedding model from the Hugging Face CDN to your local model cache. This is the only outbound network call in the core flow.
 

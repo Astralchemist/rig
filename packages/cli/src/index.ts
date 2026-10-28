@@ -46,7 +46,7 @@ commands:
   query       CLI search
   files       list indexed files
   install     wire Rig into Claude Code / Cursor / Codex / opencode / openrouter
-  serve       start MCP and/or web server (--mcp / --web / --all [--auth])
+  serve       start MCP and/or web server (--mcp / --web / --all [--no-auth])
   doctor      diagnose environment, db, model cache, agent configs
   bench       benchmark SQL + analytical surfaces (--fixture <N> for synthetic stress test, --json for raw)
   export-docs render waypoints as a markdown doc tree (--out <dir>, default ./docs)

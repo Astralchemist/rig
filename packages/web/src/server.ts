@@ -12,6 +12,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { loadOrCreateToken, registerAuthRoutes, requireBearer } from './auth.ts';
 import { registerConfigRoutes } from './config-route.ts';
 import { listenWithFallback, resolvePort, resolveProjectName } from './listen.ts';
+import { guardRequests, makeRequestGuard } from './request-guard.ts';
 import { registerRoutes } from './routes.ts';
 import { attachWs, type WsHandle } from './ws.ts';
 
@@ -24,9 +25,10 @@ export interface ServeWebOptions {
   projectRoot: string;
   host?: string;
   port?: number;
-  // 'auto' (default): require bearer iff host is non-loopback.
-  // true: always require bearer (recommended for any sharing scenario).
-  // false: open. Only safe on loopback.
+  // 'auto' (default) or true: require the session token from .rig/.runtime on
+  // /api/* and /ws — on loopback too, since any page open in the browser can
+  // reach a loopback server. `rig start` opens the map with it already set.
+  // false: no token (`rig serve --no-auth`). Refused off loopback.
   auth?: boolean | 'auto';
 }
 
@@ -48,12 +50,11 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
   const port = resolvePort(opts.projectRoot, opts.port);
   const project = resolveProjectName(opts.projectRoot);
   const isLoopback = LOOPBACK_HOSTS.has(host);
-  const authMode = opts.auth ?? 'auto';
-  const authOn = authMode === true || (authMode === 'auto' && !isLoopback);
+  const authOn = opts.auth !== false;
 
   if (!isLoopback && !authOn) {
     throw new Error(
-      `rig serve: refusing to bind ${host} without auth. Pass --auth or use a loopback address.`,
+      `rig serve: refusing to bind ${host} without auth. Drop --no-auth or use a loopback address.`,
     );
   }
 
@@ -64,9 +65,17 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
   // server.close() pending forever (#3).
   const app = Fastify({ logger: false, forceCloseConnections: true });
 
-  await app.register(cors, {
-    origin: [`http://${host}:${port}`, 'http://localhost:7474', 'http://127.0.0.1:7474'],
+  // First hook: refuse foreign Host headers (DNS rebinding) and foreign-Origin
+  // writes (CSRF) before any route, plugin or auth check runs.
+  const guard = makeRequestGuard(host, () => {
+    const addr = app.server.address();
+    return addr && typeof addr === 'object' ? addr.port : undefined;
   });
+  guardRequests(app, guard);
+
+  // The UI is served from this origin, so no other origin may read the API:
+  // send no CORS headers and fail every preflight.
+  await app.register(cors, { origin: false });
   await app.register(compress, { global: true, encodings: ['gzip', 'deflate'], threshold: 1024 });
 
   let token: string | null = null;
@@ -75,8 +84,8 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
     app.addHook('preHandler', requireBearer(token));
     registerAuthRoutes(app, { token, cookieMaxAgeSec: 60 * 60 * 24 * 7 });
   } else {
-    // Always expose /api/session/me so the React TokenGate probe doesn't 404.
-    // When auth is off, every caller is "authed".
+    // --no-auth: expose /api/session/me anyway so the React TokenGate probe
+    // doesn't 404. Every caller is "authed".
     app.get('/api/session/me', async () => ({ authed: true, auth_required: false }));
   }
 
@@ -108,7 +117,7 @@ export async function serveWeb(opts: ServeWebOptions): Promise<WebHandle> {
   }
 
   const address = await listenWithFallback(app, host, port);
-  const ws = attachWs(app.server, rig);
+  const ws = attachWs(app.server, rig, { guard, token });
   return {
     app,
     rig,

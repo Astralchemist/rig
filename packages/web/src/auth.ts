@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import type { IncomingHttpHeaders } from 'node:http';
 import { dirname, join } from 'node:path';
 import type { FastifyReply, FastifyRequest, preHandlerHookHandler } from 'fastify';
 
 const TOKEN_FILE = '.runtime';
-const COOKIE_NAME = 'rig_token';
 
 /**
  * Load the per-server bearer token from .rig/.runtime, or mint one if missing.
@@ -25,22 +25,57 @@ export const loadOrCreateToken = (rigDir: string): string => {
   return tok;
 };
 
-const tokenFromRequest = (req: FastifyRequest): string | null => {
-  const auth = req.headers.authorization;
+/**
+ * Cookies ignore ports, so every map on 127.0.0.1 shares one cookie jar.
+ * Naming the cookie after the token keeps two projects' maps (:7474, :7475…)
+ * from overwriting each other's session.
+ */
+export const cookieNameFor = (token: string): string =>
+  `rig_token_${createHash('sha256').update(token).digest('hex').slice(0, 12)}`;
+
+const decode = (v: string): string => {
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return v;
+  }
+};
+
+// Bearer header first, then this server's cookie, then ?t=. Takes the raw
+// headers + URL so /ws upgrades, which never reach Fastify, can use it too.
+const presentedToken = (
+  headers: IncomingHttpHeaders,
+  url: string,
+  cookieName: string,
+): string | null => {
+  const auth = headers.authorization;
   if (typeof auth === 'string' && auth.startsWith('Bearer ')) {
     return auth.slice('Bearer '.length).trim();
   }
-  const cookie = req.headers.cookie;
+  const cookie = headers.cookie;
   if (typeof cookie === 'string') {
     for (const c of cookie.split(/;\s*/)) {
-      const [k, v] = c.split('=');
-      if (k === COOKIE_NAME && v) return decodeURIComponent(v);
+      const eq = c.indexOf('=');
+      const v = c.slice(eq + 1);
+      if (eq > 0 && v && c.slice(0, eq) === cookieName) return decode(v);
     }
   }
-  const qt = (req.query as { t?: string } | undefined)?.t;
-  if (typeof qt === 'string' && qt) return qt;
-  return null;
+  const q = url.indexOf('?');
+  return (q >= 0 && new URLSearchParams(url.slice(q + 1)).get('t')) || null;
 };
+
+const sameToken = (presented: string | null, expected: string): boolean => {
+  if (presented === null) return false;
+  const a = Buffer.from(presented);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+};
+
+/** True when a request (Fastify or a raw upgrade) carries the session token. */
+export const hasToken = (
+  req: { headers: IncomingHttpHeaders; url?: string | undefined },
+  token: string,
+): boolean => sameToken(presentedToken(req.headers, req.url ?? '/', cookieNameFor(token)), token);
 
 const PUBLIC_PATHS = new Set(['/health', '/auth']);
 const isPublic = (url: string): boolean => {
@@ -55,8 +90,7 @@ const isPublic = (url: string): boolean => {
 export const requireBearer = (expected: string): preHandlerHookHandler => {
   return async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
     if (isPublic(req.url)) return;
-    const token = tokenFromRequest(req);
-    if (token !== expected) {
+    if (!hasToken(req, expected)) {
       reply.code(401).send({ error: 'auth_required', hint: 'GET /auth?t=<token> sets the cookie' });
     }
   };
@@ -76,19 +110,19 @@ export const registerAuthRoutes = (
   app: import('fastify').FastifyInstance,
   ctx: AuthRouteContext,
 ): void => {
-  app.get<{ Querystring: { t?: string } }>('/auth', async (req, reply) => {
-    const t = req.query.t ?? '';
-    if (t !== ctx.token) return reply.code(401).send({ error: 'invalid_token' });
+  const cookieName = cookieNameFor(ctx.token);
+  app.get<{ Querystring: { t?: unknown } }>('/auth', async (req, reply) => {
+    const t = typeof req.query.t === 'string' ? req.query.t : '';
+    if (!sameToken(t, ctx.token)) return reply.code(401).send({ error: 'invalid_token' });
     reply.header(
       'Set-Cookie',
-      `${COOKIE_NAME}=${encodeURIComponent(t)}; Path=/; Max-Age=${ctx.cookieMaxAgeSec}; HttpOnly; SameSite=Strict`,
+      `${cookieName}=${encodeURIComponent(t)}; Path=/; Max-Age=${ctx.cookieMaxAgeSec}; HttpOnly; SameSite=Strict`,
     );
     return reply.redirect('/', 302);
   });
 
   app.get('/api/session/me', async (req, reply) => {
-    const tok = tokenFromRequest(req);
-    if (tok === ctx.token) return { authed: true };
+    if (hasToken(req, ctx.token)) return { authed: true };
     return reply.code(401).send({ authed: false });
   });
 };

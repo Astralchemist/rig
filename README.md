@@ -126,7 +126,7 @@ This merges Rig's MCP server into the agent's config; the agent spawns `rig serv
 | `rig index` | Extract + write nodes (`--include` / `--exclude <glob>`) |
 | `rig sync` | Incremental update |
 | `rig query` | CLI search |
-| `rig serve --all` | Start MCP and/or the web map (`--mcp` / `--web` / `--auth`) |
+| `rig serve --all` | Start MCP and/or the web map (`--mcp` / `--web` / `--no-auth`) |
 | `rig status` | Index health |
 | `rig doctor` | Diagnose environment, db, model cache, agent configs |
 | `rig export-docs` | Render waypoints into a markdown doc tree |

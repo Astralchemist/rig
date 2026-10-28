@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { BUSY_TIMEOUT_MS } from './adapter.ts';
 import type { SqliteAdapter, SqliteAdapterFactory, SqliteStatement } from './adapter.ts';
 
 // Node fallback. Imported lazily so `bun:sqlite` users never pay the load cost,
@@ -12,7 +13,7 @@ interface BetterSqliteInstance {
   exec(sql: string): void;
   prepare(sql: string): BetterSqliteStmt;
   pragma(stmt: string, opts?: { simple?: boolean }): unknown;
-  transaction<T extends (...args: unknown[]) => unknown>(fn: T): T;
+  transaction<T extends (...args: unknown[]) => unknown>(fn: T): T & { immediate: T };
   loadExtension(path: string): void;
   close(): void;
   open: boolean;
@@ -29,6 +30,8 @@ class BetterSqliteAdapter implements SqliteAdapter {
 
   constructor(Ctor: BetterSqliteCtor, path: string) {
     this.db = new Ctor(path);
+    // better-sqlite3 already defaults to 5000ms; pin it so both backends match.
+    this.db.pragma(`busy_timeout = ${BUSY_TIMEOUT_MS}`);
   }
 
   get open(): boolean {
@@ -57,7 +60,7 @@ class BetterSqliteAdapter implements SqliteAdapter {
   }
 
   transaction<T>(fn: () => T): () => T {
-    return this.db.transaction(fn as never) as unknown as () => T;
+    return this.db.transaction(fn).immediate;
   }
 
   loadExtension(path: string): void {

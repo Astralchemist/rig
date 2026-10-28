@@ -48,6 +48,9 @@ export class Database {
 
   close(): void {
     try {
+      // Stats refresh isn't worth waiting out another process's write lock:
+      // drop busy_timeout so a contended optimize fails fast instead.
+      this.adapter.pragma('busy_timeout = 0');
       this.adapter.pragma('optimize');
     } catch {
       // optimize is best-effort; do not block close on a stats-update failure

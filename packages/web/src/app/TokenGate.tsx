@@ -12,7 +12,9 @@ export interface TokenGateProps {
  * checking we render nothing; on auth fail we render the "open via your AI
  * agent" overlay; on success we render the wrapped app.
  *
- * Loopback-dev mode runs without auth — the gate just passes through.
+ * The token is required on loopback too; `rig start` opens the map through
+ * /auth?t=… so the cookie is already set. Under `rig serve --no-auth` the
+ * probe always succeeds and the gate passes straight through.
  */
 export function TokenGate({ children }: TokenGateProps): JSX.Element {
   const [state, setState] = useState<State>('checking');
@@ -43,7 +45,9 @@ export function TokenGate({ children }: TokenGateProps): JSX.Element {
       credentials: 'include',
       redirect: 'manual',
     });
-    if (res.status === 302 || res.ok) {
+    // With redirect: 'manual' the 302 that sets the cookie surfaces as an
+    // opaque redirect (status 0, ok false), not as a 302.
+    if (res.type === 'opaqueredirect' || res.ok) {
       location.reload();
     } else {
       setPasteErr('invalid token');

@@ -150,7 +150,7 @@ export async function runDoctor(cwd: string): Promise<void> {
     }
   }
 
-  // 6. runtime token freshness (only meaningful when --auth is on)
+  // 6. map session token (written the first time the map is served)
   const runtimePath = join(rigDir, '.runtime');
   if (existsSync(runtimePath)) {
     const mode = statSync(runtimePath).mode & 0o777;

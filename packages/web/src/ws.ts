@@ -2,9 +2,12 @@
 import type { Rig } from '@rig/core';
 import { activationsSince } from '@rig/core/db/activation-queries.ts';
 import { unwatchFile, watch, watchFile, type FSWatcher } from 'node:fs';
-import type { Server as HttpServer } from 'node:http';
+import { STATUS_CODES, type IncomingMessage, type Server as HttpServer } from 'node:http';
 import { join, resolve } from 'node:path';
+import type { Duplex } from 'node:stream';
 import { WebSocketServer, type WebSocket } from 'ws';
+import { hasToken } from './auth.ts';
+import type { RequestGuard } from './request-guard.ts';
 import { deriveEvents } from './ws-derive.ts';
 
 export interface WsHandle {
@@ -18,19 +21,53 @@ export interface WsEvent {
   [k: string]: unknown;
 }
 
+// What a /ws upgrade must pass. Upgrades never reach Fastify's hooks, so the
+// HTTP checks are repeated here.
+export interface WsGate {
+  guard: RequestGuard;
+  // Session token the upgrade must carry (cookie, Bearer or ?t=); null = --no-auth.
+  token: string | null;
+}
+
 const RIG_DIR = '.rig';
 
 // Debounce the rapid-fire writes WAL produces during a single transaction. We
 // emit one db:changed event 200ms after the last observed change.
 const DEBOUNCE_MS = 200;
 
-export const attachWs = (httpServer: HttpServer, rig: Rig): WsHandle => {
+// Browsers send an Origin on every WebSocket handshake, so a cross-site page
+// is turned away here even though the handshake is a GET.
+const upgradeStatus = (req: IncomingMessage, gate: WsGate): number => {
+  if (req.url?.split('?')[0] !== '/ws') return 404;
+  if (!gate.guard.hostAllowed(req.headers.host)) return 403;
+  if (!gate.guard.originAllowed(req.headers.origin)) return 403;
+  if (gate.token !== null && !hasToken(req, gate.token)) return 401;
+  return 101;
+};
+
+// Answer an upgrade we won't take with a plain HTTP status, then hang up.
+const refuse = (socket: Duplex, status: number): void => {
+  socket.on('error', () => socket.destroy());
+  socket.once('finish', () => socket.destroy());
+  socket.end(
+    `HTTP/1.1 ${status} ${STATUS_CODES[status]}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`,
+  );
+};
+
+export const attachWs = (httpServer: HttpServer, rig: Rig, gate: WsGate): WsHandle => {
   const projectRoot = rig.projectRoot;
   let lastMutationTs = Date.now();
   let lastActivationTs = Date.now();
 
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  const wss = new WebSocketServer({ noServer: true });
   const clients = new Set<WebSocket>();
+
+  const onUpgrade = (req: IncomingMessage, socket: Duplex, head: Buffer): void => {
+    const status = upgradeStatus(req, gate);
+    if (status !== 101) return refuse(socket, status);
+    wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
+  };
+  httpServer.on('upgrade', onUpgrade);
 
   wss.on('connection', (ws) => {
     clients.add(ws);
@@ -106,6 +143,7 @@ export const attachWs = (httpServer: HttpServer, rig: Rig): WsHandle => {
 
   return {
     close: async () => {
+      httpServer.off('upgrade', onUpgrade);
       if (timer) clearTimeout(timer);
       unwatchFile(walFile, onDbChange);
       for (const w of watchers) w.close();

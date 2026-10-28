@@ -14,7 +14,7 @@ export async function run(args: Args, ctx: ToolContext): Promise<Result> {
   if (!existsSync(path)) {
     throw new ToolError(
       'NO_RUNTIME_TOKEN',
-      'Web server not running with auth (or .rig/.runtime missing). Start `rig serve --web --auth`.',
+      'No map token yet (.rig/.runtime missing). Start the map with `rig start` or `rig serve --web`.',
     );
   }
   const token = readFileSync(path, 'utf-8').trim();
