@@ -4,12 +4,18 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-HOOK="$ROOT/.git/hooks/pre-commit"
 
-if [ ! -d "$ROOT/.git" ]; then
+# .git is a directory in a normal clone but a file in a linked worktree.
+if [ ! -e "$ROOT/.git" ]; then
   echo "install-hooks: $ROOT is not a git repo" >&2
   exit 1
 fi
+
+# Ask git where hooks live rather than assuming $ROOT/.git/hooks: worktrees
+# share the main checkout's hooks dir, and core.hooksPath may move it.
+HOOKS="$(git -C "$ROOT" rev-parse --path-format=absolute --git-path hooks)"
+HOOK="$HOOKS/pre-commit"
+mkdir -p "$HOOKS"
 
 cat > "$HOOK" <<'EOF'
 #!/usr/bin/env bash
