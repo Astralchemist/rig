@@ -94,12 +94,19 @@ export interface UnusedDepRow {
   is_dev: boolean;
 }
 
+// Python import targets are dotted module paths, and the package is the
+// top-level module: 'pandas.io.sql' → 'pandas'. Relative targets ('.models')
+// name no package.
+const pythonPackageOf = (target: string): string | null =>
+  target.startsWith('.') ? null : (target.split('.')[0] ?? null);
+
 // Heuristic: a declared dep is "unused" when its name (or scoped prefix) never
 // appears as a target_name in unresolved_refs — that's where bare-specifier
 // imports land after the resolver fails to map them to a file. Handles scoped
-// packages (@types/node) and subpath imports (lodash/get). False positives
-// possible for indirect runtime usage (JSX runtimes, bundler magic) — flag as
-// "likely unused, verify before removing", not as authoritative.
+// packages (@types/node), subpath imports (lodash/get) and dotted Python
+// modules (pandas.io). False positives possible for indirect runtime usage
+// (JSX runtimes, bundler magic) — flag as "likely unused, verify before
+// removing", not as authoritative.
 export const listUnusedDependencies = (db: SqliteAdapter): UnusedDepRow[] => {
   const targetRows = db
     .prepare(`SELECT DISTINCT target_name FROM unresolved_refs`)
@@ -116,6 +123,16 @@ export const listUnusedDependencies = (db: SqliteAdapter): UnusedDepRow[] => {
       const top = t.split('/')[0];
       if (top) used.add(top);
     }
+  }
+  const pythonImports = db
+    .prepare(
+      `SELECT DISTINCT target_name FROM unresolved_refs
+       WHERE kind = 'imports' AND file_path LIKE '%.py'`,
+    )
+    .all() as { target_name: string }[];
+  for (const r of pythonImports) {
+    const pkg = pythonPackageOf(r.target_name);
+    if (pkg) used.add(pkg);
   }
 
   const declared = db
@@ -180,8 +197,11 @@ export const listPhantomImports = (db: SqliteAdapter): PhantomImportRow[] => {
   }[];
 
   // Normalize subpath / scoped imports the same way listUnusedDependencies does
-  // — '@types/node/path' resolves to '@types/node', 'lodash/get' to 'lodash'.
-  const normalize = (t: string): string => {
+  // — '@types/node/path' resolves to '@types/node', 'lodash/get' to 'lodash',
+  // and from Python files 'pandas.io' to 'pandas'.
+  const normalize = (t: string, filePath: string): string => {
+    const py = filePath.endsWith('.py') ? pythonPackageOf(t) : null;
+    if (py) return py;
     if (t.startsWith('@')) {
       const parts = t.split('/');
       return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : t;
@@ -190,7 +210,7 @@ export const listPhantomImports = (db: SqliteAdapter): PhantomImportRow[] => {
   };
 
   return rows.filter((r) => {
-    const pkg = normalize(r.target_name);
+    const pkg = normalize(r.target_name, r.sample_file);
     // Relative + absolute imports never resolve to a declared dep; they're
     // file-resolution failures, not phantoms.
     if (pkg.startsWith('.') || pkg.startsWith('/')) return false;

@@ -73,11 +73,23 @@ describe('A2 rig_unused_deps — Python imports', () => {
 
   beforeEach(async () => {
     project = mkdtempSync(join(tmpdir(), 'rig-unused-py-'));
-    writeFileSync(join(project, 'requirements.txt'), 'pandas==2.1.4\nnumpy>=1.26\nrequests\n');
+    writeFileSync(
+      join(project, 'requirements.txt'),
+      'pandas==2.1.4\nnumpy>=1.26\nmatplotlib\nscipy\nrequests\n',
+    );
     writeFileSync(join(project, 'pyproject.toml'), '[project]\ndependencies = ["pandas>=2.1"]\n');
     writeFileSync(
       join(project, 'main.py'),
-      ['import numpy', 'import pandas as pd', '', 'def load(path):', '    return pd.read_csv(path)', ''].join('\n'),
+      [
+        'import numpy',
+        'import pandas as pd',
+        'import matplotlib.pyplot as plt',
+        'from scipy.stats import norm',
+        '',
+        'def load(path):',
+        '    return pd.read_csv(path)',
+        '',
+      ].join('\n'),
     );
     rig = await Rig.init(project, { embedder: new DeterministicEmbedder() });
     await rig.indexAll();
@@ -96,6 +108,12 @@ describe('A2 rig_unused_deps — Python imports', () => {
   test('a plain import counts as a use (import numpy)', () => {
     const unused = rig.getUnusedDependencies();
     expect(unused.find((d) => d.name === 'numpy')).toBeUndefined();
+  });
+
+  test('dotted imports count toward the top-level package', () => {
+    const names = rig.getUnusedDependencies().map((d) => d.name);
+    expect(names).not.toContain('matplotlib');
+    expect(names).not.toContain('scipy');
   });
 
   test('a declared package that is never imported is still flagged', () => {
