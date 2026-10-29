@@ -204,15 +204,21 @@ describe('results manifest and by-model view', () => {
     expect(sessions.map((r) => r.label)).toEqual([
       'sessions-0.3.0',
       'sessions-confirmation-0.3.0',
+      'sessions-deepseek-deepseek-v4.1-flash',
       'sessions-sanity',
     ]);
-    for (const r of a.runs) {
+    const deepseek = a.runs.find((r) => r.model === 'deepseek/deepseek-v4.1-flash')!;
+    expect(deepseek.vendor).toBe('deepseek');
+    expect(deepseek.resolved_models).toEqual(['deepseek/deepseek-v4.1-flash']);
+    for (const r of a.runs.filter((r) => r !== deepseek)) {
       expect(r.vendor).toBe('anthropic');
       expect(r.tier).toBe('low-cost');
       expect(r.resolved_models).toEqual(['anthropic/claude-haiku-5.5']);
     }
-    expect(a.models.map((m) => m.id)).toEqual(lineup);
+    // Lineup models first, then models that only appear in results.
+    expect(a.models.map((m) => m.id)).toEqual([...lineup, 'deepseek/deepseek-v4.1-flash']);
     expect(a.models[1]!.in_lineup).toBe(true);
+    expect(a.models[2]!.in_lineup).toBe(false);
     expect(a.fairness.join(' ')).toContain('provider defaults');
   });
 

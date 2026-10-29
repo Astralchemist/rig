@@ -115,7 +115,7 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
 **On single questions, grep still wins.** With grep and rig both available, as in a real agent session, rig 0.3.0 used 134% of grep-only's tokens per question, and both arms got 48/48 right. Exact identifier lookups cost 175%, which is why the installed guide tells agents to use grep for them. Natural-language questions came out even (99%). Putting the orientation map in every prompt cost 187%, so the map is on demand.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Astralchemist/rig/main/docs/bench/cross-model.svg" alt="Memory gain and Q&A token ratio per model. Only anthropic/claude-haiku-5.5 has results: +40 pp memory gain and 134% of grep-only tokens. The other seven lineup models are not run yet." width="760">
+  <img src="https://raw.githubusercontent.com/Astralchemist/rig/main/docs/bench/cross-model.svg" alt="Memory gain and Q&A token ratio per model. anthropic/claude-haiku-5.5: +40 pp memory gain (PASS) and 134% of grep-only tokens. deepseek/deepseek-v4.1-flash: +60 pp memory gain, FAIL on the token cap at 110.6%; Q&amp;A not run. The other six lineup models are not run yet." width="760">
 </p>
 
 **One model so far.** Every result above comes from Claude Haiku 5.5. `bun run bench:matrix` reruns the same bench across low-cost and frontier models from Anthropic, OpenAI, Google, DeepSeek and Qwen, with the same prompts, tools and trials for each. Rows marked "not run yet" have no results.

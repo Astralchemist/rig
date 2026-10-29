@@ -353,6 +353,39 @@
       "credit_error_trials": 12
     },
     {
+      "file": "2026-10-29-sessions-deepseek-deepseek-v4.1-flash.json",
+      "label": "sessions-deepseek-deepseek-v4.1-flash",
+      "mode": "sessions",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "vendor": "deepseek",
+      "tier": "low-cost",
+      "provider": "openrouter",
+      "started_at": "2026-10-29T09:02:26.737Z",
+      "finished_at": "2026-10-29T10:45:43.575Z",
+      "arms": [
+        "memory-off",
+        "memory-on",
+        "oracle"
+      ],
+      "trials": 3,
+      "max_turns": 12,
+      "items": 20,
+      "task_set": null,
+      "results": 180,
+      "resolved_models": [
+        "deepseek/deepseek-v4.1-flash"
+      ],
+      "rig": {
+        "version": "0.3.0",
+        "commit": "08c328e4f641b724000baaa84480eb7a4eddda5e",
+        "fingerprint": "14b6ca5108774da6"
+      },
+      "cost_usd": 1.027798,
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
+    },
+    {
       "file": "2026-10-29-sessions-sanity.json",
       "label": "sessions-sanity",
       "mode": "sessions",

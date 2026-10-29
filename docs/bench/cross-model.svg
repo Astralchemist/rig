@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="442" viewBox="0 0 760 442" role="img" aria-labelledby="cross-model-title cross-model-desc">
 <title id="cross-model-title">Across models: memory gain and Q&amp;A token cost</title>
-<desc id="cross-model-desc">Per model: session-2 memory gain (memory-on minus memory-off, 95% CI) and single-shot grep+rig tokens relative to grep-only. anthropic/claude-haiku-5.5 (low-cost): memory +40.0 pp (95% CI +20.0 to +60.0 pp), PASS against the bar; Q&amp;A 133.6% of grep-only tokens. openai/gpt-6-luna (low-cost): memory not run yet; Q&amp;A not run yet. deepseek/deepseek-v4.1-flash (low-cost): memory not run yet; Q&amp;A not run yet. qwen/qwen3.8-flash (low-cost): memory not run yet; Q&amp;A not run yet. google/gemini-3.8-flash (low-cost): memory not run yet; Q&amp;A not run yet. anthropic/claude-sonnet-5.5 (frontier): memory not run yet; Q&amp;A not run yet. openai/gpt-6.1-sol (frontier): memory not run yet; Q&amp;A not run yet. google/gemini-4-argon (frontier): memory not run yet; Q&amp;A not run yet.</desc>
+<desc id="cross-model-desc">Per model: session-2 memory gain (memory-on minus memory-off, 95% CI) and single-shot grep+rig tokens relative to grep-only. anthropic/claude-haiku-5.5 (low-cost): memory +40.0 pp (95% CI +20.0 to +60.0 pp), PASS against the bar; Q&amp;A 133.6% of grep-only tokens. openai/gpt-6-luna (low-cost): memory not run yet; Q&amp;A not run yet. deepseek/deepseek-v4.1-flash (low-cost): memory +60.0 pp (95% CI +40.0 to +78.3 pp), FAIL against the bar; Q&amp;A not run yet. qwen/qwen3.8-flash (low-cost): memory not run yet; Q&amp;A not run yet. google/gemini-3.8-flash (low-cost): memory not run yet; Q&amp;A not run yet. anthropic/claude-sonnet-5.5 (frontier): memory not run yet; Q&amp;A not run yet. openai/gpt-6.1-sol (frontier): memory not run yet; Q&amp;A not run yet. google/gemini-4-argon (frontier): memory not run yet; Q&amp;A not run yet.</desc>
 <style>
 svg{--bg:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,0.10);--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a}
 @media (prefers-color-scheme: dark){svg{--bg:#1a1a19;--ink:#ffffff;--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,0.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70}}
@@ -53,9 +53,11 @@ text{font-family:system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-se
 <text x="672" y="180" class="empty" dominant-baseline="middle">not run yet</text>
 <g><title>openai/gpt-6-luna: memory not run yet; Q&amp;A not run yet</title><rect x="24" y="166" width="712" height="28" class="hit"/></g>
 <text x="24" y="208" class="lab" dominant-baseline="middle">deepseek/deepseek-v4.1-flash</text>
-<text x="428" y="208" class="empty" dominant-baseline="middle">not run yet</text>
+<path d="M344 208H416.83M344 204V212M416.83 204V212" class="w-s1"/>
+<circle cx="382" cy="208" r="5" class="f-s1 ring"/>
+<text x="428" y="208" class="val" dominant-baseline="middle">+60.0</text>
 <text x="672" y="208" class="empty" dominant-baseline="middle">not run yet</text>
-<g><title>deepseek/deepseek-v4.1-flash: memory not run yet; Q&amp;A not run yet</title><rect x="24" y="194" width="712" height="28" class="hit"/></g>
+<g><title>deepseek/deepseek-v4.1-flash: memory +60.0 pp (95% CI +40.0 to +78.3 pp), off 20% → on 80%, FAIL; Q&amp;A not run yet</title><rect x="24" y="194" width="712" height="28" class="hit"/></g>
 <text x="24" y="236" class="lab" dominant-baseline="middle">qwen/qwen3.8-flash</text>
 <text x="428" y="236" class="empty" dominant-baseline="middle">not run yet</text>
 <text x="672" y="236" class="empty" dominant-baseline="middle">not run yet</text>
@@ -77,5 +79,5 @@ text{font-family:system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-se
 <text x="428" y="376" class="empty" dominant-baseline="middle">not run yet</text>
 <text x="672" y="376" class="empty" dominant-baseline="middle">not run yet</text>
 <g><title>google/gemini-4-argon: memory not run yet; Q&amp;A not run yet</title><rect x="24" y="362" width="712" height="28" class="hit"/></g>
-<text x="24" y="424" class="note">1 of 8 models measured. Memory bar: pre-registered for anthropic/claude-haiku-5.5 only; for other models it is a reference line.</text>
+<text x="24" y="424" class="note">2 of 8 models measured. Memory bar: pre-registered for anthropic/claude-haiku-5.5 only; for other models it is a reference line.</text>
 </svg>
