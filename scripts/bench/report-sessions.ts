@@ -100,6 +100,7 @@ export interface SessionsReport {
   instructions: SessionsBenchFile['instructions'];
   trap_evidence: SessionsBenchFile['trap_evidence'];
   bar: string;
+  confirmation_rule: string | null;
   trials: number;
   arms: SessionArmStats[];
   paired: PairedDelta | null;
@@ -387,6 +388,7 @@ export const aggregateSessions = (
     instructions: file.instructions,
     trap_evidence: file.trap_evidence,
     bar: file.preregistered_bar,
+    confirmation_rule: file.confirmation_rule ?? null,
     trials: file.trials,
     arms,
     paired,
@@ -410,6 +412,9 @@ export const renderSessionsMarkdown = (r: SessionsReport): string => {
   const L: string[] = [];
   L.push(`# rig bench, multi-session memory — ${r.label}`, '');
   L.push('**Pre-registered bar** (written before any run):', '', `> ${r.bar}`, '');
+  if (r.confirmation_rule) {
+    L.push('**Confirmation rule** (pre-registered):', '', `> ${r.confirmation_rule}`, '');
+  }
   if (r.verdict) {
     L.push(`**Verdict: ${r.verdict.verdict}** — ${r.verdict.reason}.`, '');
   } else {

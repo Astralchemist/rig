@@ -42,6 +42,11 @@ import type {
 // every results file (before the first model call) and every report.
 export const PREREGISTERED_BAR =
   "Memory passes only if the memory-on arm raises multi-session task success by ≥ 15 percentage points over memory-off, while using ≤ 110% of memory-off's median total tokens (both sessions summed). If it doesn't, memory work stops and rig stays a code-map tool.";
+// The confirmation rule, pre-registered after the first 10-task run came out
+// INCONCLUSIVE and before any further run. It goes verbatim into the README
+// and every later results file, and the report prints it.
+export const CONFIRMATION_RULE =
+  "Confirmation (written 2026-10-29, after the first 10-task run was INCONCLUSIVE and before any further run): 10 new task pairs are added; the verdict is decided once, on all 20 tasks combined (first run's trials for tasks 1–10 plus one new run for tasks 11–20, same model, arms, trials and bar). No further reruns or task changes are made to reach a verdict.";
 export const BAR_DELTA = 0.15;
 export const BAR_TOKEN_RATIO = 1.1;
 

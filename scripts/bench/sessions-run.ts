@@ -17,6 +17,7 @@ import {
 import { perMillion, type ModelPricing } from './pricing.ts';
 import type { Provider } from './providers.ts';
 import {
+  CONFIRMATION_RULE,
   MEMORY_READ_TOOLS,
   MEMORY_WRITE_TOOLS,
   PREREGISTERED_BAR,
@@ -192,6 +193,7 @@ export const newSessionsFile = (
   schema: 1,
   mode: 'sessions',
   preregistered_bar: PREREGISTERED_BAR,
+  confirmation_rule: CONFIRMATION_RULE,
   label: c.label,
   started_at: new Date().toISOString(),
   finished_at: null,

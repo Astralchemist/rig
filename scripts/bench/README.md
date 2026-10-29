@@ -278,6 +278,16 @@ The verdict line in the report applies it like this:
 - **FAIL:** the whole CI is below +15 pp, or the token ratio is above 110%.
 - **INCONCLUSIVE:** the CI straddles +15 pp, and the token clause holds.
 
+### Confirmation rule
+
+The first run on tasks 1–10 (`results/2026-10-29-sessions-0.3.0.md`) came out INCONCLUSIVE:
++46.7 pp, 95% CI 13.3 to 76.7 pp, at 74% of memory-off's tokens. Its sanity check also warned
+that memory-off avoided 6 of 12 trap runs. This rule was written and committed before tasks
+11–20 existed and before any further run. Every later results file carries it verbatim, and
+the report prints it:
+
+> Confirmation (written 2026-10-29, after the first 10-task run was INCONCLUSIVE and before any further run): 10 new task pairs are added; the verdict is decided once, on all 20 tasks combined (first run's trials for tasks 1–10 plus one new run for tasks 11–20, same model, arms, trials and bar). No further reruns or task changes are made to reach a verdict.
+
 ### Design
 
 Each of the 10 task pairs in `sessions.json` runs on the pinned next-auth commit. The pin comes

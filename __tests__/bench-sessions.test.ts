@@ -26,6 +26,7 @@ import {
   type PairedDelta,
 } from '../scripts/bench/report-sessions.ts';
 import {
+  CONFIRMATION_RULE,
   NOTES_BEGIN,
   PREREGISTERED_BAR,
   SESSION_SYSTEM_PROMPT,
@@ -311,9 +312,11 @@ describe('installed instructions', () => {
     expect(() => installedParagraph('Drop', '# nothing here')).toThrow('Session bootstrap');
   });
 
-  test('the bar is in the README verbatim', () => {
+  test('the bar and the confirmation rule are in the README verbatim', () => {
     const readme = readFileSync(resolve(ROOT, 'scripts/bench/README.md'), 'utf-8');
     expect(readme).toContain(`> ${PREREGISTERED_BAR}`);
+    expect(readme).toContain(`> ${CONFIRMATION_RULE}`);
+    expect(CONFIRMATION_RULE).toStartWith('Confirmation (written 2026-10-29, after the first');
   });
 });
 
@@ -705,6 +708,12 @@ describe('verdict against the pre-registered bar', () => {
     ]);
     const md = renderSessionsMarkdown(r);
     expect(md).toContain(`> ${PREREGISTERED_BAR}`);
+    expect(md).not.toContain('Confirmation rule');
+    expect(
+      renderSessionsMarkdown(
+        aggregateSessions({ ...file, confirmation_rule: CONFIRMATION_RULE }, { iterations: 50 }),
+      ),
+    ).toContain(`**Confirmation rule** (pre-registered):\n\n> ${CONFIRMATION_RULE}`);
     expect(md).toContain('**Verdict: PASS**');
     expect(md).toContain('## Waypoints');
     expect(md).toContain('| memory-on | 4/8 | 4 / 0.50 |');
@@ -847,6 +856,7 @@ describe('dry-run cost estimate', () => {
       [],
     );
     expect(fresh.preregistered_bar).toBe(PREREGISTERED_BAR);
+    expect(fresh.confirmation_rule).toBe(CONFIRMATION_RULE);
     expect(fresh.results).toEqual([]);
   });
 });

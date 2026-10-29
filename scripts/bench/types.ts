@@ -221,6 +221,8 @@ export interface SessionsBenchFile {
   mode: 'sessions';
   // The pre-registered pass bar, verbatim, written before any run.
   preregistered_bar: string;
+  // The confirmation rule, verbatim; absent from files written before it.
+  confirmation_rule?: string;
   label: string;
   started_at: string;
   finished_at: string | null;
