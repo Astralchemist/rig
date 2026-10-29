@@ -238,6 +238,9 @@ export interface SessionsBenchFile {
   preregistered_bar: string;
   // The confirmation rule, verbatim; absent from files written before it.
   confirmation_rule?: string;
+  // The memory-auto pre-registration, verbatim; absent from files written
+  // before it.
+  memory_auto_preregistration?: string;
   // The --task-set the run was limited to, when it was.
   task_set?: string;
   // Set by mergeSessionsFiles: the runs a combined file was built from.

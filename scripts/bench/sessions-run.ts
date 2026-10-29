@@ -18,6 +18,7 @@ import { perMillion, type ModelPricing } from './pricing.ts';
 import type { Provider } from './providers.ts';
 import {
   CONFIRMATION_RULE,
+  MEMORY_AUTO_PREREGISTRATION,
   MEMORY_READ_TOOLS,
   MEMORY_WRITE_TOOLS,
   PREREGISTERED_BAR,
@@ -212,6 +213,7 @@ export const newSessionsFile = (
   mode: 'sessions',
   preregistered_bar: PREREGISTERED_BAR,
   confirmation_rule: CONFIRMATION_RULE,
+  memory_auto_preregistration: MEMORY_AUTO_PREREGISTRATION,
   ...(c.taskSet !== null ? { task_set: c.taskSet } : {}),
   label: c.label,
   started_at: new Date().toISOString(),

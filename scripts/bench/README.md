@@ -288,6 +288,24 @@ the report prints it:
 
 > Confirmation (written 2026-10-29, after the first 10-task run was INCONCLUSIVE and before any further run): 10 new task pairs are added; the verdict is decided once, on all 20 tasks combined (first run's trials for tasks 1–10 plus one new run for tasks 11–20, same model, arms, trials and bar). No further reruns or task changes are made to reach a verdict.
 
+### memory-auto (pre-registered)
+
+The combined verdict above PASSED (`results/2026-10-29-sessions-combined-verdict.md`), but
+session 1 of memory-on dropped waypoints in only 53 of 60 trials: most of the gap to the
+oracle is the agent not recording the decision. Rig now captures it automatically: a
+deterministic extractor reads the conversation and stores what it settled (see the main
+README, "Automatic capture"). The extractor was finished and committed before this
+benchmark's tasks were opened, and this was written and committed before the arm was wired
+into the harness. Every later results file carries it verbatim, and the report prints it:
+
+> memory-auto (pre-registered 2026-10-29, extractor frozen at 9cb1f2ae28d7d1165b13f0aa76e334e22782da7e): judged against the same bar vs memory-off on all 20 tasks, one run, 3 trials; no extractor changes after seeing results.
+
+The arm runs session 1 exactly like memory-off: no waypoint guidance, no write tools. After
+session 1 the harness converts its conversation into the extractor's input and runs the same
+capture pipeline `rig hook` runs, on that trial's database. Session 2 gets the brief the
+`SessionStart` hook would print, plus the session-bootstrap paragraph and `rig_waypoints`
+(with `query`), as memory-on does.
+
 ### Design
 
 `sessions.json` holds 20 task pairs in two sets: tasks 1–10 (`first`, the first run's tasks,

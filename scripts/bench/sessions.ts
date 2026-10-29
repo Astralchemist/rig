@@ -55,6 +55,11 @@ export const PREREGISTERED_BAR =
 // and every later results file, and the report prints it.
 export const CONFIRMATION_RULE =
   "Confirmation (written 2026-10-29, after the first 10-task run was INCONCLUSIVE and before any further run): 10 new task pairs are added; the verdict is decided once, on all 20 tasks combined (first run's trials for tasks 1–10 plus one new run for tasks 11–20, same model, arms, trials and bar). No further reruns or task changes are made to reach a verdict.";
+// The automatic-capture arm, pre-registered before it was wired into the
+// harness, with the commit its extractor was frozen at. It goes verbatim into
+// the README and every later results file, and the report prints it.
+export const MEMORY_AUTO_PREREGISTRATION =
+  'memory-auto (pre-registered 2026-10-29, extractor frozen at 9cb1f2ae28d7d1165b13f0aa76e334e22782da7e): judged against the same bar vs memory-off on all 20 tasks, one run, 3 trials; no extractor changes after seeing results.';
 export const BAR_DELTA = 0.15;
 export const BAR_TOKEN_RATIO = 1.1;
 
