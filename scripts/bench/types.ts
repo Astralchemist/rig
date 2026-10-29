@@ -77,6 +77,8 @@ export interface RunResult {
   error?: string;
   resolved_models: string[];
   upstreams: string[];
+  // Model calls per normalised finish reason; absent from older files.
+  finish_reasons?: Record<string, number>;
   elapsed_ms: number;
   check: CheckResult;
   judge?: JudgeResult;

@@ -26,6 +26,10 @@ export interface AgentOutcome {
   error?: string;
   resolved_models: string[];
   upstreams: string[];
+  // How each model call ended, normalised across upstreams (calls whose reply
+  // named no reason are not counted). A "length" means max_tokens cut the
+  // reply, which reasoning models hit first.
+  finish_reasons: Record<string, number>;
 }
 
 // A scripted conversation: each message in `messages` is one user turn, and
@@ -65,6 +69,7 @@ export const runConversation = async (
     final_text: '',
     resolved_models: [],
     upstreams: [],
+    finish_reasons: {},
     replies: [],
     stops: [],
     tool_calls: {},
@@ -87,6 +92,8 @@ export const runConversation = async (
             : out.cost_usd + turn.usage.cost_usd;
         if (turn.resolvedModel) resolved.add(turn.resolvedModel);
         if (turn.upstream) upstreams.add(turn.upstream);
+        if (turn.finishReason)
+          out.finish_reasons[turn.finishReason] = (out.finish_reasons[turn.finishReason] ?? 0) + 1;
         if (turn.toolCalls.length === 0) {
           out.final_text = turn.text;
           out.replies.push(turn.text);
