@@ -6,6 +6,20 @@ All notable changes to Rig are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **Automatic capture** (Claude Code). A multi-session benchmark showed memory helps when the decision gets recorded, and agents often didn't record it. Hooks now record it for them:
+  - **What's captured:** the moments a conversation settles something, found by a deterministic extractor (no model). An approved proposal or a correction becomes a decision; "never / always / must / don't touch / only" becomes a constraint; a declined, reversed or ruled-out option, or an attempt that failed and was abandoned, becomes a dead end; what the user says was decided becomes a decision. Cue words in quotes, code or questions never count.
+  - Each record keeps the user's words as its rationale, links the files and symbols it names into the graph, and carries a confidence and its source span. It's stored as a waypoint with `source: "hook"` and provenance `hook:claude`. Near-duplicates of stored waypoints are skipped.
+  - **What's injected:** at `SessionStart` (startup, resume, compact), a brief of at most 1,500 characters: "Settled in previous sessions in this project". It holds decisions, constraints and dead ends with confidence ≥ 0.7, plus open questions agents dropped. It is fenced as data, not instructions. Lower-confidence records are searchable but never injected; the overview's recent decisions follow the same rule.
+  - **Privacy:** everything stays in `.rig/`. API keys, tokens, private keys, `.env`-style secrets and URL credentials are redacted before storage. Hooks never fail the agent: errors go to `.rig/capture/hook.log` and the exit code is always 0.
+  - **Opting out:** `rig install claude --no-hooks` / `rig start --no-hooks` (removes hooks already installed), `RIG_CAPTURE=0`, or `capture.enabled: false` in `.rig/config.json`. `rig uninstall claude` removes the hooks.
+- `rig hook <event> [--client claude]`: the hook entry point. `UserPromptSubmit` and `PostToolUse` only append to a spool (about 20 ms); `Stop` (async) and `PreCompact` capture the transcript since the last cursor; `SessionEnd` queues the session.
+- Waypoint kind `dead-end`, and `rig_waypoints` filters by `source` (`agent` / `hook`). Waypoints carry optional `source`, `provenance` and `confidence`.
+- Target contracts have a `hooks` file role. Rig's hook handlers are the ones running `rig hook`, and the same install and uninstall rules apply to them as to rig's permission entries.
+
+### Changed
+- CLI commands load on demand. Light commands such as `rig hook` start in about 20 ms instead of about 140 ms.
+
 ## [0.3.0] - 2026-10-29
 
 Natural-language search, measured. Benchmark (Claude Haiku 5.5 via OpenRouter, next-auth, 3 trials): with grep and rig together, the agent now uses 126% of grep-alone's median tokens (153% on 0.2.0). On natural-language questions it is cheaper than grep alone. With rig's search tools alone, correctness rose from 85% to 96%. A repository orientation map is available on demand; injected into every prompt it cost more than it saved (187%), so it isn't. See `scripts/bench/results/`.
