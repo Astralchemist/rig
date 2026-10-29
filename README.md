@@ -100,12 +100,25 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
 
 ## Measured, not claimed
 
-`scripts/bench` runs real agents (Claude Haiku 5.5 via OpenRouter) on 16 questions about [next-auth](https://github.com/nextauthjs/next-auth) at a pinned commit, and checks every answer automatically. With grep **and** rig available, as in a real agent session:
-- Natural-language questions cost fewer tokens than with grep alone.
-- Exact identifier lookups still cost more. The installed guide tells agents to use grep for those.
-- Injecting the orientation map into every prompt cost more than it saved. That's why it's on demand.
+`scripts/bench` runs real agents through OpenRouter on [next-auth](https://github.com/nextauthjs/next-auth) at a pinned commit, and checks every answer automatically. `bun run bench:chart` draws these charts from the recorded results. The raw results and reports are in [`scripts/bench/results/`](scripts/bench/results/).
 
-The raw results and reports are in [`scripts/bench/results/`](scripts/bench/results/).
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Astralchemist/rig/main/docs/bench/memory.svg" alt="Session-2 success: memory-off 30%, memory-on 70%, oracle 82%. memory-on minus memory-off: +40 pp, 95% CI +20 to +60 pp, above the pre-registered +15 pp bar." width="760">
+</p>
+
+**Memory across sessions passed its pre-registered bar.** On 20 two-session tasks with Claude Haiku 5.5, session 2 succeeded 70% of the time with rig's waypoints and 30% without. That is +40 pp (95% CI +20 to +60 pp), at 94% of memory-off's tokens. The bar (the whole CI at or above +15 pp, tokens at or below 110%) was written before any run. The losses: the first 10 tasks alone were inconclusive, the 10 confirmation tasks alone went over the token cap (110.2%), and two trap tasks beat every arm, oracle included.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Astralchemist/rig/main/docs/bench/qa-tokens.svg" alt="Single-shot tokens relative to grep-only, by rig build and arm. Every arm is above 100% overall; at rig 0.3.0 grep+rig is 134% overall, 175% on lookups and 99% on natural-language questions." width="760">
+</p>
+
+**On single questions, grep still wins.** With grep and rig both available, as in a real agent session, rig 0.3.0 used 134% of grep-only's tokens per question, and both arms got 48/48 right. Exact identifier lookups cost 175%, which is why the installed guide tells agents to use grep for them. Natural-language questions came out even (99%). Putting the orientation map in every prompt cost 187%, so the map is on demand.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Astralchemist/rig/main/docs/bench/cross-model.svg" alt="Memory gain and Q&A token ratio per model. Only anthropic/claude-haiku-5.5 has results: +40 pp memory gain and 134% of grep-only tokens. The other seven lineup models are not run yet." width="760">
+</p>
+
+**One model so far.** Every result above comes from Claude Haiku 5.5. `bun run bench:matrix` reruns the same bench across low-cost and frontier models from Anthropic, OpenAI, Google, DeepSeek and Qwen, with the same prompts, tools and trials for each. Rows marked "not run yet" have no results.
 
 ---
 
