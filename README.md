@@ -17,7 +17,7 @@
   <em><a href="https://github.com/Astralchemist/rig/releases/download/v0.1.0/demo.mp4">▶ Watch the full demo with audio</a></em>
 </p>
 
-Rig builds a local-first semantic knowledge graph of your project, renders it as an interactive map you can fly through, and exposes it to coding agents (Claude Code, Cursor, Codex, …) over MCP. Your agent stops grepping blindly and starts navigating — by structure, by meaning, and by what it's touched before.
+Rig builds a local-first semantic knowledge graph of your project, renders it as an interactive map you can fly through, and exposes it to coding agents (Claude Code, Cursor, Codex, opencode) over MCP. Agents navigate by structure and by meaning, and they keep what earlier sessions decided, attached to the code it is about.
 
 Everything runs on your machine. No API key, no upload, nothing leaves your laptop.
 
@@ -63,16 +63,49 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
 
 ---
 
-## What you get
+## What it can do
 
-- **A map of your codebase.** Files, symbols, calls, imports, and dependencies as a navigable graph — not a file tree.
-- **Orientation up front.** `rig_overview` (also the MCP resource `rig://overview`, and `rig overview` on the command line) hands your agent a compact markdown map of the repository, about 2,000 tokens: packages and their purposes, entry points, the most-referenced files and symbols with `file:line`, route and handler tables, where the tests live, and recent decisions. It is built from the index alone, cached, and refreshed on every index, sync and watcher update, so the agent answers "where is…" without first exploring the tree.
-- **Search in plain language.** "Where do we refresh expired sessions?" finds the code, not just a symbol named that: exact names, keywords and on-device embeddings fused into one ranking.
-- **Magnetic pull.** Ask "what's related to X" and get a ranked answer that blends graph distance, semantic similarity, and what's been active recently.
-- **Hubs.** The structurally important anchors surface first, so a 5k-node graph stays legible.
-- **Dependency intelligence.** "What version of X do I have?" and "what's declared but never imported?" become one-hop graph queries.
-- **Waypoints.** Your agent drops durable markers at decisions and constraints. They live in the graph, outside the context window, and stay attached to the code they reference when you re-index. The installed instructions tell each new session to load the previous session's waypoints, and `rig export-memory` backs them up.
-- **An MCP tool surface** your agent calls directly: search, pull, callers/callees, impact, hubs, deps, and more.
+**Map and navigate code**
+- **A live map of your codebase.** Files, symbols, calls, imports, tests and dependencies as a graph you can fly through in the browser. The map updates live while agents work.
+- **Structural questions in one call.** Callers, callees, impact ("what breaks if I change X"), critical paths, neighbours and hubs, instead of grep-and-read.
+- **Search in plain language.** "Where do we refresh expired sessions?" finds the code. Exact names, keywords (including identifier words, so "handle login" matches `handleLogin`) and on-device embeddings are fused into one ranking. A symbol name still returns that symbol first.
+- **Orientation on demand.** `rig_overview` (also the MCP resource `rig://overview`, and `rig overview` on the command line) returns a compact markdown map of the repository, about 2,000 tokens long. It covers:
+  - packages and their purposes
+  - entry points
+  - the most-referenced symbols with `file:line`
+  - route and handler tables
+  - where the tests live
+  - recent decisions
+
+  The map is cached and refreshed on every index, sync and file change.
+- **Magnetic pull.** "What's related to X", ranked by graph distance, semantic similarity and recent activity, with the score components broken out.
+- **Dependency intelligence.** Installed versions, declared-but-unused packages, imports with no declaration, and version conflicts across a monorepo. It covers npm and Python: PyPI names are matched to their import names (`PyYAML` → `yaml`), and the standard library is never flagged.
+
+**Remember across sessions and agents**
+- **Memory that survives re-indexing.** Index, sync, file edits and line moves keep everything agents attach to code:
+  - waypoints (decisions, constraints, open questions)
+  - aliases, annotations and promotions
+  - proposed and accepted links
+
+  If a symbol disappears, its memory is set aside rather than lost, and re-attached when the symbol comes back.
+- **Waypoints** live outside the context window. They are searchable by meaning (`rig_waypoints query="…"`), and the next session can load the previous one's.
+- **Human review where it matters.** Links an agent proposes wait for your accept or reject on the map, and every change can be undone step by step.
+- **Portable memory.** `rig export-memory` and `rig import-memory` carry agent memory across fresh clones and machines.
+- **One graph, many agents.** Claude Code, Cursor, Codex and opencode can all work on the same project at the same time. Writes are concurrency-safe and record which agent made them.
+
+**Fit into your setup**
+- **Wiring** goes into the current project by default (`rig install claude`), and `rig uninstall` removes exactly what was added. Each agent gets rig's approval policy in its own permission format; risky writes ask first.
+- **A live graph.** A single file watcher per project keeps the graph current while you code.
+- **Languages:** TypeScript, TSX, JavaScript, JSX, Python and Markdown, plus `package.json`, `pyproject.toml`, `requirements*.txt` and their lockfiles.
+
+## Measured, not claimed
+
+`scripts/bench` runs real agents (Claude Haiku 5.5 via OpenRouter) on 16 questions about [next-auth](https://github.com/nextauthjs/next-auth) at a pinned commit, and checks every answer automatically. With grep **and** rig available, as in a real agent session:
+- Natural-language questions cost fewer tokens than with grep alone.
+- Exact identifier lookups still cost more. The installed guide tells agents to use grep for those.
+- Injecting the orientation map into every prompt cost more than it saved. That's why it's on demand.
+
+The raw results and reports are in [`scripts/bench/results/`](scripts/bench/results/).
 
 ---
 
@@ -107,7 +140,7 @@ That ranked, self-explaining retrieval — not a flat grep dump — is the diffe
 
 - Embeddings run locally via a small on-device model (`bge-small`). **No API key required.**
 - The graph lives in `.rig/rig.db` in your project. `rig` auto-adds `.rig/` to your `.gitignore`.
-- Nothing is uploaded. The map UI is served on loopback only.
+- Nothing is uploaded. The map UI is served on loopback only and needs its per-project session token, with Host and Origin checks against other web pages; `rig start` opens it signed in.
 
 ---
 
@@ -131,8 +164,7 @@ rig uninstall claude          # remove exactly what install added (--all · --gl
 
 Each install merges Rig's MCP server entry, Rig's per-tool approval policy (in the
 agent's own permission format), and a short usage guide between `<!-- rig:begin -->`
-markers, leaving the rest of each file alone — re-running it is safe. The guide makes
-`rig_overview` the first call of every session. The agent spawns
+markers, leaving the rest of each file alone — re-running it is safe. The agent spawns
 `rig serve --mcp` on demand; Claude Code asks you once to approve a server from a
 project's `.mcp.json`. In a directory without `.rig/`, the server still starts and every
 tool answers with how to fix it (`rig init` or `rig start`).
@@ -180,7 +212,7 @@ See [`docs/contracts.md`](docs/contracts.md) to add a tool, [`docs/integration.m
 
 ## Requirements
 
-- [Bun](https://bun.sh) ≥ 1.1 (primary), or Node ≥ 20 (fallback).
+- [Bun](https://bun.sh) ≥ 1.1 (primary), or Node ≥ 22 (fallback).
 - Works on macOS, Linux, and Windows.
 
 ---
