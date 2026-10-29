@@ -441,6 +441,28 @@ if (import.meta.main) {
   const inputs = inPaths.map(
     (p) => JSON.parse(readFileSync(p, 'utf-8')) as BenchFile | SessionsBenchFile,
   );
+  // A run stopped for credits (or one that recorded 402s as model errors) is
+  // not a measurement: refuse it rather than print its partial numbers.
+  {
+    const { abortReason, creditErrorTrials } = await import('./models.ts');
+    const void_ = inputs.flatMap((f, i) => {
+      const why = abortReason(f);
+      return why ? [`${inPaths[i]} (${f.label}): aborted, ${why}`] : [];
+    });
+    if (void_.length) {
+      console.error(
+        `bench:report: refusing aborted runs; their results are partial and not a measurement:\n  ${void_.join('\n  ')}`,
+      );
+      process.exit(1);
+    }
+    inputs.forEach((f, i) => {
+      const n = creditErrorTrials(f);
+      if (n > 0)
+        console.error(
+          `bench:report: warning: ${inPaths[i]} (${f.label}) has ${n} trials that recorded a credits error (HTTP 402) as a model failure; they count as failed.`,
+        );
+    });
+  }
   const isSessions = (f: BenchFile | SessionsBenchFile): f is SessionsBenchFile =>
     'mode' in f && f.mode === 'sessions';
   if (inputs.length > 1 && !inputs.every(isSessions)) {

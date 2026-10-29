@@ -7,6 +7,7 @@ import { aggregate } from './report.ts';
 import { aggregateSessions, mergeSessionsFiles, type Verdict } from './report-sessions.ts';
 import { BAR_DELTA } from './sessions.ts';
 import {
+  abortReason,
   isSessionsFile,
   type AnyBenchFile,
   type BenchIndex,
@@ -51,6 +52,9 @@ export interface ModelRow {
   model: IndexModel;
   memory: MemoryRow | null;
   qa: QaRow | null;
+  // Labels of runs left out because they were aborted (see abortReason): a
+  // mode with no row but an aborted run shows "aborted", never 0%.
+  aborted: { sessions: string[]; qa: string[] };
   resolved_models: string[];
   spent_usd: number;
 }
@@ -59,7 +63,8 @@ const newestFirst = <T extends { started_at: string }>(xs: readonly T[]): T[] =>
   [...xs].sort((a, b) => (a.started_at < b.started_at ? 1 : a.started_at > b.started_at ? -1 : 0));
 
 /**
- * The sessions evidence for one model: its runs that have both memory arms,
+ * The sessions evidence for one model: its runs that have both memory arms
+ * and weren't aborted,
  * newest first, each merged in when it is compatible with those already taken
  * (same arms, trials, bar and target; no shared task). A full newer run thus
  * replaces older partial ones, and complementary task sets (the first run
@@ -67,7 +72,9 @@ const newestFirst = <T extends { started_at: string }>(xs: readonly T[]): T[] =>
  */
 export const selectSessions = (files: readonly SessionsBenchFile[]): SessionsBenchFile | null => {
   const candidates = newestFirst(
-    files.filter((f) => f.arms.includes('memory-on') && f.arms.includes('memory-off')),
+    files.filter(
+      (f) => !abortReason(f) && f.arms.includes('memory-on') && f.arms.includes('memory-off'),
+    ),
   );
   const chosen: SessionsBenchFile[] = [];
   for (const f of candidates) {
@@ -82,9 +89,11 @@ export const selectSessions = (files: readonly SessionsBenchFile[]): SessionsBen
   return mergeSessionsFiles(chosen.reverse());
 };
 
-// The newest single-shot run that has both comparison arms.
+// The newest single-shot run that has both comparison arms (aborted runs never count).
 export const selectQa = (files: readonly BenchFile[]): BenchFile | null =>
-  newestFirst(files.filter((f) => f.arms.includes(QA_ARM) && f.arms.includes(QA_BASE)))[0] ?? null;
+  newestFirst(
+    files.filter((f) => !abortReason(f) && f.arms.includes(QA_ARM) && f.arms.includes(QA_BASE)),
+  )[0] ?? null;
 
 export const memoryRow = (file: SessionsBenchFile): MemoryRow | null => {
   const r = aggregateSessions(file);
@@ -125,13 +134,19 @@ export const qaRow = (file: BenchFile): QaRow | null => {
 export const modelRows = (index: BenchIndex, load: (run: IndexRun) => AnyBenchFile): ModelRow[] =>
   index.models.map((model): ModelRow => {
     const runs = index.runs.filter((r) => r.model === model.id);
-    const files = runs.map(load);
+    const loaded = runs.map(load);
+    const files = loaded.filter((f) => abortReason(f) === null);
+    const void_ = loaded.filter((f) => abortReason(f) !== null);
     const sessions = selectSessions(files.filter(isSessionsFile));
     const qa = selectQa(files.filter((f): f is BenchFile => !isSessionsFile(f)));
     return {
       model,
       memory: sessions ? memoryRow(sessions) : null,
       qa: qa ? qaRow(qa) : null,
+      aborted: {
+        sessions: void_.filter(isSessionsFile).map((f) => f.label),
+        qa: void_.filter((f) => !isSessionsFile(f)).map((f) => f.label),
+      },
       resolved_models: [...new Set(runs.flatMap((r) => r.resolved_models))].sort(),
       spent_usd: Math.round(runs.reduce((s, r) => s + r.cost_usd, 0) * 1e6) / 1e6,
     };
@@ -168,7 +183,7 @@ export const renderByModelMarkdown = (index: BenchIndex, rows: readonly ModelRow
       `| \`${r.model.id}\` | ${r.model.tier ?? '–'} | ${price(r.model)} | ` +
         (m
           ? `${pct(m.off_rate)} | ${pct(m.on_rate)} | ${pp(m.delta)} (${pp(m.ci[0])} to ${pp(m.ci[1])}) | ${m.token_ratio === null ? '–' : pct(m.token_ratio)} | ${m.verdict} | ${m.tasks} × ${m.trials} | ${m.runs.map((x) => `\`${x}\``).join(' + ')} |`
-          : 'not run yet | | | | | | |'),
+          : `${r.aborted.sessions.length ? `aborted (insufficient credits): ${r.aborted.sessions.map((x) => `\`${x}\``).join(', ')}` : 'not run yet'} | | | | | | |`),
     );
   }
   L.push('');
@@ -187,10 +202,17 @@ export const renderByModelMarkdown = (index: BenchIndex, rows: readonly ModelRow
       `| \`${r.model.id}\` | ${r.model.tier ?? '–'} | ` +
         (q
           ? `${q.ratio === null ? '–' : `${(q.ratio * 100).toFixed(1)}%`} | ${q.arm_correct}/${q.arm_runs} | ${q.base_correct}/${q.base_runs} | ${q.queries} × ${q.trials} | \`${q.run}\` |`
-          : 'not run yet | | | | |'),
+          : `${r.aborted.qa.length ? `aborted (insufficient credits): ${r.aborted.qa.map((x) => `\`${x}\``).join(', ')}` : 'not run yet'} | | | | |`),
     );
   }
   L.push('');
+  const flagged = index.runs.filter((r) => r.credit_error_trials > 0);
+  if (flagged.length) {
+    L.push(
+      `Runs that recorded credits errors (HTTP 402) as model failures, from before those errors stopped a run; such trials count as failed: ${flagged.map((r) => `\`${r.label}\` (${r.credit_error_trials})`).join(', ')}.`,
+      '',
+    );
+  }
   L.push('## Models', '');
   L.push(
     '| model | vendor | catalogue snapshot | resolved by the API | tools | reasoning default | spent |',

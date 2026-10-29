@@ -201,6 +201,22 @@ describe('memory chart', () => {
     expect(titleAndDesc(s)).toContain('memory-auto minus memory-off: +40.0 pp');
   });
 
+  test('an aborted run is refused, and left out of the Q&A chart', () => {
+    const aborted = { ...combined, aborted: 'insufficient_credits' as const };
+    expect(() => memoryChartData(aborted, { iterations: 100 })).toThrow('aborted');
+    const picked = selectSessions([first, { ...confirmation, aborted: 'insufficient_credits' }]);
+    expect(picked?.label).toBe('sessions-0.3.0');
+    expect(picked?.combined).toBeUndefined();
+    expect(
+      selectQa(QA_FILES.map((f) => ({ ...f, aborted: 'insufficient_credits' as const }))),
+    ).toBeNull();
+    const qa = qaChartData(
+      QA_FILES.map((f) => ({ ...f, aborted: 'insufficient_credits' as const })),
+      MODEL,
+    );
+    expect(qa.stages).toEqual([]);
+  });
+
   test('no sessions run: a "not run yet" chart', () => {
     const s = renderMemoryChart(null, MODEL);
     wellFormed(s);
@@ -321,6 +337,7 @@ describe('cross-model chart', () => {
         base_correct: 48,
         base_runs: 48,
       },
+      aborted: { sessions: [], qa: [] },
       resolved_models: [MODEL],
       spent_usd: 0,
     };
@@ -329,6 +346,7 @@ describe('cross-model chart', () => {
     model: info(id, input),
     memory: null,
     qa: null,
+    aborted: { sessions: [], qa: [] },
     resolved_models: [],
     spent_usd: 0,
   });
@@ -363,6 +381,17 @@ describe('cross-model chart', () => {
     wellFormed(svg);
     expect(svg).toContain('not run yet');
     expect(titleAndDesc(svg)).toContain('No model has results yet.');
+  });
+
+  test('a model whose runs were aborted for credits shows "aborted", never a value', () => {
+    const row = { ...notRun('openai/gpt-6-luna', 0.1), aborted: { sessions: ['s'], qa: ['q'] } };
+    const svg = renderCrossModelChart([haiku(), row], 1);
+    wellFormed(svg);
+    expect(titleAndDesc(svg)).toContain(
+      'openai/gpt-6-luna (low-cost): memory aborted; Q&A aborted.',
+    );
+    expect(svg).toContain('ran out of credits; its partial results are left out');
+    expect(svg).not.toMatch(/gpt-6-luna[^<]*0%/);
   });
 
   test('an unpriced model gets its own group', () => {

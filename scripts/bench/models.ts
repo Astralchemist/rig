@@ -4,9 +4,10 @@
 // about each model. bench:matrix rewrites it after every model; the charts
 // and the by-model report read it. Built by a pure function, so the same
 // results and prices always give the same file.
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { ModelPricing } from './pricing.ts';
+import { InsufficientCreditsError, isCreditsFailure } from './providers.ts';
 import type { BenchFile, SessionsBenchFile } from './types.ts';
 
 export const RESULTS_DIR = resolve(import.meta.dir, 'results');
@@ -65,6 +66,10 @@ export interface IndexRun {
   // Sum of the known per-run costs; `cost_unknown` runs had none.
   cost_usd: number;
   cost_unknown: number;
+  // Why the run is not a measurement (see abortReason), or null.
+  aborted: string | null;
+  // Trials that recorded a credits error as a model failure (older runs).
+  credit_error_trials: number;
 }
 
 export interface BenchIndex {
@@ -80,6 +85,55 @@ export type AnyBenchFile = BenchFile | SessionsBenchFile;
 
 export const isSessionsFile = (f: AnyBenchFile): f is SessionsBenchFile =>
   'mode' in f && f.mode === 'sessions';
+
+// Errors a run recorded that were really the account failing to pay.
+const creditsError = (e: string | undefined): boolean =>
+  e !== undefined && (/\b(?:HTTP|openrouter) 402\b/.test(e) || isCreditsFailure(null, e));
+
+/**
+ * Why a results file is not a measurement, or null: it was stopped for
+ * credits and marked so. Reports and charts refuse such runs, so their
+ * partial results never show as 0%.
+ */
+export const abortReason = (f: AnyBenchFile): string | null => f.aborted ?? null;
+
+/**
+ * Trials in which a credits error (HTTP 402 and the like) was recorded as the
+ * model failing. Runs from before such errors became fatal can have them;
+ * they count as failed trials, so reports warn rather than hide them.
+ */
+export const creditErrorTrials = (f: AnyBenchFile): number =>
+  isSessionsFile(f)
+    ? f.results.filter((r) => creditsError(r.s1?.error) || creditsError(r.s2.error)).length
+    : f.results.filter((r) => creditsError(r.error)).length;
+
+/**
+ * A run hit a credits error: keep the trials it completed, marked aborted,
+ * or delete the file when there are none; the failed call is never counted.
+ * Returns the error to stop the process with, saying where things stand.
+ */
+export const stopForCredits = (
+  file: AnyBenchFile,
+  err: InsufficientCreditsError,
+  outPath: string,
+): InsufficientCreditsError => {
+  const done = file.results.length;
+  if (done > 0) {
+    file.aborted = 'insufficient_credits';
+    file.aborted_reason = err.message.slice(0, 500);
+    writeFileSync(outPath, JSON.stringify(file, null, 2) + '\n');
+  } else if (existsSync(outPath)) {
+    rmSync(outPath);
+  }
+  return new InsufficientCreditsError(
+    `stopped: the account can't pay for model calls (${err.message.slice(0, 200)}). ` +
+      (done > 0
+        ? `The ${done} completed ${isSessionsFile(file) ? 'trials' : 'runs'} are in ${outPath}, marked aborted: "insufficient_credits"; reports and charts exclude it. `
+        : 'Nothing was recorded. ') +
+      'The failed call is not counted. Add credits, then run again.',
+    err.status,
+  );
+};
 
 export const vendorOf = (model: string): string =>
   model.includes('/') ? model.split('/')[0]! : model.startsWith('claude') ? 'anthropic' : 'unknown';
@@ -158,6 +212,8 @@ export const runEntry = (file: string, f: AnyBenchFile, model: IndexModel | null
     rig: { version: f.rig.version, commit: f.rig.commit, fingerprint: f.rig.fingerprint },
     cost_usd: Math.round(costs.reduce<number>((s, c) => s + (c ?? 0), 0) * 1e6) / 1e6,
     cost_unknown: costs.filter((c) => c === null).length,
+    aborted: abortReason(f),
+    credit_error_trials: creditErrorTrials(f),
   };
 };
 

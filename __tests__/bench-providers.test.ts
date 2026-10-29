@@ -3,14 +3,19 @@
 // OpenRouter, from mocked replies in each vendor's shape: OpenAI, Google,
 // DeepSeek and Qwen. The quirks: tool_call ids, parallel calls, argument
 // shapes, finish_reason spellings, reasoning state and missing usage cost.
+// Then credits and billing errors, which must stop a run, never score 0%.
 import { describe, expect, test } from 'bun:test';
 import { runAgent } from '../scripts/bench/agent.ts';
 import type { Arm } from '../scripts/bench/arms.ts';
 import { parsePricing, type ModelPricing } from '../scripts/bench/pricing.ts';
+import { judgeAnswer } from '../scripts/bench/judge.ts';
 import {
   OpenRouterProvider,
+  isCreditsFailure,
+  isInsufficientCredits,
   normalizeFinishReason,
   normalizeToolCalls,
+  type InsufficientCreditsError,
 } from '../scripts/bench/providers.ts';
 
 interface Captured {
@@ -333,5 +338,99 @@ describe('OpenAI-style tool calling across vendors (mocked OpenRouter replies)',
       [undefined, null],
     ];
     for (const [raw, want] of cases) expect(normalizeFinishReason(raw)).toBe(want as never);
+  });
+});
+
+describe('credits and billing errors are fatal', () => {
+  const failing = (status: number, body: unknown) => {
+    let calls = 0;
+    const f = (async () => {
+      calls++;
+      return new Response(JSON.stringify(body), {
+        status,
+        headers: { 'content-type': 'application/json' },
+      });
+    }) as unknown as typeof fetch;
+    return { fetch: f, calls: () => calls };
+  };
+
+  test('HTTP 402 is not retried and stops the agent run instead of becoming a failed trial', async () => {
+    const f = failing(402, {
+      error: { code: 402, message: 'This request requires more credits, or fewer max_tokens.' },
+    });
+    const p = new OpenRouterProvider('openai/gpt-6-luna', 'k', { fetch: f.fetch, ...noSleep });
+    const err = await runAgent(p, recordingArm(), 'q', { maxTurns: 3, maxTokens: 64 }).catch(
+      (e: unknown) => e,
+    );
+    expect(isInsufficientCredits(err)).toBe(true);
+    expect((err as InsufficientCreditsError).status).toBe(402);
+    expect(f.calls()).toBe(1);
+  });
+
+  test('an OpenRouter error inside a 200 reply that says credits is fatal too', async () => {
+    const f = failing(200, {
+      error: {
+        code: 402,
+        message: 'Insufficient credits. Add more using https://openrouter.ai/credits',
+      },
+    });
+    const p = new OpenRouterProvider('m', 'k', { fetch: f.fetch, ...noSleep });
+    const err = await p
+      .start({ system: 's', user: 'u', tools: [], maxTokens: 8 })
+      .send()
+      .catch((e: unknown) => e);
+    expect(isInsufficientCredits(err)).toBe(true);
+    expect(f.calls()).toBe(1);
+  });
+
+  test('a credits message under another status counts (Anthropic 400, insufficient balance)', async () => {
+    for (const [status, msg] of [
+      [400, 'Your credit balance is too low to access the Anthropic API.'],
+      [403, 'insufficient_balance: top up your account'],
+      [429, 'Payment required to continue'],
+    ] as const) {
+      const f = failing(status, { error: { message: msg } });
+      const p = new OpenRouterProvider('m', 'k', { fetch: f.fetch, ...noSleep });
+      const err = await p
+        .start({ system: 's', user: 'u', tools: [], maxTokens: 8 })
+        .send()
+        .catch((e: unknown) => e);
+      expect(isInsufficientCredits(err)).toBe(true);
+      expect(f.calls()).toBe(1);
+    }
+  });
+
+  test('ordinary errors are unchanged: a 429 is retried, a 400 is a recorded failure', async () => {
+    const replies = [
+      new Response('{"error":{"message":"rate limited"}}', { status: 429 }),
+      new Response(
+        JSON.stringify({
+          model: 'm',
+          choices: [{ finish_reason: 'stop', message: { content: 'ok' } }],
+          usage: { prompt_tokens: 1, completion_tokens: 1, cost: 0 },
+        }),
+        { status: 200 },
+      ),
+    ];
+    const f = (async () => replies.shift()!) as unknown as typeof fetch;
+    const p = new OpenRouterProvider('m', 'k', { fetch: f, ...noSleep });
+    const ok = await runAgent(p, recordingArm(), 'q', { maxTurns: 2, maxTokens: 8 });
+    expect(ok.final_text).toBe('ok');
+    const bad = failing(400, { error: { message: 'context length exceeded' } });
+    const p2 = new OpenRouterProvider('m', 'k', { fetch: bad.fetch, ...noSleep });
+    const out = await runAgent(p2, recordingArm(), 'q', { maxTurns: 2, maxTokens: 8 });
+    expect(out.stop).toBe('error');
+    expect(isCreditsFailure(400, 'context length exceeded')).toBe(false);
+  });
+
+  test('the judge rethrows a credits error instead of recording a judge error', async () => {
+    const f = failing(402, { error: { code: 402, message: 'requires more credits' } });
+    const p = new OpenRouterProvider('judge', 'k', { fetch: f.fetch, ...noSleep });
+    const err = await judgeAnswer(
+      p,
+      { id: 'q', category: 'lookup', ask: 'a?', reference: 'r', expected: { all: ['r'] } },
+      'r',
+    ).catch((e: unknown) => e);
+    expect(isInsufficientCredits(err)).toBe(true);
   });
 });

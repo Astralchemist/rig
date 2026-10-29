@@ -152,7 +152,9 @@
         "fingerprint": "5dd01413ae17d174"
       },
       "cost_usd": 0.630605,
-      "cost_unknown": 0
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
     },
     {
       "file": "2026-10-28-0.2.0-grep-rig.json",
@@ -182,7 +184,9 @@
         "fingerprint": "5dd01413ae17d174"
       },
       "cost_usd": 0.236597,
-      "cost_unknown": 0
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
     },
     {
       "file": "2026-10-28-hybrid-grep-rig.json",
@@ -212,7 +216,9 @@
         "fingerprint": "f0e6da8652a16429"
       },
       "cost_usd": 0.219936,
-      "cost_unknown": 0
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
     },
     {
       "file": "2026-10-28-hybrid-search.json",
@@ -243,7 +249,9 @@
         "fingerprint": "f0e6da8652a16429"
       },
       "cost_usd": 0.507669,
-      "cost_unknown": 0
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
     },
     {
       "file": "2026-10-29-orientation-map.json",
@@ -274,7 +282,9 @@
         "fingerprint": "14b6ca5108774da6"
       },
       "cost_usd": 0.391095,
-      "cost_unknown": 0
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
     },
     {
       "file": "2026-10-29-sessions-0.3.0.json",
@@ -305,7 +315,9 @@
         "fingerprint": "14b6ca5108774da6"
       },
       "cost_usd": 0.632529,
-      "cost_unknown": 0
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
     },
     {
       "file": "2026-10-29-sessions-confirmation-0.3.0.json",
@@ -336,7 +348,9 @@
         "fingerprint": "14b6ca5108774da6"
       },
       "cost_usd": 0.576492,
-      "cost_unknown": 0
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 12
     },
     {
       "file": "2026-10-29-sessions-sanity.json",
@@ -365,7 +379,9 @@
         "fingerprint": "14b6ca5108774da6"
       },
       "cost_usd": 0.037758,
-      "cost_unknown": 0
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
     }
   ]
 }

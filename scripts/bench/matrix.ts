@@ -18,6 +18,7 @@ import {
   type RunProfile,
 } from './plan.ts';
 import { fetchCatalogue, type ModelPricing } from './pricing.ts';
+import { EXIT_INSUFFICIENT_CREDITS } from './providers.ts';
 import {
   INDEX_PATH,
   LINEUP_PATH,
@@ -256,14 +257,79 @@ export interface MatrixDeps {
   log: (line: string) => void;
   date: string;
   exists: (path: string) => boolean;
+  // The account's remaining balance in USD, checked before each model.
+  balance?: () => Promise<number>;
 }
 
 export interface MatrixOutcome {
   model: string;
-  status: 'ran' | 'failed' | 'skipped-budget';
+  // aborted-credits: the account ran dry mid-run; its file is marked aborted.
+  // skipped-credits: the balance was already below this model's estimate.
+  // not-run: never started because an earlier model was aborted.
+  status: 'ran' | 'failed' | 'aborted-credits' | 'skipped-budget' | 'skipped-credits' | 'not-run';
   out: string | null;
   spent_usd: number;
 }
+
+// ---------------------------------------------------------------- credits
+
+export const OPENROUTER_CREDITS_URL = 'https://openrouter.ai/api/v1/credits';
+
+export interface Balance {
+  credits: number;
+  usage: number;
+  balance: number;
+}
+
+/** The key's account balance: total credits bought minus total usage. */
+export const fetchBalance = async (
+  apiKey: string,
+  doFetch: typeof fetch = fetch,
+): Promise<Balance> => {
+  const res = await doFetch(OPENROUTER_CREDITS_URL, {
+    headers: { authorization: `Bearer ${apiKey}` },
+  });
+  const text = await res.text();
+  if (!res.ok)
+    throw new Error(`GET ${OPENROUTER_CREDITS_URL}: HTTP ${res.status}: ${text.slice(0, 200)}`);
+  let data: { total_credits?: unknown; total_usage?: unknown } | undefined;
+  try {
+    data = (JSON.parse(text) as { data?: typeof data }).data;
+  } catch {
+    data = undefined;
+  }
+  const credits = Number(data?.total_credits);
+  const usage = Number(data?.total_usage);
+  if (
+    data?.total_credits == null ||
+    data?.total_usage == null ||
+    !Number.isFinite(credits) ||
+    !Number.isFinite(usage)
+  ) {
+    throw new Error(
+      `GET ${OPENROUTER_CREDITS_URL}: no total_credits / total_usage in ${text.slice(0, 200)}`,
+    );
+  }
+  return { credits, usage, balance: credits - usage };
+};
+
+// What a matrix needs up front: the whole plan's estimate, or the budget when
+// that is lower (the guard stops there). null when a model can't be priced.
+export const neededUsd = (plans: readonly ModelPlan[], budget: number | null): number | null => {
+  if (plans.some((p) => p.estimate_usd === null)) return null;
+  const total = plans.reduce((s, p) => s + p.estimate_usd!, 0);
+  return budget === null ? total : Math.min(budget, total);
+};
+
+/** Why the balance can't cover `needed`, with the top-up it takes; or null. */
+export const creditShortfall = (b: Balance, needed: number): string | null => {
+  if (b.balance > 0 && b.balance >= needed) return null;
+  const short = Math.ceil((needed - b.balance) * 100) / 100;
+  return (
+    `OpenRouter balance is $${b.balance.toFixed(2)} (credits $${b.credits.toFixed(2)} − usage $${b.usage.toFixed(2)}), ` +
+    `${b.balance < 0 ? 'negative' : 'below'} the $${needed.toFixed(2)} this matrix needs: add at least $${Math.max(short, 0.01).toFixed(2)}.`
+  );
+};
 
 /** The results path bench:run would pick for this label, made explicit. */
 export const outPathFor = (
@@ -289,7 +355,21 @@ export const runMatrix = async (
 ): Promise<MatrixOutcome[]> => {
   const out: MatrixOutcome[] = [];
   let spent = 0;
+  const rest = (from: number, status: MatrixOutcome['status']) => {
+    for (const q of plans.slice(from))
+      out.push({ model: q.model, status, out: null, spent_usd: 0 });
+  };
   for (const [i, p] of plans.entries()) {
+    if (deps.balance) {
+      const left = await deps.balance();
+      if (p.estimate_usd === null || left < p.estimate_usd) {
+        deps.log(
+          `matrix: stopping before ${p.model}: balance $${left.toFixed(2)} < estimate ${usd(p.estimate_usd)}; add credits and rerun the rest`,
+        );
+        rest(i, 'skipped-credits');
+        break;
+      }
+    }
     if (!fitsBudget(spent, p.estimate_usd, budget)) {
       deps.log(
         `matrix: stopping before ${p.model}: spent ${usd(spent)} + estimate ${usd(p.estimate_usd)} > budget ${usd(budget)}`,
@@ -317,8 +397,23 @@ export const runMatrix = async (
     const file = deps.readResults(path);
     const cost = file ? spentUsd(file) : 0;
     spent += cost;
-    out.push({ model: p.model, status: code === 0 ? 'ran' : 'failed', out: path, spent_usd: cost });
+    // Out of credits: this model is incomplete and every later one would
+    // fail the same way, so the matrix stops here.
+    const aborted = code === EXIT_INSUFFICIENT_CREDITS || file?.aborted === 'insufficient_credits';
+    out.push({
+      model: p.model,
+      status: aborted ? 'aborted-credits' : code === 0 ? 'ran' : 'failed',
+      out: file ? path : null,
+      spent_usd: cost,
+    });
     deps.writeIndex();
+    if (aborted) {
+      deps.log(
+        `matrix: ${p.model} stopped: the account is out of credits (spent ${usd(cost)}); stopping the matrix`,
+      );
+      rest(i + 1, 'not-run');
+      break;
+    }
     deps.log(`matrix: ${p.model} ${code === 0 ? 'done' : `exited ${code}`}, spent ${usd(cost)}`);
     if (spent >= budget) {
       for (const q of plans.slice(i + 1))
@@ -436,18 +531,52 @@ const main = async (): Promise<void> => {
     throw new Error('--budget-usd must be a positive number');
   const plans = planMatrix(models, spec, catalogue, lineup);
 
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  const needed = neededUsd(plans, budget);
   if (flag('--dry-run')) {
-    console.log(dryRunLines(plans, spec, budget, estimateFrom).join('\n'));
+    const lines = dryRunLines(plans, spec, budget, estimateFrom);
+    if (apiKey) {
+      try {
+        const b = await fetchBalance(apiKey);
+        const short = needed === null ? null : creditShortfall(b, needed);
+        lines.push(
+          '',
+          short
+            ? `credits: ${short}`
+            : `credits: balance $${b.balance.toFixed(2)} covers the $${needed?.toFixed(2)} needed`,
+        );
+      } catch (err) {
+        lines.push(
+          '',
+          `credits: balance unavailable (${err instanceof Error ? err.message : String(err)})`,
+        );
+      }
+    } else {
+      lines.push('', 'credits: not checked (no OPENROUTER_API_KEY); a real run checks them first');
+    }
+    console.log(lines.join('\n'));
     return;
   }
   if (budget === null) throw new Error('a real run needs --budget-usd');
-  if (!process.env.OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY is not set');
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY is not set');
   const bad = plans.filter((p) => p.problem);
   if (bad.length) {
     throw new Error(
       `refusing to start; fix or drop these models first:\n${bad.map((p) => `  ${p.model}: ${p.problem}`).join('\n')}`,
     );
   }
+  // Pre-flight: never start a matrix the account can't pay for.
+  let balance: Balance;
+  try {
+    balance = await fetchBalance(apiKey);
+  } catch (err) {
+    throw new Error(
+      `refusing to start: can't read the account balance (${err instanceof Error ? err.message : String(err)})`,
+    );
+  }
+  const short = creditShortfall(balance, needed!);
+  if (short) throw new Error(`refusing to start: ${short}`);
+  log(`credits: balance $${balance.balance.toFixed(2)} covers the $${needed!.toFixed(2)} needed`);
   const repoRoot = resolve(import.meta.dir, '../..');
   const outcomes = await runMatrix(plans, shared, budget, {
     runBench: (args) =>
@@ -461,6 +590,7 @@ const main = async (): Promise<void> => {
     log,
     date,
     exists: existsSync,
+    balance: async () => (await fetchBalance(apiKey)).balance,
   });
   const total = outcomes.reduce((s, o) => s + o.spent_usd, 0);
   console.log(
@@ -470,9 +600,42 @@ const main = async (): Promise<void> => {
           (o) => `| \`${o.model}\` | ${o.status} | $${o.spent_usd.toFixed(4)} | ${o.out ?? '–'} |`,
         ),
       )
-      .concat([`| **total** | | **$${total.toFixed(4)}** | |`, '', 'next: bun run bench:chart'])
+      .concat([`| **total** | | **$${total.toFixed(4)}** | |`, ''])
+      .concat(matrixSummary(outcomes))
       .join('\n'),
   );
+  if (outcomes.some((o) => o.status === 'aborted-credits' || o.status === 'skipped-credits'))
+    process.exit(EXIT_INSUFFICIENT_CREDITS);
+};
+
+/** Which models finished, which stopped and which never ran. */
+export const matrixSummary = (outcomes: readonly MatrixOutcome[]): string[] => {
+  const names = (pred: (o: MatrixOutcome) => boolean): string =>
+    outcomes
+      .filter(pred)
+      .map((o) => o.model)
+      .join(', ') || 'none';
+  const credits = outcomes.some(
+    (o) => o.status === 'aborted-credits' || o.status === 'skipped-credits',
+  );
+  return [
+    `finished: ${names((o) => o.status === 'ran')}`,
+    ...(outcomes.some((o) => o.status === 'failed')
+      ? [`failed: ${names((o) => o.status === 'failed')}`]
+      : []),
+    ...(credits
+      ? [
+          `stopped for credits: ${names((o) => o.status === 'aborted-credits' || o.status === 'skipped-credits')} (partial files are marked aborted and excluded from reports and charts)`,
+          `not run: ${names((o) => o.status === 'not-run' || o.status === 'skipped-credits')}`,
+        ]
+      : []),
+    ...(outcomes.some((o) => o.status === 'skipped-budget')
+      ? [`skipped for budget: ${names((o) => o.status === 'skipped-budget')}`]
+      : []),
+    credits
+      ? 'next: add credits, then rerun the models that did not finish'
+      : 'next: bun run bench:chart',
+  ];
 };
 
 if (import.meta.main) {

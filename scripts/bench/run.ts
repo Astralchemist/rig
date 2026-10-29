@@ -12,9 +12,12 @@ import { checkAnswer, validateExpected } from './criteria.ts';
 import { judgeAnswer } from './judge.ts';
 import { estimatePlan, profilesFrom } from './plan.ts';
 import { fetchCatalogue, lookupPricing, perMillion, type ModelPricing } from './pricing.ts';
+import { stopForCredits } from './models.ts';
 import {
   DEFAULT_MODELS,
+  EXIT_INSUFFICIENT_CREDITS,
   apiKeyFor,
+  isInsufficientCredits,
   makeProvider,
   resolveProviderName,
   type HttpOpts,
@@ -299,38 +302,45 @@ const main = async (): Promise<void> => {
 
   const maxSpend = usdArg('--max-spend-usd');
   let spent = 0;
-  for (const q of queries) {
-    for (let t = 0; t < trials; t++) {
-      for (const arm of armImpls) {
-        process.stderr.write(`  ${q.id} / ${arm.name} / trial ${t + 1}... `);
-        const t0 = Date.now();
-        const o = await runAgent(provider, arm, q.ask, { maxTurns, maxTokens: 2048 });
-        const r: RunResult = {
-          query_id: q.id,
-          arm: arm.name,
-          trial: t,
-          ...o,
-          elapsed_ms: Date.now() - t0,
-          check: checkAnswer(o.final_text, q.expected),
-        };
-        if (judge && o.stop === 'answer') r.judge = await judgeAnswer(judge, q, o.final_text);
-        file.results.push(r);
-        save();
-        spent += (r.cost_usd ?? 0) + (r.judge?.cost_usd ?? 0);
-        process.stderr.write(
-          `${(r.prompt_tokens + r.completion_tokens).toLocaleString()} toks, ${usd(r.cost_usd)}, ` +
-            `${r.check.pass ? 'pass' : 'FAIL'}${r.judge ? ` (judge: ${r.judge.verdict})` : ''}` +
-            `${r.error ? ` (err: ${r.error.slice(0, 120)})` : r.stop === 'turn_limit' ? ' (turn limit)' : ''}\n`,
-        );
-        if (maxSpend !== null && spent >= maxSpend) {
-          index?.rig.close();
-          throw new Error(
-            `spend cap reached: ${usd(spent)} ≥ ${usd(maxSpend)} after ${file.results.length} runs; ` +
-              `partial results in ${outPath}`,
+  try {
+    for (const q of queries) {
+      for (let t = 0; t < trials; t++) {
+        for (const arm of armImpls) {
+          process.stderr.write(`  ${q.id} / ${arm.name} / trial ${t + 1}... `);
+          const t0 = Date.now();
+          const o = await runAgent(provider, arm, q.ask, { maxTurns, maxTokens: 2048 });
+          const r: RunResult = {
+            query_id: q.id,
+            arm: arm.name,
+            trial: t,
+            ...o,
+            elapsed_ms: Date.now() - t0,
+            check: checkAnswer(o.final_text, q.expected),
+          };
+          if (judge && o.stop === 'answer') r.judge = await judgeAnswer(judge, q, o.final_text);
+          file.results.push(r);
+          save();
+          spent += (r.cost_usd ?? 0) + (r.judge?.cost_usd ?? 0);
+          process.stderr.write(
+            `${(r.prompt_tokens + r.completion_tokens).toLocaleString()} toks, ${usd(r.cost_usd)}, ` +
+              `${r.check.pass ? 'pass' : 'FAIL'}${r.judge ? ` (judge: ${r.judge.verdict})` : ''}` +
+              `${r.error ? ` (err: ${r.error.slice(0, 120)})` : r.stop === 'turn_limit' ? ' (turn limit)' : ''}\n`,
           );
+          if (maxSpend !== null && spent >= maxSpend) {
+            index?.rig.close();
+            throw new Error(
+              `spend cap reached: ${usd(spent)} ≥ ${usd(maxSpend)} after ${file.results.length} runs; ` +
+                `partial results in ${outPath}`,
+            );
+          }
         }
       }
     }
+  } catch (err) {
+    // Out of credits: stop here, keep what completed, marked aborted.
+    if (!isInsufficientCredits(err)) throw err;
+    index?.rig.close();
+    throw stopForCredits(file, err, outPath);
   }
   index?.rig.close();
   file.finished_at = new Date().toISOString();
@@ -390,5 +400,5 @@ const sessionsMode = async (repo: string, qf: QueriesFile): Promise<void> => {
 
 main().catch((err: unknown) => {
   console.error(`bench: ${err instanceof Error ? err.message : String(err)}`);
-  process.exit(1);
+  process.exit(isInsufficientCredits(err) ? EXIT_INSUFFICIENT_CREDITS : 1);
 });

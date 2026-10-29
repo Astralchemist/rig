@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // bench:matrix: per-model estimates, the budget guard, identical flags per
-// model, and the results manifest with its by-model view.
-import { describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
+// model, and the results manifest with its by-model view. Running out of
+// credits: the balance pre-flight, stopping the matrix, and aborted results
+// files that reports and charts never show as 0%.
+import { afterAll, describe, expect, test } from 'bun:test';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
+  creditShortfall,
   dryRunLines,
+  fetchBalance,
   fitsBudget,
+  matrixSummary,
+  neededUsd,
   outPathFor,
   planMatrix,
   runMatrix,
@@ -17,12 +24,15 @@ import {
   buildIndex,
   loadResultsDir,
   modelSlug,
+  stopForCredits,
   tierFor,
   vendorOf,
   type AnyBenchFile,
 } from '../scripts/bench/models.ts';
 import { parsePricing, type ModelPricing } from '../scripts/bench/pricing.ts';
+import { EXIT_INSUFFICIENT_CREDITS, InsufficientCreditsError } from '../scripts/bench/providers.ts';
 import { modelRows, renderByModelMarkdown } from '../scripts/bench/report-models.ts';
+import type { BenchFile } from '../scripts/bench/types.ts';
 
 const RESULTS = resolve(__dirname, '../scripts/bench/results');
 
@@ -236,5 +246,208 @@ describe('results manifest and by-model view', () => {
     );
     expect(md).toContain('| `openai/gpt-6-luna` | low-cost | 0.10 · 0.50 | not run yet |');
     expect(md).toContain('| 133.6% | 48/48 | 48/48 | 16 × 3 | `orientation-map` |');
+  });
+});
+
+describe('running out of credits', () => {
+  const spec: MatrixSpec = { mode: 'qa', arms: ['baseline'], trials: 1, items: 1 };
+  const catalogue = new Map([
+    ['a/one', pricing('a/one', 0.1, 0.5)],
+    ['b/two', pricing('b/two', 0.1, 0.5)],
+    ['c/three', pricing('c/three', 0.1, 0.5)],
+  ]);
+  const plans = () =>
+    ['a/one', 'b/two', 'c/three'].map((m) => ({
+      ...planMatrix([m], spec, catalogue)[0]!,
+      estimate_usd: 0.1,
+    }));
+  const deps = (over: Partial<Parameters<typeof runMatrix>[3]>) => ({
+    runBench: async () => 0,
+    readResults: () => null,
+    writeIndex: () => {},
+    log: () => {},
+    date: '2026-10-29',
+    exists: () => false,
+    ...over,
+  });
+
+  test('a run that exits for credits stops the matrix; finished and not-run models are listed', async () => {
+    let n = 0;
+    const out = await runMatrix(
+      plans(),
+      [],
+      10,
+      deps({
+        runBench: async () => (++n === 2 ? EXIT_INSUFFICIENT_CREDITS : 0),
+        readResults: (p) =>
+          (p.includes('b-two')
+            ? { aborted: 'insufficient_credits', results: [{ cost_usd: 0.03 }] }
+            : { results: [{ cost_usd: 0.05 }] }) as unknown as AnyBenchFile,
+      }),
+    );
+    expect(n).toBe(2);
+    expect(out.map((o) => o.status)).toEqual(['ran', 'aborted-credits', 'not-run']);
+    expect(out[1]!.spent_usd).toBe(0.03);
+    const summary = matrixSummary(out).join('\n');
+    expect(summary).toContain('finished: a/one');
+    expect(summary).toContain('stopped for credits: b/two');
+    expect(summary).toContain('not run: c/three');
+    expect(summary).toContain('add credits');
+  });
+
+  test('a results file marked aborted stops it even when the exit code is lost', async () => {
+    const out = await runMatrix(
+      plans(),
+      [],
+      10,
+      deps({
+        runBench: async () => 1,
+        readResults: () =>
+          ({ aborted: 'insufficient_credits', results: [] }) as unknown as AnyBenchFile,
+      }),
+    );
+    expect(out.map((o) => o.status)).toEqual(['aborted-credits', 'not-run', 'not-run']);
+  });
+
+  test('before each model, a balance below its estimate stops the matrix', async () => {
+    const balances = [1, 0.15, 0.05];
+    let ran = 0;
+    const out = await runMatrix(
+      plans(),
+      [],
+      10,
+      deps({
+        runBench: async () => (ran++, 0),
+        balance: async () => balances.shift()!,
+      }),
+    );
+    expect(ran).toBe(2);
+    expect(out.map((o) => o.status)).toEqual(['ran', 'ran', 'skipped-credits']);
+  });
+
+  const creditsFetch = (status: number, body: unknown) => {
+    const seen: { url: string; auth: string }[] = [];
+    const f = (async (url: string, init: RequestInit) => {
+      seen.push({ url, auth: (init.headers as Record<string, string>).authorization! });
+      return new Response(JSON.stringify(body), { status });
+    }) as unknown as typeof fetch;
+    return { fetch: f, seen };
+  };
+
+  test('reads the balance from GET /api/v1/credits', async () => {
+    const f = creditsFetch(200, { data: { total_credits: 25, total_usage: 21.5 } });
+    const b = await fetchBalance('sk-or-x', f.fetch);
+    expect(b).toEqual({ credits: 25, usage: 21.5, balance: 3.5 });
+    expect(f.seen).toEqual([
+      { url: 'https://openrouter.ai/api/v1/credits', auth: 'Bearer sk-or-x' },
+    ]);
+    await expect(fetchBalance('k', creditsFetch(401, { error: 'no' }).fetch)).rejects.toThrow(
+      'HTTP 401',
+    );
+    await expect(fetchBalance('k', creditsFetch(200, { data: {} }).fetch)).rejects.toThrow(
+      'no total_credits',
+    );
+  });
+
+  test('the pre-flight refuses a negative or short balance and says how much to add', () => {
+    expect(creditShortfall({ credits: 25, usage: 5, balance: 20 }, 17.27)).toBeNull();
+    expect(creditShortfall({ credits: 25, usage: 21.5, balance: 3.5 }, 17.27)).toBe(
+      'OpenRouter balance is $3.50 (credits $25.00 − usage $21.50), below the $17.27 this matrix needs: add at least $13.77.',
+    );
+    expect(creditShortfall({ credits: 10, usage: 10.4, balance: -0.4 }, 1)).toContain(
+      'negative the $1.00 this matrix needs: add at least $1.40.',
+    );
+    expect(creditShortfall({ credits: 0, usage: 0, balance: 0 }, 0)).not.toBeNull();
+    // Needed: the plan's total, or the budget when that is lower.
+    const ps = plans();
+    expect(neededUsd(ps, null)).toBeCloseTo(0.3, 10);
+    expect(neededUsd(ps, 0.2)).toBe(0.2);
+    expect(neededUsd([{ ...ps[0]!, estimate_usd: null }], 1)).toBeNull();
+  });
+});
+
+describe('aborted results files', () => {
+  const qaFile = (): BenchFile =>
+    JSON.parse(
+      readFileSync(join(RESULTS, '2026-10-29-orientation-map.json'), 'utf-8'),
+    ) as BenchFile;
+  const dir = mkdtempSync(join(tmpdir(), 'rig-credits-'));
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+  const err = new InsufficientCreditsError('HTTP 402: requires more credits', 402);
+
+  test('partial results are kept, clearly marked; an empty run leaves no file', () => {
+    const f = { ...qaFile(), results: qaFile().results.slice(0, 3) };
+    const path = join(dir, 'partial.json');
+    const stop = stopForCredits(f, err, path);
+    const saved = JSON.parse(readFileSync(path, 'utf-8')) as BenchFile;
+    expect(saved.aborted).toBe('insufficient_credits');
+    expect(saved.aborted_reason).toContain('HTTP 402');
+    expect(saved.results).toHaveLength(3);
+    expect(stop.message).toContain('The 3 completed runs are in');
+    expect(stop.message).toContain('marked aborted: "insufficient_credits"');
+    expect(stop.message).toContain('The failed call is not counted');
+    const empty = join(dir, 'empty.json');
+    writeFileSync(empty, '{}');
+    stopForCredits({ ...qaFile(), results: [] }, err, empty);
+    expect(existsSync(empty)).toBe(false);
+  });
+
+  test('the manifest flags it, the by-model view leaves it out and shows "aborted"', () => {
+    const good = loadResultsDir(RESULTS);
+    const aborted = {
+      file: '2026-10-30-qa-openai-gpt-6-luna.json',
+      data: {
+        ...qaFile(),
+        label: 'qa-openai-gpt-6-luna',
+        model: 'openai/gpt-6-luna',
+        started_at: '2026-10-30T00:00:00.000Z',
+        aborted: 'insufficient_credits',
+        // What a 0% would have come from: every check failed.
+        results: qaFile().results.map((r) => ({ ...r, check: { ...r.check, pass: false } })),
+      } as BenchFile,
+    };
+    const files = [...good, aborted];
+    const index = buildIndex({
+      files,
+      catalogue: null,
+      previous: null,
+      lineup: ['anthropic/claude-haiku-5.5', 'openai/gpt-6-luna'],
+      asOf: null,
+    });
+    expect(index.runs.find((r) => r.label === 'qa-openai-gpt-6-luna')!.aborted).toBe(
+      'insufficient_credits',
+    );
+    const byFile = new Map(files.map((f) => [f.file, f.data]));
+    const rows = modelRows(index, (r) => byFile.get(r.file)!);
+    const luna = rows.find((r) => r.model.id === 'openai/gpt-6-luna')!;
+    expect(luna.qa).toBeNull();
+    expect(luna.aborted.qa).toEqual(['qa-openai-gpt-6-luna']);
+    const md = renderByModelMarkdown(index, rows);
+    expect(md).toContain('aborted (insufficient credits): `qa-openai-gpt-6-luna`');
+    expect(md).not.toMatch(/gpt-6-luna`[^\n]*\| 0\.0%/);
+  });
+
+  test('older runs that recorded 402s as model errors are counted and flagged, not hidden', () => {
+    const index = buildIndex({
+      files: loadResultsDir(RESULTS),
+      catalogue: null,
+      previous: null,
+      lineup: [],
+      asOf: null,
+    });
+    const conf = index.runs.find((r) => r.label === 'sessions-confirmation-0.3.0')!;
+    expect(conf.aborted).toBeNull();
+    expect(conf.credit_error_trials).toBe(12);
+    const others = index.runs.filter((r) => r !== conf);
+    expect(others.every((r) => r.credit_error_trials === 0)).toBe(true);
+  });
+
+  test('bench:report refuses an aborted results file', () => {
+    const path = join(dir, 'aborted.json');
+    writeFileSync(path, JSON.stringify({ ...qaFile(), aborted: 'insufficient_credits' }));
+    const r = Bun.spawnSync(['bun', resolve(__dirname, '../scripts/bench/report.ts'), path]);
+    expect(r.exitCode).toBe(1);
+    expect(r.stderr.toString()).toContain('refusing aborted runs');
+    expect(r.stdout.toString()).toBe('');
   });
 });

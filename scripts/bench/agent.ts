@@ -4,7 +4,7 @@
 // tool or the turn budget runs out. Usage is summed over every model call.
 // runConversation does the same over several scripted user messages.
 import type { Arm } from './arms.ts';
-import type { Provider } from './providers.ts';
+import { isInsufficientCredits, type Provider } from './providers.ts';
 import type { StopReason } from './types.ts';
 
 export const SYSTEM_PROMPT = `You are a senior engineer answering a question about an unfamiliar codebase. Use the tools you have. Be concise. When you have the answer, stop calling tools and respond in plain text.`;
@@ -118,6 +118,8 @@ export const runConversation = async (
       if (stop !== 'answer') out.final_text = '';
     }
   } catch (err) {
+    // An account that can't pay isn't the model failing: stop the whole run.
+    if (isInsufficientCredits(err)) throw err;
     out.stop = 'error';
     out.stops.push('error');
     out.error = err instanceof Error ? err.message : String(err);

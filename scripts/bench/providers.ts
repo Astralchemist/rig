@@ -84,6 +84,31 @@ export class ProviderError extends Error {
   }
 }
 
+/**
+ * The account can't pay for the call: HTTP 402, or an error whose message
+ * says so (OpenRouter's "requires more credits", Anthropic's "credit balance
+ * is too low"). Never retried, never recorded as a model's failure: the run
+ * stops, because every later call would fail the same way and score 0%.
+ */
+export class InsufficientCreditsError extends ProviderError {
+  constructor(message: string, status: number | null) {
+    super(message, status, false);
+    this.name = 'InsufficientCreditsError';
+  }
+}
+
+// bench:run's exit code when it stopped for credits; bench:matrix keys on it.
+export const EXIT_INSUFFICIENT_CREDITS = 3;
+
+const CREDITS_TEXT =
+  /\bcredits?\b|insufficient[\s_-]+(?:balance|funds|quota)|payment[\s_-]+required|billing/i;
+
+export const isCreditsFailure = (status: number | null, message: string): boolean =>
+  status === 402 || CREDITS_TEXT.test(message);
+
+export const isInsufficientCredits = (err: unknown): err is InsufficientCreditsError =>
+  err instanceof InsufficientCreditsError;
+
 // Rate limits, timeouts, upstream outages and Anthropic's 529 "overloaded".
 const RETRYABLE = new Set([408, 409, 425, 429, 500, 502, 503, 504, 520, 522, 524, 529]);
 
@@ -137,6 +162,8 @@ export const postJson = async (
         const embedded = bodyError(json);
         if (!embedded) return json;
         failure = embedded;
+      } else if (isCreditsFailure(res.status, text)) {
+        throw new InsufficientCreditsError(`HTTP ${res.status}: ${text.slice(0, 500)}`, res.status);
       } else {
         failure = new ProviderError(
           `HTTP ${res.status}: ${text.slice(0, 500)}`,
@@ -283,6 +310,9 @@ export const openRouterBodyError = (json: unknown): ProviderError | null => {
   if (isRecord(json.error)) {
     const code = typeof json.error.code === 'number' ? json.error.code : null;
     const msg = typeof json.error.message === 'string' ? json.error.message : 'unknown error';
+    if (isCreditsFailure(code, msg)) {
+      return new InsufficientCreditsError(`openrouter ${code ?? '?'}: ${msg}`, code);
+    }
     return new ProviderError(
       `openrouter ${code ?? '?'}: ${msg}`,
       code,

@@ -15,7 +15,8 @@ import {
   type SessionsPlanEstimate,
 } from './plan.ts';
 import { perMillion, type ModelPricing } from './pricing.ts';
-import type { Provider } from './providers.ts';
+import { stopForCredits } from './models.ts';
+import { isInsufficientCredits, type Provider } from './providers.ts';
 import {
   CONFIRMATION_RULE,
   MEMORY_READ_TOOLS,
@@ -329,7 +330,9 @@ export const mainSessions = async (c: SessionsCli): Promise<void> => {
     const provider = c.makeProvider();
     const store = new TrialStore(c.repo, snapshot, workDir, selectEmbedder(c.repo));
     let spent = 0;
-    await runSessionsLoop(provider, store, file, {
+    // Out of credits mid-trial: that trial is dropped (runTrial pushes nothing),
+    // the completed ones are kept, marked aborted, and the run stops.
+    const loop = runSessionsLoop(provider, store, file, {
       arms: c.arms,
       tasks: c.tasks,
       trials: c.trials,
@@ -359,6 +362,12 @@ export const mainSessions = async (c: SessionsCli): Promise<void> => {
         }
       },
     });
+    try {
+      await loop;
+    } catch (err) {
+      if (isInsufficientCredits(err)) throw stopForCredits(file, err, outPath);
+      throw err;
+    }
     file.finished_at = new Date().toISOString();
     save();
     console.log(`\nwrote ${file.results.length} trials to ${outPath} (spent ≈ ${usd(spent)})`);

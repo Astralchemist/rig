@@ -127,7 +127,13 @@ export interface BenchFile {
   max_turns: number;
   queries: Query[];
   results: RunResult[];
+  // Set when the run stopped because the account couldn't pay: the results
+  // are partial and the run is not a measurement (reports refuse it).
+  aborted?: AbortReason;
+  aborted_reason?: string;
 }
+
+export type AbortReason = 'insufficient_credits';
 
 // ------------------------------------------------- multi-session memory mode
 
@@ -271,4 +277,7 @@ export interface SessionsBenchFile {
   max_turns: number;
   tasks: SessionTask[];
   results: SessionRunResult[];
+  // As BenchFile: a run stopped for credits, partial and not a measurement.
+  aborted?: AbortReason;
+  aborted_reason?: string;
 }

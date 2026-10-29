@@ -98,6 +98,16 @@ inside a 200 reply. Retries use exponential backoff with jitter: 5 attempts, sta
 capped at 60 s. A server `Retry-After` header takes precedence. Other 4xx errors fail the run
 immediately.
 
+A credits or billing error stops the whole bench at once: HTTP 402, or any error whose
+message talks about credits, an insufficient balance or payment. It is never retried and
+never recorded as the model failing, because every later call would fail the same way and
+score 0%. The trials that completed are kept in the results file, marked
+`"aborted": "insufficient_credits"` (with the error under `aborted_reason`); a run that
+completed none leaves no file. `bench:run` then exits with code 3. `bench:report` refuses a
+file marked aborted, and the charts and the by-model view leave it out and show "aborted".
+Runs from before this rule could record a 402 as a failed trial; the manifest counts those
+under `credit_error_trials`, and `bench:report` warns about them.
+
 Each results file records the provider, the requested model, every resolved model id the API
 reported (such as `anthropic/claude-haiku-5.5-20261007`), and for OpenRouter the upstream
 provider that served each call.
@@ -548,6 +558,15 @@ spent. The dry run prints a second figure, the ceiling: the same plan with every
 completion at `max_tokens` (2,048). Reasoning models bill their thinking as completion tokens,
 so the measured Haiku profiles understate them, and the truth for those models lies between the
 two figures.
+
+**Credits.** Before a real run starts, the runner reads the key's balance from
+`GET https://openrouter.ai/api/v1/credits` (`total_credits` minus `total_usage`). It refuses to
+start when the balance is negative or below what the run needs: the plan's total estimate, or
+the budget when that is lower. The message says how much to add. The dry run prints the same
+check when `OPENROUTER_API_KEY` is set. Before each model the runner reads the balance again
+and stops if it no longer covers that model's estimate. If a model's run still hits a credits
+error, the runner stops there, and its summary lists the models that finished, the one that
+stopped and those that never ran.
 
 **Compatibility.** A model that isn't in the catalogue, or whose catalogue entry doesn't list
 `tools` among its supported parameters, stops a real run before it starts. The dry run lists

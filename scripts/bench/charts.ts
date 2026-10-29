@@ -17,6 +17,7 @@ import {
   verdictFor,
   type VerdictResult,
 } from './report-sessions.ts';
+import { abortReason } from './models.ts';
 import { QA_ARM, QA_BASE, type ModelRow } from './report-models.ts';
 import { BAR_DELTA, BAR_TOKEN_RATIO } from './sessions.ts';
 import {
@@ -88,6 +89,8 @@ export const memoryChartData = (
   file: SessionsBenchFile,
   opts: { iterations?: number; seed?: number } = {},
 ): MemoryChartData => {
+  const why = abortReason(file);
+  if (why) throw new Error(`refusing to chart ${file.label}: aborted (${why})`);
   const boot = {
     ...(opts.iterations !== undefined ? { iterations: opts.iterations } : {}),
     ...(opts.seed !== undefined ? { seed: opts.seed } : {}),
@@ -379,7 +382,7 @@ export interface QaChartData {
  */
 export const qaChartData = (files: readonly BenchFile[], model: string): QaChartData => {
   const own = [...files]
-    .filter((f) => f.model === model && f.arms.includes(QA_BASE))
+    .filter((f) => f.model === model && f.arms.includes(QA_BASE) && abortReason(f) === null)
     .sort((a, b) => (a.started_at < b.started_at ? -1 : a.started_at > b.started_at ? 1 : 0));
   const prints = [...new Set(own.map((f) => f.rig.fingerprint))];
   const stages = prints.map((fp): QaStage => {
@@ -548,6 +551,11 @@ export const renderQaChart = (d: QaChartData): string => {
 
 const TIER_ORDER = ['low-cost', 'frontier', null] as const;
 
+// A model/mode with no usable result: "aborted" when its only runs stopped
+// for credits (they are never drawn, so they can't read as 0%).
+const emptyState = (aborted: readonly string[]): string =>
+  aborted.length ? 'aborted' : 'not run yet';
+
 const tierHeading = (tier: string | null, threshold: number): string =>
   tier === 'low-cost'
     ? `Low-cost · under $${threshold.toFixed(2)} per M input tokens`
@@ -562,10 +570,10 @@ const crossDesc = (rows: readonly ModelRow[]): string => {
     ...rows.map((r) => {
       const m = r.memory
         ? `memory ${pp1(r.memory.delta)} (95% CI ${ciPp(r.memory.ci)}), ${r.memory.verdict} against the bar`
-        : 'memory not run yet';
+        : `memory ${emptyState(r.aborted.sessions)}`;
       const q = r.qa
         ? `Q&A ${r.qa.ratio === null ? 'n/a' : pct1(r.qa.ratio)} of grep-only tokens`
-        : 'Q&A not run yet';
+        : `Q&A ${emptyState(r.aborted.qa)}`;
       return `${r.model.id} (${r.model.tier ?? 'unpriced'}): ${m}; ${q}.`;
     }),
   ];
@@ -648,13 +656,15 @@ export const renderCrossModelChart = (rows: readonly ModelRow[], threshold: numb
           }),
         );
       } else {
-        body.push(text(mVal, cy, 'not run yet', { cls: 'empty', baseline: 'middle' }));
+        body.push(
+          text(mVal, cy, emptyState(r.aborted.sessions), { cls: 'empty', baseline: 'middle' }),
+        );
       }
       if (r.qa && r.qa.ratio !== null) {
         body.push(dot(sq(r.qa.ratio), cy, 's1'));
         body.push(text(qVal, cy, pct0(r.qa.ratio), { cls: 'val', baseline: 'middle' }));
       } else {
-        body.push(text(qVal, cy, 'not run yet', { cls: 'empty', baseline: 'middle' }));
+        body.push(text(qVal, cy, emptyState(r.aborted.qa), { cls: 'empty', baseline: 'middle' }));
       }
       body.push(
         hit(
@@ -665,11 +675,11 @@ export const renderCrossModelChart = (rows: readonly ModelRow[], threshold: numb
           `${r.model.id}: ` +
             (r.memory
               ? `memory ${pp1(r.memory.delta)} (95% CI ${ciPp(r.memory.ci)}), off ${pct0(r.memory.off_rate)} → on ${pct0(r.memory.on_rate)}, ${r.memory.verdict}`
-              : 'memory not run yet') +
+              : `memory ${emptyState(r.aborted.sessions)}`) +
             '; ' +
             (r.qa && r.qa.ratio !== null
               ? `Q&A ${pct1(r.qa.ratio)} of grep-only tokens (run ${r.qa.run})`
-              : 'Q&A not run yet'),
+              : `Q&A ${emptyState(r.aborted.qa)}`),
         ),
       );
       y += rowH;
@@ -685,6 +695,17 @@ export const renderCrossModelChart = (rows: readonly ModelRow[], threshold: numb
       { cls: 'note' },
     ),
   );
+  if (rows.some((r) => r.aborted.sessions.length || r.aborted.qa.length)) {
+    y += 16;
+    body.push(
+      text(
+        PAD,
+        y,
+        '“aborted”: the run stopped when the account ran out of credits; its partial results are left out.',
+        { cls: 'note' },
+      ),
+    );
+  }
   return svgDoc({
     width: W,
     height: y + 18,

@@ -13,6 +13,7 @@ import {
   renderQaChart,
 } from './charts.ts';
 import {
+  abortReason,
   buildIndex,
   isSessionsFile,
   loadIndex,
@@ -39,7 +40,8 @@ export const renderAll = (
     lineup: loadLineup(),
     asOf: null,
   });
-  const own = files.map((f) => f.data).filter((f) => f.model === model);
+  // Aborted runs are never drawn; the cross-model chart labels them instead.
+  const own = files.map((f) => f.data).filter((f) => f.model === model && abortReason(f) === null);
   const sessions = selectSessions(own.filter(isSessionsFile));
   const byFile = new Map(files.map((f) => [f.file, f.data]));
   return {
