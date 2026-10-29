@@ -59,6 +59,7 @@ describe('rig start — agent wiring', () => {
     expect(claude.files).toEqual([
       'wrote     .mcp.json',
       'wrote     .claude/settings.json',
+      'wrote     .claude/settings.json',
       'wrote     CLAUDE.md',
       expect.stringMatching(/^note {6}Claude Code asks once/),
     ]);
@@ -72,6 +73,7 @@ describe('rig start — agent wiring', () => {
     const lines = describeWiring(await wire(detectOnly('claude')), project, home);
     expect(lines[0]!.files).toEqual([
       'unchanged .mcp.json',
+      'unchanged .claude/settings.json',
       'unchanged .claude/settings.json',
       'unchanged CLAUDE.md',
     ]);

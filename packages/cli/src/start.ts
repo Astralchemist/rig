@@ -82,6 +82,8 @@ export const runStart = async (cwd: string): Promise<void> => {
       rigBin: opt('--bin') ?? 'rig',
       generatedDir: GENERATED_DIR,
       projectRoot: root,
+      // --no-hooks: no automatic-capture hooks (see `rig install --no-hooks`).
+      ...(flag('--no-hooks') ? { skipRoles: ['hooks'] } : {}),
     });
     for (const w of describeWiring(report, root)) {
       line(w.ok ? sym.ok : sym.dot, w.label, w.detail);

@@ -7,7 +7,7 @@ import { parseArgs } from './install/args.ts';
 import { allTargetNames, getTarget } from './install/loader.ts';
 import { displayPath, samePath, type Scope } from './install/paths.ts';
 import { hasScope, installTarget, type InstallOptions } from './install/runner.ts';
-import { wiredLocations } from './install/uninstall.ts';
+import { uninstallTarget, wiredLocations } from './install/uninstall.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const GENERATED_DIR = join(findAssetRoot(HERE), 'generated/installer');
@@ -18,10 +18,12 @@ const other = (s: Scope): Scope => (s === 'project' ? 'global' : 'project');
 export const scopeLabel = (scope: Scope, projectRoot: string): string =>
   scope === 'project' ? `project: ${projectRoot}` : 'global: ~';
 
-// `rig install [target…] [--global] [--dry-run] [--bin <path>]`
+// `rig install [target…] [--global] [--dry-run] [--bin <path>] [--no-hooks]`
 // Project scope (the default) writes into the current directory; --global
 // writes the user-level config every project shares. A target with no files
 // for the requested scope falls back to the other one, and says so.
+// --no-hooks leaves out the automatic-capture hooks (Claude Code), and takes
+// out rig's hooks an earlier install wrote.
 export async function runInstall(cwd: string): Promise<void> {
   const args = parseArgs(process.argv.slice(3), ['--bin']);
   const names = args.positionals.length ? args.positionals : ['claude'];
@@ -38,6 +40,7 @@ export async function runInstall(cwd: string): Promise<void> {
   const home = homedir();
   const requested: Scope = args.flags.has('--global') ? 'global' : 'project';
   const dryRun = args.flags.has('--dry-run');
+  const noHooks = args.flags.has('--no-hooks');
 
   for (const name of names) {
     const contract = getTarget(name)!;
@@ -57,6 +60,7 @@ export async function runInstall(cwd: string): Promise<void> {
       home,
       projectRoot,
       scope,
+      ...(noHooks ? { skipRoles: ['hooks'] } : {}),
     };
 
     process.stdout.write(
@@ -78,6 +82,22 @@ export async function runInstall(cwd: string): Promise<void> {
       );
       if (a.reason) process.stdout.write(`      ${a.reason}\n`);
       if (a.note) process.stdout.write(`      note: ${a.note}\n`);
+    }
+    if (noHooks && contract.files.some((f) => f.role === 'hooks')) {
+      const off = await uninstallTarget(contract, {
+        rigBin: opts.rigBin,
+        generatedDir: GENERATED_DIR,
+        projectRoot,
+        home,
+        scope,
+        dryRun,
+        roles: ['hooks'],
+      });
+      for (const r of off.removed.filter((x) => x.status === 'removed' || x.status === 'deleted')) {
+        process.stdout.write(
+          `  ✓ ${(dryRun ? 'would remove' : 'removed').padEnd(9)} ${'hooks'.padEnd(12)} ${displayPath(r.path, projectRoot, home)} — ${r.detail}\n`,
+        );
+      }
     }
     // Upgrading from user-wide wiring: say where the old entry still lives.
     if (scope === 'project') {

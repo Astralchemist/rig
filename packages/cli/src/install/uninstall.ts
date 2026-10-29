@@ -5,6 +5,7 @@ import { dirname, resolve, sep } from 'node:path';
 import { applyEdits, modify, parse as parseJsonc } from 'jsonc-parser';
 import { atomicWrite } from './atomic.ts';
 import type { TargetFileLike } from './modes.ts';
+import { stripRigHooks } from './json-merge.ts';
 import { isRigListEntry, isRigMapKey, isRigToolTable } from './ownership.ts';
 import { expandRelativeTo, type Scope } from './paths.ts';
 import { filesInScope } from './runner.ts';
@@ -16,6 +17,7 @@ import { flattenTables, listTomlTables, removeTomlKeys, removeTomlTableTree } fr
 //   mcp_config    the rig server entry (mcpServers.rig, mcp.rig, [mcp_servers.rig…])
 //   permissions   rig-owned entries (ownership.ts), from whichever list holds them
 //   instructions  the section between rig's markers, or rig's generated rule file
+//   hooks         rig's hook handlers (`rig hook …` commands), from every event
 // Everything else in a file is left alone. A file that held nothing but rig's
 // content is deleted, and in project scope so is a directory that emptied.
 
@@ -41,6 +43,8 @@ export interface UninstallResult {
 
 export interface UninstallOptions extends TokenContext {
   scope?: Scope | undefined;
+  // Only these roles' files (install --no-hooks removes just the hooks).
+  roles?: readonly string[] | undefined;
   projectRoot?: string | undefined;
   home?: string | undefined;
   dryRun?: boolean | undefined;
@@ -124,7 +128,14 @@ const removeFromJson = (text: string, role: string, template: unknown): Removal 
   const doc = JSON.parse(text) as unknown;
   if (!isObj(doc)) return null;
   let detail: string;
-  if (role === 'permissions') {
+  if (role === 'hooks') {
+    if (!isObj(doc.hooks)) return null;
+    const { hooks, removed } = stripRigHooks(doc.hooks);
+    if (!removed) return null;
+    if (Object.keys(hooks).length) doc.hooks = hooks;
+    else delete doc.hooks;
+    detail = plural(removed, 'rig hook');
+  } else if (role === 'permissions') {
     let count = 0;
     for (const [path, current] of listsUnder(doc, template)) {
       const kept = current.filter((e) => !isRigListEntry(e));
@@ -272,7 +283,10 @@ export async function uninstallTarget(
   const projectRoot = resolve(opts.projectRoot ?? process.cwd());
   const removed: RemoveResult[] = [];
   // Reverse install order: instructions, then permissions, then the server.
-  for (const file of filesInScope(contract, scope).toReversed()) {
+  const files = filesInScope(contract, scope).filter(
+    (f) => !opts.roles || opts.roles.includes(f.role),
+  );
+  for (const file of files.toReversed()) {
     const path = expandRelativeTo(file.path, projectRoot, opts.home);
     const base = { path, role: file.role, mode: file.mode };
     if (!existsSync(path)) {
