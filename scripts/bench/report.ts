@@ -5,7 +5,14 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { checkAnswer } from './criteria.ts';
-import type { ArmName, BenchFile, Query, QueriesFile, RunResult } from './types.ts';
+import type {
+  ArmName,
+  BenchFile,
+  Query,
+  QueriesFile,
+  RunResult,
+  SessionsBenchFile,
+} from './types.ts';
 
 export interface Summary {
   median: number;
@@ -392,20 +399,59 @@ export const renderMarkdown = (r: Report): string => {
 
 if (import.meta.main) {
   const args = process.argv.slice(2);
-  const valued = new Set(['--in', '--out', '--queries-file']);
+  const valued = new Set(['--in', '--out', '--queries-file', '--sessions-file']);
   const value = (n: string): string | undefined => {
     const i = args.indexOf(n);
     return i >= 0 ? args[i + 1] : undefined;
   };
   const positional = args.filter((a, i) => !a.startsWith('--') && !valued.has(args[i - 1] ?? ''));
-  const inPath = value('--in') ?? positional[0];
-  if (!inPath) {
+  // Every --in, then positionals; several sessions files make one combined report.
+  const inPaths = [...args.flatMap((a, i) => (a === '--in' ? [args[i + 1]!] : [])), ...positional];
+  if (inPaths.length === 0) {
     console.error(
-      'usage: bun scripts/bench/report.ts <results.json> [--out report.md] [--recheck [--queries-file queries.json]]',
+      'usage: bun scripts/bench/report.ts <results.json> [--in more.json ...] [--out report.md] [--recheck [--queries-file queries.json | --sessions-file sessions.json]]',
     );
     process.exit(2);
   }
-  const file = JSON.parse(readFileSync(inPath, 'utf-8')) as BenchFile;
+  const inputs = inPaths.map(
+    (p) => JSON.parse(readFileSync(p, 'utf-8')) as BenchFile | SessionsBenchFile,
+  );
+  const isSessions = (f: BenchFile | SessionsBenchFile): f is SessionsBenchFile =>
+    'mode' in f && f.mode === 'sessions';
+  if (inputs.length > 1 && !inputs.every(isSessions)) {
+    console.error('bench:report: only sessions-mode results files can be combined');
+    process.exit(2);
+  }
+  const raw = inputs[0]!;
+  const write = (md: string): void => {
+    const outPath = value('--out');
+    if (outPath) {
+      writeFileSync(resolve(outPath), md);
+      console.log(`wrote ${resolve(outPath)}`);
+    } else {
+      process.stdout.write(md);
+    }
+  };
+  if (isSessions(raw)) {
+    // Loaded here, not at the top: report-sessions.ts imports this module.
+    const { aggregateSessions, mergeSessionsFiles, renderSessionsMarkdown } =
+      await import('./report-sessions.ts');
+    const { loadSessionsFile } = await import('./sessions.ts');
+    const tasks = args.includes('--recheck')
+      ? loadSessionsFile(value('--sessions-file') ?? resolve(import.meta.dir, 'sessions.json'))
+          .tasks
+      : undefined;
+    let merged: SessionsBenchFile;
+    try {
+      merged = mergeSessionsFiles(inputs as SessionsBenchFile[]);
+    } catch (err) {
+      console.error(`bench:report: ${err instanceof Error ? err.message : String(err)}`);
+      process.exit(1);
+    }
+    write(renderSessionsMarkdown(aggregateSessions(merged, tasks ? { tasks } : {})));
+    process.exit(0);
+  }
+  const file = raw as BenchFile;
   // --recheck: grade the stored answers against the current criteria.
   const queries = args.includes('--recheck')
     ? (
@@ -417,12 +463,5 @@ if (import.meta.main) {
         ) as QueriesFile
       ).queries
     : undefined;
-  const md = renderMarkdown(aggregate(file, queries ? { queries } : {}));
-  const outPath = value('--out');
-  if (outPath) {
-    writeFileSync(resolve(outPath), md);
-    console.log(`wrote ${resolve(outPath)}`);
-  } else {
-    process.stdout.write(md);
-  }
+  write(renderMarkdown(aggregate(file, queries ? { queries } : {})));
 }

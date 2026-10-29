@@ -247,6 +247,229 @@ correctness exists, they are only hypotheses:
 - A rig arm that is cheaper but wrong more often than baseline isn't a win. Read the correct &
   cheaper column first.
 
+## Multi-session memory
+
+The single-shot results in `results/` show rig doesn't beat grep on one-off questions. Rig's
+real bet is memory across sessions, anchored to the code: decisions, constraints, rejected
+approaches and expensive findings that the code alone doesn't reveal. Published work points
+both ways. Memory of earlier decisions that can't be inferred from the code raised
+multi-session pass rates from about 12% to about 50% (DreamBench-SWE, 2026), while generic
+memory systems mostly failed to beat memory-off (VibeMemBench, 2026). `--mode sessions`
+measures rig's memory as it ships today: manual waypoints, no hooks.
+
+### Pre-registered bar
+
+Written before any run, and copied verbatim into every results file before its first model
+call and into every report:
+
+> Memory passes only if the memory-on arm raises multi-session task success by ≥ 15 percentage points over memory-off, while using ≤ 110% of memory-off's median total tokens (both sessions summed). If it doesn't, memory work stops and rig stays a code-map tool.
+
+The verdict line in the report applies it like this:
+
+- **Success** is the share of (task, trial) pairs whose session 2 passed its check. The delta is
+  memory-on minus memory-off over the same pairs. Its 95% CI comes from a two-level bootstrap:
+  tasks are resampled with replacement, then trials within each drawn task, with 10,000 draws
+  and a fixed seed. Trials of one task aren't independent, so a flat resample would make the
+  interval too narrow.
+- **Tokens** are prompt plus completion, session 1 plus session 2, per trial. The clause
+  compares the medians as a point estimate, as the bar states it. The report also prints a
+  bootstrap CI for the ratio.
+- **PASS:** the whole CI is at or above +15 pp, and the token ratio is ≤ 110%.
+- **FAIL:** the whole CI is below +15 pp, or the token ratio is above 110%.
+- **INCONCLUSIVE:** the CI straddles +15 pp, and the token clause holds.
+
+### Confirmation rule
+
+The first run on tasks 1–10 (`results/2026-10-29-sessions-0.3.0.md`) came out INCONCLUSIVE:
++46.7 pp, 95% CI 13.3 to 76.7 pp, at 74% of memory-off's tokens. Its sanity check also warned
+that memory-off avoided 6 of 12 trap runs. This rule was written and committed before tasks
+11–20 existed and before any further run. Every later results file carries it verbatim, and
+the report prints it:
+
+> Confirmation (written 2026-10-29, after the first 10-task run was INCONCLUSIVE and before any further run): 10 new task pairs are added; the verdict is decided once, on all 20 tasks combined (first run's trials for tasks 1–10 plus one new run for tasks 11–20, same model, arms, trials and bar). No further reruns or task changes are made to reach a verdict.
+
+### Design
+
+`sessions.json` holds 20 task pairs in two sets: tasks 1–10 (`first`, the first run's tasks,
+unchanged since) and tasks 11–20 (`confirmation`, added under the confirmation rule). All of
+them run on the pinned next-auth commit. The pin comes from `queries.json`; `sessions.json` has
+none of its own. Each pair has two sessions:
+
+- **Session 1** is a scripted conversation: 2–4 fixed user messages, each followed by real
+  model turns with tools. In it the user states, or the agent finds by investigating,
+  something the code doesn't say.
+- **Session 2** is a fresh context with no transcript. It is one follow-up task whose correct
+  answer depends on session 1. It ends by asking for one line,
+  `ANSWER: key=value; …`. The criteria check only the text after the last `ANSWER:`, so an
+  answer can name a trap in its reasoning in order to reject it.
+
+The criteria are those of the single-shot bench (`all`, `any` with `any_min`, `none`), plus
+`must_not`. `must_not` holds the trap answer, meaning what the code alone points to. A
+`must_not` match fails the check and counts as a trap hit. Only trap tasks have `must_not`;
+other wrong answers go in `none`. Each trap task also lists `code_evidence`: the file and
+pattern where the code points to the trap answer. The dry run and every results file check
+that evidence against the target.
+
+Tasks 1–10, set `first`:
+
+| task                    | type       | trap | session 1 establishes                                                                       | trap answer (code alone)                                              |
+| ----------------------- | ---------- | ---- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `jwt-only-with-adapter` | decision   | yes  | Sessions stay JWT with the Prisma adapter; database sessions rejected (Edge latency).       | `strategy=database`: `init.ts` defaults to it with an adapter         |
+| `fork-default-max-age`  | decision   | yes  | The fork's default session maxAge becomes 8 h (28800 s), on an unmerged branch.             | `2592000`: `init.ts` says 30 days                                     |
+| `vendored-cookie`       | constraint | yes  | Never edit `lib/vendored/`; a sync script overwrites it. Fix the callers.                   | edit `vendored/cookie.ts`, where `option domain is invalid` is thrown |
+| `cookie-chunk-size`     | dead-end   | yes  | Lowering `CHUNK_SIZE` was tried and reverted; trim the token in the `jwt` callback instead. | lower `CHUNK_SIZE` in `lib/utils/cookie.ts`                           |
+| `actions-merge-rule`    | constraint |      | Changes under `lib/actions/` need a `[core-actions]` title and @mfrost's review.            | –                                                                     |
+| `magic-link-adapter`    | dead-end   |      | Verification tokens in Upstash Redis failed (eviction); tokens go through `adapter-pg`.     | –                                                                     |
+| `github-org-gate`       | decision   |      | Sign-in is gated on the `acme-corp` org; scope is the defaults plus `read:org`.             | –                                                                     |
+| `update-age-jwt`        | discovery  |      | The agent traces that `updateAge` only throttles database sessions, not JWT.                | –                                                                     |
+| `oauth-check-ttl`       | discovery  |      | The agent finds that state/PKCE/nonce cookies live 900 s (`COOKIE_TTL` in `checks.ts`).     | –                                                                     |
+| `trust-host`            | constraint |      | `trustHost` stays on behind the Host-rewriting proxy; turning it off caused INC-2291.       | –                                                                     |
+
+Tasks 11–20, set `confirmation`, written after the first run's sanity warning that memory-off
+avoided half the trap runs. Seven of the ten are traps, and each trap's code carries an obvious,
+greppable default that a careful reader would take as the answer. The fact that overrides it
+is stated only in session 1. Six of the seven name that fact as a `secret`; the seventh,
+`iframe-same-site`, has none, because its answer, `none`, is an ordinary word. Validation checks
+that session 1 states each secret and session 2 doesn't, and the dry run and every results file
+check that it appears nowhere in the target checkout (`secret_check`).
+
+| task                   | type       | trap | session 1 establishes                                                                                 | trap answer (code alone) and its evidence                                                       |
+| ---------------------- | ---------- | ---- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `base-path`            | decision   | yes  | The app mounts Auth.js at `/auth/v2`; the gateway owns `/api/`.                                       | `…/api/auth/callback/github`: `config.basePath \|\|= "/api/auth"` in `next-auth/src/lib/env.ts` |
+| `session-cookie-name`  | constraint | yes  | The CDN allowlists exactly `acme_sid`, set via `cookies.sessionToken.name`.                           | `authjs.session-token`: `defaultCookies` in `lib/utils/cookie.ts`                               |
+| `email-sender`         | decision   | yes  | Magic links come from `login@acme.dev`; the default sender failed DMARC.                              | `no-reply@authjs.dev`: `from:` in `providers/resend.ts`                                         |
+| `sign-in-theme`        | decision   | yes  | The sign-in page is `colorScheme: 'dark'`, `brandColor: #0F766E`.                                     | `colorScheme: "auto"` in `lib/init.ts`                                                          |
+| `secret-env-var`       | constraint | yes  | Secrets must be `ACME_`-prefixed: the secret is `ACME_AUTH_SECRET`.                                   | `AUTH_SECRET`: `envObject.AUTH_SECRET` in `lib/utils/env.ts`                                    |
+| `iframe-same-site`     | dead-end   | yes  | The default cookie broke the cross-site iframe; the session cookie uses `sameSite: 'none'`.           | `lax`: `sameSite: "lax"` in `lib/utils/cookie.ts`                                               |
+| `forwarded-headers`    | dead-end   | yes  | The ingress strips forwarded headers; the fix is `AUTH_URL=https://app.acme.dev`.                     | forward `X-Forwarded-Host`: `headers.get("x-forwarded-host")` in `lib/utils/env.ts`             |
+| `account-linking`      | discovery  |      | The agent finds `OAuthAccountNotLinked` in `handle-login.ts` and `allowDangerousEmailAccountLinking`. | –                                                                                               |
+| `sign-in-return-value` | discovery  |      | The agent traces that a string from `signIn` redirects, in `handleAuthorized`.                        | –                                                                                               |
+| `approved-providers`   | constraint |      | Legal approves only GitHub, Google and Okta; Discord was rejected.                                    | –                                                                                               |
+
+The two discovery tasks can be recovered from the code by reading carefully, so they measure
+whether memory saves the re-derivation more than whether it changes the answer. The other non-trap tasks
+depend on facts that exist nowhere in the code. A test checks that every `reference` answer
+passes its own criteria and that a code-only answer to each trap task fails as a trap hit.
+
+### Arms
+
+| Arm          | Session 1                                                                                                | Session 2                                                                                                                                  |
+| ------------ | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `memory-off` | `grep+rig` tools                                                                                         | `grep+rig` tools, on a fresh copy of the index, so no waypoint carries over                                                                |
+| `memory-on`  | `grep+rig` plus `rig_drop_waypoint` and `rig_waypoints`; the prompt adds the installed waypoint guidance | `grep+rig` plus `rig_waypoints` (with `query`), on the same database; the prompt adds the installed session-bootstrap instruction          |
+| `oracle`     | not run                                                                                                  | `grep+rig`, with a hand-written summary of session 1's key facts in the prompt: an upper bound for interpretation, not part of the verdict |
+| `grep-only`  | not run                                                                                                  | `rg`, `read_file` and `list_dir` only: the sanity check that the answers aren't in the code                                                |
+
+`--arms` defaults to `memory-off,memory-on,oracle`. Add `grep-only` for the sanity check; it
+runs session 2 only and is cheap. The report says whether code-only answers (`grep-only`, and
+`memory-off`'s session 2) fail most trap-task runs. If they don't, the traps can be recovered
+from the code and the delta says little about memory.
+
+Every session shares one system prompt. memory-on appends the paragraphs of the installed
+instructions verbatim, taken at run time from `generated/installer/claude.instructions.md`
+(the "Session bootstrap" section `bun run gen` writes for every target). Session 1 gets the
+paragraph that starts "Drop a waypoint via `rig_drop_waypoint` when:". Session 2 gets the one
+that starts "Before responding to the user in a new conversation, call `rig_waypoints` with
+`session_id="last"`". The results file records that file's hash. Tool descriptions and schemas
+come from the MCP manifest, and every rig tool, the waypoint tools included, runs through the
+generated handlers with contract validation, on one MCP session per agent session. The
+provenance is `ai:rig-bench`. As in the other modes, the harness records no activations.
+
+### Isolation
+
+- The run never builds, opens or writes the shared index. It must already be current
+  (`bun run bench:run --index-only`). At the start the run copies `.rig/rig.db`, and its WAL
+  if one exists, into a work directory and checkpoints the copy. That copy is the snapshot. Its
+  hash, node count and waypoint count go into the results file.
+- Every trial opens a private copy of the snapshot. The Rig instance reads source from the
+  target checkout but keeps its graph in that copy, and the copy is deleted when the trial ends.
+- memory-on runs both sessions on one copy. memory-off throws session 1's copy away and gives
+  session 2 a new one. oracle and grep-only run session 2 alone on a new copy.
+- Session 1 and session 2 get distinct random session ids. `rig_waypoints session_id="last"`
+  never resolves to the caller's own session, so with one shared id it would return nothing.
+- Tests cover all of this: copies are private, the snapshot and the source don't change, no
+  trial starts with an earlier trial's waypoints, memory-off opens two copies per trial, and
+  session ids are distinct.
+
+### Running
+
+```sh
+set -a; . ~/.config/rig-bench/openrouter.env; set +a
+bun run bench:run --index-only                            # once, if the index isn't current
+bun run bench:run --mode sessions --dry-run               # plan + cost estimate, no model call
+bun run bench:run --mode sessions --arms grep-only --trials 1 --label sessions-sanity
+bun run bench:run --mode sessions --task-set first --label sessions-haiku-5.5
+bun run bench:report scripts/bench/results/<date>-sessions-haiku-5.5.json
+```
+
+The confirmation run covers tasks 11–20 only, with the first run's model, arms and trials (the
+defaults), and is then reported together with the first run:
+
+```sh
+bun run bench:run --mode sessions --task-set confirmation --dry-run
+bun run bench:run --mode sessions --task-set confirmation --label sessions-confirmation-0.3.0
+bun run bench:report --in scripts/bench/results/2026-10-29-sessions-0.3.0.json \
+  --in scripts/bench/results/<date>-sessions-confirmation-0.3.0.json
+```
+
+Without `--task-set` or `--tasks`, a run covers all 20 tasks.
+
+`--tasks a,b` runs a subset. `--task-set <name>` runs only the tasks of one set: `first`
+(tasks 1–10, whose entries in `sessions.json` have no `set`) or `confirmation` (tasks 11–20).
+The default label then names the set. `--max-turns` counts model calls per user message, default 12.
+`--work-dir` keeps the snapshot and copies in a directory you choose; by default they go to a
+temporary directory that is deleted at the end. `--estimate-from` takes an earlier sessions
+results file. `bench:report --recheck` re-grades stored answers against the current
+`sessions.json`.
+
+The dry-run estimate for one set (10 pairs × 3 arms × 3 trials = 90 trials, 150 sessions) on
+`anthropic/claude-haiku-5.5` at $0.10 / $0.50 per M tokens is about $0.80 (~7.0M tokens) with
+the assumed profiles. With `--estimate-from` the first run's per-arm means give about $0.63
+(~5.3M tokens), which is what the first run cost. It assumes about 30k prompt tokens per session-1 user message and 25k
+per session 2. memory-on adds its tool definitions and prompt paragraphs to every call and one
+extra call per session; oracle adds its summary to every call. The grep-only sanity arm costs
+about $0.03 for one trial of every task (`--trials 1`).
+
+### Report
+
+Per arm:
+
+- session-2 pass rate, and trap avoidance on trap tasks;
+- tokens and cost for session 1, session 2 and the total, as median and mean;
+- whether session 1 dropped waypoints and how many, and whether session 2 called
+  `rig_waypoints` and got session 1's waypoints back;
+- errors, turn limits, and answers missing the `ANSWER:` line.
+
+Then come the paired memory-on minus memory-off table with the bootstrap CIs, the sanity
+section, a per-task table, and the verdict line against the bar at the top.
+
+### Combined runs
+
+`bench:report` takes several sessions results files and reports them as one:
+
+```sh
+bun run bench:report --in scripts/bench/results/2026-10-29-sessions-0.3.0.json \
+  --in scripts/bench/results/<date>-sessions-confirmation-haiku-5.5.json
+```
+
+The merged report has one per-arm table, one bootstrap over every task of every run, and one
+verdict line that reads "Verdict, combined (2 runs): …". The header lists each run's label,
+tasks, trials, rig build and index snapshot, and flags runs whose rig fingerprints differ.
+The report refuses to merge runs that differ in model, arms, trials, the bar, the target
+commit, the turn limit or the answer marker, or that share a task, since a shared task's
+trials would count twice. `--recheck` re-grades every run against the current
+`sessions.json`.
+
+### What it does not measure
+
+- **Hooks or automatic memory.** Rig ships manual waypoints, so the model decides whether to
+  drop one. If session 1 drops none, memory-on has nothing to load. The report shows how often
+  that happens.
+- **Edits.** Session 2 answers in text. It is graded on a decision, a value or a file, not on a
+  patch.
+- **Longer gaps.** There is one hop from session 1 to session 2, with no intervening sessions
+  whose waypoints compete with it.
+
 ## What this benchmark does not measure
 
 - **Latency.** Rig arms make more, smaller round trips. Wall-clock time is recorded per run
@@ -254,7 +477,7 @@ correctness exists, they are only hypotheses:
 - **Cold start.** The time to index the target is excluded from per-query cost. The results file
   records it under `target.index`.
 - **Multi-step work.** Single questions understate what waypoints and cross-session memory add
-  over a long session.
+  over a long session. `--mode sessions` (above) measures the cross-session part.
 - **Prompt caching.** The harness enables no caching. Every call is billed at the uncached input
   price.
 
@@ -274,4 +497,9 @@ correctness exists, they are only hypotheses:
 - `criteria.ts`: expected-criteria matching. `judge.ts`: the optional LLM judge.
 - `pricing.ts`, `plan.ts`: the OpenRouter catalogue and the dry-run estimate.
 - `target.ts`: the rig version fingerprint and index preparation.
+- `sessions.json`: the 10 task pairs of `--mode sessions`, with `oracle` summaries, `reference`
+  answers, criteria with `must_not` traps, and `code_evidence`.
+- `sessions.ts`: the memory arms, the installed-instruction quotes, snapshot and per-trial
+  copies, and the trial loop. `sessions-run.ts`: its plan, dry run and CLI.
+  `report-sessions.ts`: its aggregation, bootstrap, verdict and markdown.
 - `results/`: one JSON file per run (`<UTC date>-<label>.json`).

@@ -42,6 +42,8 @@ export interface Turn {
 export interface Conversation {
   send(): Promise<Turn>;
   addToolResults(results: readonly { id: string; content: string }[]): void;
+  // The next scripted user message of a multi-turn conversation.
+  addUserMessage(text: string): void;
 }
 
 export interface ConversationOpts {
@@ -283,6 +285,9 @@ export class OpenRouterProvider implements Provider {
         for (const r of results)
           messages.push({ role: 'tool', tool_call_id: r.id, content: r.content });
       },
+      addUserMessage: (text) => {
+        messages.push({ role: 'user', content: text });
+      },
     };
   }
 }
@@ -372,6 +377,17 @@ export class AnthropicProvider implements Provider {
             content: r.content,
           })),
         });
+      },
+      // After a turn that ran out of budget mid-tool-use the last message is
+      // the user's tool results; the text joins it rather than opening a
+      // second user turn in a row.
+      addUserMessage: (text) => {
+        const last = messages.at(-1);
+        if (last?.role === 'user' && Array.isArray(last.content)) {
+          last.content.push({ type: 'text', text });
+        } else {
+          messages.push({ role: 'user', content: text });
+        }
       },
     };
   }

@@ -1,0 +1,417 @@
+{
+  "answer_marker": "ANSWER:",
+  "tasks": [
+    {
+      "id": "jwt-only-with-adapter",
+      "type": "decision",
+      "trap": true,
+      "session1": [
+        "Some background before we start. Our app runs on this fork with the Prisma adapter, but only so users can link several OAuth accounts to one user. Sessions stay JWT. We ran database sessions for a month last quarter and rejected them: every middleware check went to Postgres from the Edge runtime, which can't hold a connection pool, and p95 latency hit 900 ms. Can you find where the session strategy gets its default?",
+        "OK, that's the line I was thinking of. Keep the decision in mind; it matters when we wire the adapter in."
+      ],
+      "session2": "I'm adding `adapter: PrismaAdapter(prisma)` to our Auth.js config today. Which session strategy should we end up on, and what, if anything, do I need to add to the config for it? Finish with one line in exactly this form: ANSWER: strategy=<jwt or database>; config=<what to add, or none>",
+      "oracle": "Decision: sessions stay JWT even though the Prisma adapter is configured; the adapter is there only for account linking. Database sessions were tried for a month and rejected: middleware hit Postgres from the Edge runtime, which cannot pool connections, and p95 latency reached 900 ms. packages/core/src/lib/init.ts defaults the strategy to \"database\" whenever an adapter is set, so the config must say session: { strategy: \"jwt\" } explicitly.",
+      "reference": "With an adapter, init.ts defaults the strategy to database, but we decided to stay on JWT, so it has to be set explicitly.\nANSWER: strategy=jwt; config=session: { strategy: \"jwt\" }",
+      "expected": {
+        "all": ["/strategy\\s*=\\s*jwt/i", "/config\\s*=.*\\bjwt\\b/i"],
+        "must_not": ["/strategy\\s*=\\s*database/i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/init.ts",
+          "pattern": "/strategy: config\\.adapter \\? \"database\" : \"jwt\"/"
+        }
+      ]
+    },
+    {
+      "id": "fork-default-max-age",
+      "type": "decision",
+      "trap": true,
+      "session1": [
+        "We maintain this checkout as our company's fork. A decision from last week's compliance review: the fork's default session lifetime goes from 30 days to 8 hours, which is 28800 seconds, because the auditors flagged 30-day idle sessions on shared kiosk machines. The patch is on a branch and not merged yet. Where is the default maxAge set today?",
+        "Thanks. The 8-hour default is final; we'll document it with the next release."
+      ],
+      "session2": "I'm writing the session-settings page of the docs for our fork's next release. What default session maxAge, in seconds, should the page state? Finish with one line in exactly this form: ANSWER: default_max_age=<seconds>",
+      "oracle": "Decision from the compliance review: the fork's default session maxAge becomes 8 hours (28800 seconds) instead of upstream's 30 days (2592000 seconds, set in packages/core/src/lib/init.ts), because auditors flagged 30-day idle sessions on shared kiosk machines. The patch is on an unmerged branch; the next release's docs state 28800.",
+      "reference": "The code still says 30 days, but the next release ships the 8-hour default from the compliance review.\nANSWER: default_max_age=28800",
+      "expected": {
+        "all": ["/default_max_age\\s*=\\s*28,?800\\b/i"],
+        "must_not": ["/default_max_age\\s*=\\s*2,?592,?000/i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/init.ts",
+          "pattern": "/const maxAge = 30 \\* 24 \\* 60 \\* 60/"
+        }
+      ]
+    },
+    {
+      "id": "vendored-cookie",
+      "type": "constraint",
+      "trap": true,
+      "session1": [
+        "Hard rule for our fork: never edit anything under packages/core/src/lib/vendored/. The cookie.ts there is a verbatim copy of the upstream `cookie` package, and our sync script overwrites it on every upgrade, so a patch there silently disappears. Fixes go in the code that calls it. Which of our files import the vendored cookie module?",
+        "Good, that's the list. Remember the rule."
+      ],
+      "session2": "A partner's proxy gives us a cookie domain with a port in it, like `.acme.internal:8443`, and setting the session cookie now throws `option domain is invalid`. Which file would you change to fix this, and how? Finish with one line in exactly this form: ANSWER: file=<the one file you would edit>",
+      "oracle": "Constraint: never edit packages/core/src/lib/vendored/. Its cookie.ts is a verbatim copy of the upstream cookie package; a sync script overwrites it on every upgrade, so patches there vanish. Fixes go in its callers: packages/core/src/lib/utils/web.ts (parses and serializes cookies), packages/core/src/jwt.ts and packages/core/src/lib/utils/cookie.ts.",
+      "reference": "serialize in the vendored cookie.ts rejects the port, but that file is off limits, so strip the port from the domain before serializing, in the caller.\nANSWER: file=packages/core/src/lib/utils/web.ts",
+      "expected": {
+        "all": ["/file\\s*=/i"],
+        "any": ["utils/web.ts", "utils/cookie.ts", "jwt.ts", "init.ts"],
+        "must_not": ["/file\\s*=\\s*\\S*vendored/i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/vendored/cookie.ts",
+          "pattern": "option domain is invalid"
+        }
+      ]
+    },
+    {
+      "id": "cookie-chunk-size",
+      "type": "dead-end",
+      "trap": true,
+      "session1": [
+        "Background on cookie size. Users who belong to many groups were hitting our ingress's 8 KB request-header limit. We tried lowering CHUNK_SIZE in packages/core/src/lib/utils/cookie.ts so each session-cookie chunk is smaller. Dead end: smaller chunks only meant more chunks, the total Cookie header grew because each chunk repeats its name and attributes, and Safari began dropping the last chunks. We reverted it. What worked was trimming the token in our `jwt` callback: keep only the user id and role, and load groups on the server. Can you show me how the chunking works?",
+        "Right. So the chunk size stays as it is; trimming the token is the approach."
+      ],
+      "session2": "A new enterprise customer's users get `431 Request Header Fields Too Large` right after sign-in; their tokens carry hundreds of group claims. What change do you propose? Finish with one line in exactly this form: ANSWER: change=<the one change you propose, and where>",
+      "oracle": "Dead end: lowering CHUNK_SIZE in packages/core/src/lib/utils/cookie.ts to make session-cookie chunks smaller was tried and reverted. It produced more chunks and a larger total Cookie header (each chunk repeats its name and attributes), and Safari dropped the last chunks. What worked: trim the token in the jwt callback to the user id and role, and load groups on the server.",
+      "reference": "Smaller chunks were tried and made the header bigger.\nANSWER: change=trim the token in the jwt callback to user id and role, and load groups on the server",
+      "expected": {
+        "all": ["/change\\s*=.*\\bjwt\\b/i"],
+        "any": ["callback", "trim", "strip", "remove", "groups", "claims"],
+        "must_not": [
+          "/change\\s*=.*CHUNK_SIZE/i",
+          "/change\\s*=.*\\b(lower|reduce|decrease|shrink|smaller)\\b.*chunk/i"
+        ]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/utils/cookie.ts",
+          "pattern": "const CHUNK_SIZE = ALLOWED_COOKIE_SIZE - ESTIMATED_EMPTY_COOKIE_SIZE"
+        }
+      ]
+    },
+    {
+      "id": "actions-merge-rule",
+      "type": "constraint",
+      "trap": false,
+      "session1": [
+        "A process note for our fork: any change under packages/core/src/lib/actions/ needs a PR title that starts with `[core-actions]` and an approving review from @mfrost, who is on the security rota. Our merge bot blocks the PR otherwise. None of this is written in the repo; it lives in the bot's config. What's in that directory?",
+        "Thanks. Keep that rule handy; I'll be touching those files soon."
+      ],
+      "session2": "I've changed signout.ts so it also clears our analytics cookie. What does the PR need before it can merge? Finish with one line in exactly this form: ANSWER: title_prefix=<prefix>; reviewer=<handle>",
+      "oracle": "Merge rule, enforced by the merge bot and not written in the repo: a change under packages/core/src/lib/actions/ (session.ts, signout.ts, callback/, signin/ and so on) needs a PR title starting with [core-actions] and an approving review from @mfrost, who is on the security rota.",
+      "reference": "signout.ts is under packages/core/src/lib/actions/, so the merge bot's rule applies.\nANSWER: title_prefix=[core-actions]; reviewer=@mfrost",
+      "expected": {
+        "all": ["[core-actions]", "mfrost"]
+      }
+    },
+    {
+      "id": "magic-link-adapter",
+      "type": "dead-end",
+      "trap": false,
+      "session1": [
+        "Background for the email sign-in work. Last sprint we stored verification tokens in Upstash Redis through packages/adapter-upstash-redis. Dead end: our managed Redis evicts keys under memory pressure (allkeys-lru), so magic links died long before their 24-hour expiry. We moved back to Postgres through packages/adapter-pg. Don't suggest a Redis-backed adapter for tokens again. Where does core create the verification token, and how long does it live by default?",
+        "OK. Note how the Redis attempt ended so we don't go round that loop again."
+      ],
+      "session2": "We're adding the Resend provider for magic-link sign-in. Which adapter package in this repo should store the verification tokens? Finish with one line in exactly this form: ANSWER: adapter=<package directory or npm name>",
+      "oracle": "Dead end: verification tokens in Upstash Redis (packages/adapter-upstash-redis) failed because the managed Redis evicts keys under memory pressure (allkeys-lru), so magic links expired early. Tokens are stored in Postgres through packages/adapter-pg (@auth/pg-adapter); no Redis-backed adapter for tokens. Core creates the token in packages/core/src/lib/actions/signin/send-token.ts; the email providers default to a 24-hour maxAge.",
+      "reference": "Tokens go to Postgres, not Redis.\nANSWER: adapter=packages/adapter-pg (@auth/pg-adapter)",
+      "expected": {
+        "any": ["adapter-pg", "pg-adapter"],
+        "none": ["/adapter\\s*=.*(redis|upstash)/i"]
+      }
+    },
+    {
+      "id": "github-org-gate",
+      "type": "decision",
+      "trap": false,
+      "session1": [
+        "A decision for our GitHub sign-in: only members of the `acme-corp` GitHub org may sign in. We'll request the `read:org` scope on top of the GitHub provider's default scopes and check membership in the `signIn` callback. We rejected an email allowlist because contractors sign in with personal addresses. What scopes does the GitHub provider request by default?",
+        "Good. So our scope string is those defaults plus read:org."
+      ],
+      "session2": "A new hire's GitHub sign-in succeeds but they aren't let in. To check our setup: what's the full scope string our GitHub provider should request, and which org do we gate on? Finish with one line in exactly this form: ANSWER: scope=<space-separated scopes>; org=<org name>",
+      "oracle": "Decision: only members of the acme-corp GitHub org may sign in. The GitHub provider requests read:org on top of its defaults (read:user user:email, in packages/core/src/providers/github.ts), so the scope is \"read:user user:email read:org\"; membership is checked in the signIn callback. An email allowlist was rejected because contractors sign in with personal addresses.",
+      "reference": "ANSWER: scope=read:user user:email read:org; org=acme-corp",
+      "expected": {
+        "all": ["read:org", "read:user", "user:email", "acme-corp"]
+      }
+    },
+    {
+      "id": "update-age-jwt",
+      "type": "discovery",
+      "trap": false,
+      "session1": [
+        "Ops wants to cut how often we rewrite the session cookie. Before they change anything: for JWT sessions, how and where does the expiry get pushed back when a session is used, and does session.updateAge throttle it? Please trace it in the code rather than going by the docs.",
+        "Interesting. Keep that finding; ops will come back to it."
+      ],
+      "session2": "Ops plans to set `session.updateAge` to 3600 so the JWT session cookie is rewritten at most once an hour. Will that work? Finish with one line in exactly this form: ANSWER: throttles_jwt=<yes or no>; file=<the file that refreshes the JWT session>",
+      "oracle": "Finding from tracing the code: in packages/core/src/lib/actions/session.ts a JWT session is re-encoded (jwt.encode) with a new expiry from fromDate(sessionMaxAge), and its cookie is set again, on every session request. session.updateAge is read only in the database-strategy branch, where it throttles database writes; it does not throttle JWT sessions, whatever its doc comment suggests.",
+      "reference": "updateAge is read only in the database branch of session.ts; the JWT branch re-encodes on every request.\nANSWER: throttles_jwt=no; file=packages/core/src/lib/actions/session.ts",
+      "expected": {
+        "all": ["/throttles_jwt\\s*=\\s*no\\b/i", "actions/session"],
+        "none": ["/throttles_jwt\\s*=\\s*yes/i"]
+      }
+    },
+    {
+      "id": "oauth-check-ttl",
+      "type": "discovery",
+      "trap": false,
+      "session1": [
+        "Some users who sit on Google's consent screen for a long time come back to an `InvalidCheck` error. Can you work out why, and what times out?",
+        "Where exactly is that timeout defined, and does it cover state, PKCE and nonce alike?",
+        "Thanks, that's the root cause. We'll need it later."
+      ],
+      "session2": "Support wants users to have 30 minutes on the provider's consent screen. Which constant needs to change, in which file, and what is its value today in seconds? Finish with one line in exactly this form: ANSWER: constant=<name>; file=<path>; current_seconds=<n>",
+      "oracle": "Finding: the state, PKCE code_verifier and nonce cookies are sealed by sealCookie in packages/core/src/lib/actions/callback/oauth/checks.ts with COOKIE_TTL = 60 * 15 (900 seconds). After 15 minutes the cookie has expired and the callback fails with InvalidCheck. STATE_MAX_AGE and WEBAUTHN_CHALLENGE_MAX_AGE in the same file are also 15 minutes.",
+      "reference": "ANSWER: constant=COOKIE_TTL; file=packages/core/src/lib/actions/callback/oauth/checks.ts; current_seconds=900",
+      "expected": {
+        "all": ["checks.ts", "/current_seconds\\s*=\\s*900\\b/i"],
+        "any": ["COOKIE_TTL", "STATE_MAX_AGE"]
+      }
+    },
+    {
+      "id": "trust-host",
+      "type": "constraint",
+      "trap": false,
+      "session1": [
+        "An ops constraint: we deploy behind an L7 proxy that rewrites the Host header, so AUTH_TRUST_HOST=true must stay set and nobody turns trustHost off. Turning it off took down sign-in for everyone in incident INC-2291. Where does the code check trustHost?",
+        "Right. That one's non-negotiable."
+      ],
+      "session2": "A security reviewer wants us to set `trustHost: false` explicitly to harden the config. What do we tell them? Finish with one line in exactly this form: ANSWER: trust_host=<true or false>; reason=<one sentence>",
+      "oracle": "Constraint from ops: deployments sit behind an L7 proxy that rewrites the Host header, so AUTH_TRUST_HOST=true stays set and trustHost is never turned off; turning it off took sign-in down for everyone in incident INC-2291. assertConfig in packages/core/src/lib/utils/assert.ts returns UntrustedHost when trustHost is false.",
+      "reference": "ANSWER: trust_host=true; reason=we sit behind a proxy that rewrites Host, and turning it off took sign-in down in INC-2291",
+      "expected": {
+        "all": ["/trust_host\\s*=\\s*true/i"],
+        "any": ["INC-2291", "proxy"],
+        "none": ["/trust_host\\s*=\\s*false/i"]
+      }
+    },
+    {
+      "id": "base-path",
+      "set": "confirmation",
+      "type": "decision",
+      "trap": true,
+      "secret": "/auth/v2",
+      "session1": [
+        "Some context on routing. Our Next.js app mounts Auth.js at /auth/v2 instead of the default path: our gateway sends everything under /api/ to a separate Go service, so auth had to move. We set basePath to /auth/v2 in our app config. Where does next-auth choose its default base path?",
+        "Right, that's the default we moved away from. Keep our path in mind for when we register OAuth apps."
+      ],
+      "session2": "I'm registering a new GitHub OAuth app for production, where the app is served at https://app.acme.dev. What exact authorization callback URL do I enter? Finish with one line in exactly this form: ANSWER: callback_url=<full URL>",
+      "oracle": "Decision: our Next.js app mounts Auth.js at basePath /auth/v2, not next-auth's default /api/auth (set in packages/next-auth/src/lib/env.ts), because the gateway routes /api/ to a separate Go service. OAuth callback URLs are therefore <origin>/auth/v2/callback/<provider>.",
+      "reference": "Our basePath is /auth/v2, not the /api/auth default.\nANSWER: callback_url=https://app.acme.dev/auth/v2/callback/github",
+      "expected": {
+        "all": [
+          "/callback_url\\s*=\\s*[`\\\"']?https:\\/\\/app\\.acme\\.dev\\/auth\\/v2\\/callback\\/github\\b/i"
+        ],
+        "must_not": ["/\\/api\\/auth\\//i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/next-auth/src/lib/env.ts",
+          "pattern": "config.basePath ||= \"/api/auth\""
+        }
+      ]
+    },
+    {
+      "id": "session-cookie-name",
+      "set": "confirmation",
+      "type": "constraint",
+      "trap": true,
+      "secret": "acme_sid",
+      "session1": [
+        "A constraint from our CDN team: the edge forwards only cookies on an explicit allowlist, and the list can't hold wildcards or prefixed names. So our session cookie is renamed to exactly acme_sid through the cookies.sessionToken.name option, and anything else is stripped at the edge. Where does Auth.js define its default cookie names?",
+        "Good. That name is fixed; the CDN config is shared with other teams."
+      ],
+      "session2": "The CDN team is rebuilding its cookie allowlist and needs the exact name of our session cookie in production, which is served over HTTPS. Finish with one line in exactly this form: ANSWER: cookie=<exact cookie name>",
+      "oracle": "Constraint: the CDN forwards only allowlisted cookies, with no wildcards or prefixes, so the session cookie is renamed to exactly acme_sid via cookies.sessionToken.name. The default names (authjs.session-token, with __Secure- over HTTPS) in packages/core/src/lib/utils/cookie.ts are not used.",
+      "reference": "We override the default name.\nANSWER: cookie=acme_sid",
+      "expected": {
+        "all": ["/cookie\\s*=\\s*[`\\\"']?acme_sid\\b/i"],
+        "must_not": ["/authjs\\.session-token/i", "/next-auth\\.session-token/i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/utils/cookie.ts",
+          "pattern": "name: `${cookiePrefix}authjs.session-token`"
+        }
+      ]
+    },
+    {
+      "id": "email-sender",
+      "set": "confirmation",
+      "type": "decision",
+      "trap": true,
+      "secret": "login@acme.dev",
+      "session1": [
+        "A decision about auth email: magic-link emails go out from login@acme.dev. With the provider's default sender they bounced at Gmail and Outlook, because that address fails DMARC alignment with our domain, so we set `from` on the Resend provider. Where does the Resend provider set its defaults?",
+        "Great. That sender is the one ops added to our SPF and DKIM setup."
+      ],
+      "session2": "Customer support needs the exact From address of our magic-link emails, so enterprise customers can allowlist it. Finish with one line in exactly this form: ANSWER: from=<email address>",
+      "oracle": "Decision: magic-link emails are sent from login@acme.dev, set via `from` on the Resend provider. The default sender in packages/core/src/providers/resend.ts (Auth.js <no-reply@authjs.dev>) bounced at Gmail and Outlook because it fails DMARC alignment with our domain.",
+      "reference": "We override the provider's default sender.\nANSWER: from=login@acme.dev",
+      "expected": {
+        "all": ["/from\\s*=.*login@acme\\.dev/i"],
+        "must_not": ["/no-reply@authjs\\.dev/i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/providers/resend.ts",
+          "pattern": "from: \"Auth.js <no-reply@authjs.dev>\""
+        }
+      ]
+    },
+    {
+      "id": "sign-in-theme",
+      "set": "confirmation",
+      "type": "decision",
+      "trap": true,
+      "secret": "0F766E",
+      "session1": [
+        "A design decision for the built-in sign-in page: it is always dark, so colorScheme is 'dark', and brandColor is our teal #0F766E. The light variant failed our contrast audit next to the teal button. We pass both through the `theme` option. Where are the theme defaults set?",
+        "Thanks. Those two values are final."
+      ],
+      "session2": "A designer is updating the brand guide and asks which colorScheme and brandColor our sign-in page uses. Finish with one line in exactly this form: ANSWER: color_scheme=<value>; brand_color=<hex, or empty>",
+      "oracle": "Decision: the built-in sign-in page uses theme colorScheme 'dark' and brandColor #0F766E (our teal), passed through the theme option, because the light variant failed a contrast audit. The defaults in packages/core/src/lib/init.ts (colorScheme \"auto\", brandColor \"\") are not used.",
+      "reference": "We override both theme defaults.\nANSWER: color_scheme=dark; brand_color=#0F766E",
+      "expected": {
+        "all": [
+          "/color_scheme\\s*=\\s*[`\\\"']?dark\\b/i",
+          "/brand_color\\s*=\\s*[`\\\"']?#?0F766E\\b/i"
+        ],
+        "must_not": ["/color_scheme\\s*=\\s*[`\\\"']?auto\\b/i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/init.ts",
+          "pattern": "colorScheme: \"auto\""
+        }
+      ]
+    },
+    {
+      "id": "secret-env-var",
+      "set": "confirmation",
+      "type": "constraint",
+      "trap": true,
+      "secret": "ACME_AUTH_SECRET",
+      "session1": [
+        "A constraint from platform security: every secret our services read must carry the ACME_ prefix, because the secrets scanner and the Vault injector only handle that namespace. So the auth secret is injected as ACME_AUTH_SECRET and passed explicitly as `secret: process.env.ACME_AUTH_SECRET`. Nobody sets the stock variable. Where does Auth.js read its secret from the environment?",
+        "Right. Don't let anyone add the stock variable back."
+      ],
+      "session2": "I'm writing the env section of the deploy manifest for a new region. Which environment variable must carry the auth secret? Finish with one line in exactly this form: ANSWER: env_var=<NAME>",
+      "oracle": "Constraint: every secret must carry the ACME_ prefix (secrets scanner and Vault injector), so the auth secret is injected as ACME_AUTH_SECRET and passed as secret: process.env.ACME_AUTH_SECRET. The stock AUTH_SECRET read in packages/core/src/lib/utils/env.ts is never set.",
+      "reference": "Our secret lives in the ACME_ namespace, not the stock variable.\nANSWER: env_var=ACME_AUTH_SECRET",
+      "expected": {
+        "all": ["/env_var\\s*=\\s*[`\\\"']?ACME_AUTH_SECRET\\b/i"],
+        "must_not": ["/env_var\\s*=\\s*[`\\\"']?(NEXT)?AUTH_SECRET\\b/i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/utils/env.ts",
+          "pattern": "const secret = envObject.AUTH_SECRET"
+        }
+      ]
+    },
+    {
+      "id": "iframe-same-site",
+      "set": "confirmation",
+      "type": "dead-end",
+      "trap": true,
+      "session1": [
+        "Background: our app runs inside a partner portal's iframe, which is a cross-site context. We first shipped the default session cookie, and users were bounced to sign-in inside the iframe because browsers don't send that cookie in cross-site frames. Dead end. We changed cookies.sessionToken.options.sameSite to 'none', with secure on. Can you show me where the default cookie options come from?",
+        "Yes, that's the option we overrode."
+      ],
+      "session2": "For the security audit sheet: which SameSite value does our production session cookie use? Finish with one line in exactly this form: ANSWER: same_site=<value>",
+      "oracle": "Dead end: the default session cookie (sameSite \"lax\" in packages/core/src/lib/utils/cookie.ts) broke sign-in inside the partner portal's cross-site iframe. The session cookie now uses sameSite 'none' with secure, via cookies.sessionToken.options.",
+      "reference": "The lax default broke the iframe, so we use none.\nANSWER: same_site=none",
+      "expected": {
+        "all": ["/same_site\\s*=\\s*[`\\\"']?none\\b/i"],
+        "must_not": ["/same_site\\s*=\\s*[`\\\"']?(lax|strict)\\b/i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/utils/cookie.ts",
+          "pattern": "sameSite: \"lax\""
+        }
+      ]
+    },
+    {
+      "id": "forwarded-headers",
+      "set": "confirmation",
+      "type": "dead-end",
+      "trap": true,
+      "secret": "https://app.acme.dev",
+      "session1": [
+        "Background on our clusters: the ingress strips X-Forwarded-Host and X-Forwarded-Proto by security policy, and the platform team won't change that. Getting the right host from forwarded headers was a dead end; callback URLs came out with the pod's internal address. What fixed it was pinning AUTH_URL to https://app.acme.dev in the environment. How does Auth.js work out its own URL?",
+        "Yes. Don't send me back to the platform team about headers again."
+      ],
+      "session2": "In a new cluster, sign-in redirects go to `http://10.0.3.7:3000/...` instead of our public URL. What one change do you make? Finish with one line in exactly this form: ANSWER: change=<the one change>",
+      "oracle": "Dead end: our ingress strips X-Forwarded-Host and X-Forwarded-Proto (security policy, won't change), so the forwarded-header detection in packages/core/src/lib/utils/env.ts yields the pod's internal address. The fix: set AUTH_URL=https://app.acme.dev in the environment.",
+      "reference": "Forwarded headers are stripped by our ingress.\nANSWER: change=set AUTH_URL=https://app.acme.dev in the cluster's environment",
+      "expected": {
+        "all": ["/change\\s*=.*AUTH_URL/i", "app.acme.dev"],
+        "must_not": ["/change\\s*=.*x-forwarded/i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/utils/env.ts",
+          "pattern": "headers.get(\"x-forwarded-host\")"
+        }
+      ]
+    },
+    {
+      "id": "account-linking",
+      "set": "confirmation",
+      "type": "discovery",
+      "trap": false,
+      "session1": [
+        "Support has tickets from users who signed up with a magic link and then can't sign in with Google using the same email address. Can you find what blocks them, and where?",
+        "Is there a per-provider switch that allows it, and what's the risk?",
+        "OK, that's what I needed. We'll decide later."
+      ],
+      "session2": "We now trust Google's email verification. Which provider option lets a Google sign-in attach to an existing user with the same email, and which file enforces the check? Finish with one line in exactly this form: ANSWER: option=<name>; file=<path>",
+      "oracle": "Finding: packages/core/src/lib/actions/callback/handle-login.ts throws OAuthAccountNotLinked when an OAuth sign-in's email matches an existing user. Setting allowDangerousEmailAccountLinking: true on the provider links the account instead. The risk is account takeover if the provider doesn't verify emails.",
+      "reference": "ANSWER: option=allowDangerousEmailAccountLinking; file=packages/core/src/lib/actions/callback/handle-login.ts",
+      "expected": {
+        "all": ["allowDangerousEmailAccountLinking", "handle-login.ts"]
+      }
+    },
+    {
+      "id": "sign-in-return-value",
+      "set": "confirmation",
+      "type": "discovery",
+      "trap": false,
+      "session1": [
+        "Product wants users whose trial has expired to land on a /billing page when they sign in, not on the generic error page. Before we design it, trace what the signIn callback's return value controls: true, false and a string.",
+        "And where in core is that return value handled?"
+      ],
+      "session2": "If our signIn callback returns the string '/billing', what happens to the user, and which function in core handles that return value? Finish with one line in exactly this form: ANSWER: result=<what happens>; function=<name>",
+      "oracle": "Finding: handleAuthorized in packages/core/src/lib/actions/callback/index.ts calls the signIn callback. A falsy return throws AccessDenied. true continues the sign-in. A string is passed to the redirect callback as the URL and the user is redirected there, so '/billing' becomes <origin>/billing.",
+      "reference": "ANSWER: result=the user is redirected to /billing (through the redirect callback); function=handleAuthorized",
+      "expected": {
+        "all": ["/result\\s*=.*redirect/i", "handleAuthorized"],
+        "none": ["/result\\s*=.*access ?denied/i"]
+      }
+    },
+    {
+      "id": "approved-providers",
+      "set": "confirmation",
+      "type": "constraint",
+      "trap": false,
+      "session1": [
+        "A legal constraint on sign-in providers: only GitHub, Google and Okta are approved. Discord was reviewed and rejected because its data-processing terms don't meet our EU data-residency commitments. Which provider files would those three map to here?",
+        "Good. That list changes only through legal."
+      ],
+      "session2": "The community team asks us to add Discord sign-in, and the provider is already in the repo. Can we ship it? Finish with one line in exactly this form: ANSWER: allowed=<yes or no>; approved=<comma-separated providers>",
+      "oracle": "Constraint from legal: the only approved sign-in providers are GitHub, Google and Okta (packages/core/src/providers/github.ts, google.ts, okta.ts). Discord was reviewed and rejected over EU data residency. The list changes only through legal.",
+      "reference": "Discord was rejected by legal.\nANSWER: allowed=no; approved=GitHub, Google, Okta",
+      "expected": {
+        "all": ["/allowed\\s*=\\s*no\\b/i", "github", "google", "okta"],
+        "none": ["/allowed\\s*=\\s*yes/i", "/approved\\s*=.*discord/i"]
+      }
+    }
+  ]
+}

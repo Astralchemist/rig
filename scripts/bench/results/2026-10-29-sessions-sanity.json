@@ -1,0 +1,813 @@
+{
+  "schema": 1,
+  "mode": "sessions",
+  "preregistered_bar": "Memory passes only if the memory-on arm raises multi-session task success by ≥ 15 percentage points over memory-off, while using ≤ 110% of memory-off's median total tokens (both sessions summed). If it doesn't, memory work stops and rig stays a code-map tool.",
+  "label": "sessions-sanity",
+  "started_at": "2026-10-29T00:58:22.774Z",
+  "finished_at": "2026-10-29T01:00:34.849Z",
+  "provider": "openrouter",
+  "model": "anthropic/claude-haiku-5.5",
+  "rig": {
+    "version": "0.3.0",
+    "commit": "91e9561b883b1b4190de00906a48b422149361c6",
+    "dirty": false,
+    "fingerprint": "14b6ca5108774da6"
+  },
+  "target": {
+    "repo": "~/rig-bench/next-auth",
+    "commit": "e293b3746616660f0844347a68d09eac54b95c6f",
+    "expected_commit": "e293b3746616660f0844347a68d09eac54b95c6f",
+    "snapshot": {
+      "sha256": "9275ea806c2285aabec3d1c57dc14ce4e5d50c6ccf201075b096399436382d31",
+      "bytes": 18845696,
+      "nodes": 2949,
+      "waypoints": 0
+    }
+  },
+  "instructions": {
+    "path": "generated/installer/claude.instructions.md",
+    "sha256": "16cfd8dec7fda83b11675f87d2425392f29fe9f6a8db14d2e91b8b1e7cb18c8b"
+  },
+  "trap_evidence": [
+    {
+      "task_id": "jwt-only-with-adapter",
+      "file": "packages/core/src/lib/init.ts",
+      "pattern": "/strategy: config\\.adapter \\? \"database\" : \"jwt\"/",
+      "found": true
+    },
+    {
+      "task_id": "fork-default-max-age",
+      "file": "packages/core/src/lib/init.ts",
+      "pattern": "/const maxAge = 30 \\* 24 \\* 60 \\* 60/",
+      "found": true
+    },
+    {
+      "task_id": "vendored-cookie",
+      "file": "packages/core/src/lib/vendored/cookie.ts",
+      "pattern": "option domain is invalid",
+      "found": true
+    },
+    {
+      "task_id": "cookie-chunk-size",
+      "file": "packages/core/src/lib/utils/cookie.ts",
+      "pattern": "const CHUNK_SIZE = ALLOWED_COOKIE_SIZE - ESTIMATED_EMPTY_COOKIE_SIZE",
+      "found": true
+    }
+  ],
+  "answer_marker": "ANSWER:",
+  "arms": [
+    "grep-only"
+  ],
+  "trials": 1,
+  "max_turns": 12,
+  "tasks": [
+    {
+      "id": "jwt-only-with-adapter",
+      "type": "decision",
+      "trap": true,
+      "session1": [
+        "Some background before we start. Our app runs on this fork with the Prisma adapter, but only so users can link several OAuth accounts to one user. Sessions stay JWT. We ran database sessions for a month last quarter and rejected them: every middleware check went to Postgres from the Edge runtime, which can't hold a connection pool, and p95 latency hit 900 ms. Can you find where the session strategy gets its default?",
+        "OK, that's the line I was thinking of. Keep the decision in mind; it matters when we wire the adapter in."
+      ],
+      "session2": "I'm adding `adapter: PrismaAdapter(prisma)` to our Auth.js config today. Which session strategy should we end up on, and what, if anything, do I need to add to the config for it? Finish with one line in exactly this form: ANSWER: strategy=<jwt or database>; config=<what to add, or none>",
+      "oracle": "Decision: sessions stay JWT even though the Prisma adapter is configured; the adapter is there only for account linking. Database sessions were tried for a month and rejected: middleware hit Postgres from the Edge runtime, which cannot pool connections, and p95 latency reached 900 ms. packages/core/src/lib/init.ts defaults the strategy to \"database\" whenever an adapter is set, so the config must say session: { strategy: \"jwt\" } explicitly.",
+      "reference": "With an adapter, init.ts defaults the strategy to database, but we decided to stay on JWT, so it has to be set explicitly.\nANSWER: strategy=jwt; config=session: { strategy: \"jwt\" }",
+      "expected": {
+        "all": [
+          "/strategy\\s*=\\s*jwt/i",
+          "/config\\s*=.*\\bjwt\\b/i"
+        ],
+        "must_not": [
+          "/strategy\\s*=\\s*database/i"
+        ]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/init.ts",
+          "pattern": "/strategy: config\\.adapter \\? \"database\" : \"jwt\"/"
+        }
+      ]
+    },
+    {
+      "id": "fork-default-max-age",
+      "type": "decision",
+      "trap": true,
+      "session1": [
+        "We maintain this checkout as our company's fork. A decision from last week's compliance review: the fork's default session lifetime goes from 30 days to 8 hours, which is 28800 seconds, because the auditors flagged 30-day idle sessions on shared kiosk machines. The patch is on a branch and not merged yet. Where is the default maxAge set today?",
+        "Thanks. The 8-hour default is final; we'll document it with the next release."
+      ],
+      "session2": "I'm writing the session-settings page of the docs for our fork's next release. What default session maxAge, in seconds, should the page state? Finish with one line in exactly this form: ANSWER: default_max_age=<seconds>",
+      "oracle": "Decision from the compliance review: the fork's default session maxAge becomes 8 hours (28800 seconds) instead of upstream's 30 days (2592000 seconds, set in packages/core/src/lib/init.ts), because auditors flagged 30-day idle sessions on shared kiosk machines. The patch is on an unmerged branch; the next release's docs state 28800.",
+      "reference": "The code still says 30 days, but the next release ships the 8-hour default from the compliance review.\nANSWER: default_max_age=28800",
+      "expected": {
+        "all": [
+          "/default_max_age\\s*=\\s*28,?800\\b/i"
+        ],
+        "must_not": [
+          "/default_max_age\\s*=\\s*2,?592,?000/i"
+        ]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/init.ts",
+          "pattern": "/const maxAge = 30 \\* 24 \\* 60 \\* 60/"
+        }
+      ]
+    },
+    {
+      "id": "vendored-cookie",
+      "type": "constraint",
+      "trap": true,
+      "session1": [
+        "Hard rule for our fork: never edit anything under packages/core/src/lib/vendored/. The cookie.ts there is a verbatim copy of the upstream `cookie` package, and our sync script overwrites it on every upgrade, so a patch there silently disappears. Fixes go in the code that calls it. Which of our files import the vendored cookie module?",
+        "Good, that's the list. Remember the rule."
+      ],
+      "session2": "A partner's proxy gives us a cookie domain with a port in it, like `.acme.internal:8443`, and setting the session cookie now throws `option domain is invalid`. Which file would you change to fix this, and how? Finish with one line in exactly this form: ANSWER: file=<the one file you would edit>",
+      "oracle": "Constraint: never edit packages/core/src/lib/vendored/. Its cookie.ts is a verbatim copy of the upstream cookie package; a sync script overwrites it on every upgrade, so patches there vanish. Fixes go in its callers: packages/core/src/lib/utils/web.ts (parses and serializes cookies), packages/core/src/jwt.ts and packages/core/src/lib/utils/cookie.ts.",
+      "reference": "serialize in the vendored cookie.ts rejects the port, but that file is off limits, so strip the port from the domain before serializing, in the caller.\nANSWER: file=packages/core/src/lib/utils/web.ts",
+      "expected": {
+        "all": [
+          "/file\\s*=/i"
+        ],
+        "any": [
+          "utils/web.ts",
+          "utils/cookie.ts",
+          "jwt.ts",
+          "init.ts"
+        ],
+        "must_not": [
+          "/file\\s*=\\s*\\S*vendored/i"
+        ]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/vendored/cookie.ts",
+          "pattern": "option domain is invalid"
+        }
+      ]
+    },
+    {
+      "id": "cookie-chunk-size",
+      "type": "dead-end",
+      "trap": true,
+      "session1": [
+        "Background on cookie size. Users who belong to many groups were hitting our ingress's 8 KB request-header limit. We tried lowering CHUNK_SIZE in packages/core/src/lib/utils/cookie.ts so each session-cookie chunk is smaller. Dead end: smaller chunks only meant more chunks, the total Cookie header grew because each chunk repeats its name and attributes, and Safari began dropping the last chunks. We reverted it. What worked was trimming the token in our `jwt` callback: keep only the user id and role, and load groups on the server. Can you show me how the chunking works?",
+        "Right. So the chunk size stays as it is; trimming the token is the approach."
+      ],
+      "session2": "A new enterprise customer's users get `431 Request Header Fields Too Large` right after sign-in; their tokens carry hundreds of group claims. What change do you propose? Finish with one line in exactly this form: ANSWER: change=<the one change you propose, and where>",
+      "oracle": "Dead end: lowering CHUNK_SIZE in packages/core/src/lib/utils/cookie.ts to make session-cookie chunks smaller was tried and reverted. It produced more chunks and a larger total Cookie header (each chunk repeats its name and attributes), and Safari dropped the last chunks. What worked: trim the token in the jwt callback to the user id and role, and load groups on the server.",
+      "reference": "Smaller chunks were tried and made the header bigger.\nANSWER: change=trim the token in the jwt callback to user id and role, and load groups on the server",
+      "expected": {
+        "all": [
+          "/change\\s*=.*\\bjwt\\b/i"
+        ],
+        "any": [
+          "callback",
+          "trim",
+          "strip",
+          "remove",
+          "groups",
+          "claims"
+        ],
+        "must_not": [
+          "/change\\s*=.*CHUNK_SIZE/i",
+          "/change\\s*=.*\\b(lower|reduce|decrease|shrink|smaller)\\b.*chunk/i"
+        ]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/utils/cookie.ts",
+          "pattern": "const CHUNK_SIZE = ALLOWED_COOKIE_SIZE - ESTIMATED_EMPTY_COOKIE_SIZE"
+        }
+      ]
+    },
+    {
+      "id": "actions-merge-rule",
+      "type": "constraint",
+      "trap": false,
+      "session1": [
+        "A process note for our fork: any change under packages/core/src/lib/actions/ needs a PR title that starts with `[core-actions]` and an approving review from @mfrost, who is on the security rota. Our merge bot blocks the PR otherwise. None of this is written in the repo; it lives in the bot's config. What's in that directory?",
+        "Thanks. Keep that rule handy; I'll be touching those files soon."
+      ],
+      "session2": "I've changed signout.ts so it also clears our analytics cookie. What does the PR need before it can merge? Finish with one line in exactly this form: ANSWER: title_prefix=<prefix>; reviewer=<handle>",
+      "oracle": "Merge rule, enforced by the merge bot and not written in the repo: a change under packages/core/src/lib/actions/ (session.ts, signout.ts, callback/, signin/ and so on) needs a PR title starting with [core-actions] and an approving review from @mfrost, who is on the security rota.",
+      "reference": "signout.ts is under packages/core/src/lib/actions/, so the merge bot's rule applies.\nANSWER: title_prefix=[core-actions]; reviewer=@mfrost",
+      "expected": {
+        "all": [
+          "[core-actions]",
+          "mfrost"
+        ]
+      }
+    },
+    {
+      "id": "magic-link-adapter",
+      "type": "dead-end",
+      "trap": false,
+      "session1": [
+        "Background for the email sign-in work. Last sprint we stored verification tokens in Upstash Redis through packages/adapter-upstash-redis. Dead end: our managed Redis evicts keys under memory pressure (allkeys-lru), so magic links died long before their 24-hour expiry. We moved back to Postgres through packages/adapter-pg. Don't suggest a Redis-backed adapter for tokens again. Where does core create the verification token, and how long does it live by default?",
+        "OK. Note how the Redis attempt ended so we don't go round that loop again."
+      ],
+      "session2": "We're adding the Resend provider for magic-link sign-in. Which adapter package in this repo should store the verification tokens? Finish with one line in exactly this form: ANSWER: adapter=<package directory or npm name>",
+      "oracle": "Dead end: verification tokens in Upstash Redis (packages/adapter-upstash-redis) failed because the managed Redis evicts keys under memory pressure (allkeys-lru), so magic links expired early. Tokens are stored in Postgres through packages/adapter-pg (@auth/pg-adapter); no Redis-backed adapter for tokens. Core creates the token in packages/core/src/lib/actions/signin/send-token.ts; the email providers default to a 24-hour maxAge.",
+      "reference": "Tokens go to Postgres, not Redis.\nANSWER: adapter=packages/adapter-pg (@auth/pg-adapter)",
+      "expected": {
+        "any": [
+          "adapter-pg",
+          "pg-adapter"
+        ],
+        "none": [
+          "/adapter\\s*=.*(redis|upstash)/i"
+        ]
+      }
+    },
+    {
+      "id": "github-org-gate",
+      "type": "decision",
+      "trap": false,
+      "session1": [
+        "A decision for our GitHub sign-in: only members of the `acme-corp` GitHub org may sign in. We'll request the `read:org` scope on top of the GitHub provider's default scopes and check membership in the `signIn` callback. We rejected an email allowlist because contractors sign in with personal addresses. What scopes does the GitHub provider request by default?",
+        "Good. So our scope string is those defaults plus read:org."
+      ],
+      "session2": "A new hire's GitHub sign-in succeeds but they aren't let in. To check our setup: what's the full scope string our GitHub provider should request, and which org do we gate on? Finish with one line in exactly this form: ANSWER: scope=<space-separated scopes>; org=<org name>",
+      "oracle": "Decision: only members of the acme-corp GitHub org may sign in. The GitHub provider requests read:org on top of its defaults (read:user user:email, in packages/core/src/providers/github.ts), so the scope is \"read:user user:email read:org\"; membership is checked in the signIn callback. An email allowlist was rejected because contractors sign in with personal addresses.",
+      "reference": "ANSWER: scope=read:user user:email read:org; org=acme-corp",
+      "expected": {
+        "all": [
+          "read:org",
+          "read:user",
+          "user:email",
+          "acme-corp"
+        ]
+      }
+    },
+    {
+      "id": "update-age-jwt",
+      "type": "discovery",
+      "trap": false,
+      "session1": [
+        "Ops wants to cut how often we rewrite the session cookie. Before they change anything: for JWT sessions, how and where does the expiry get pushed back when a session is used, and does session.updateAge throttle it? Please trace it in the code rather than going by the docs.",
+        "Interesting. Keep that finding; ops will come back to it."
+      ],
+      "session2": "Ops plans to set `session.updateAge` to 3600 so the JWT session cookie is rewritten at most once an hour. Will that work? Finish with one line in exactly this form: ANSWER: throttles_jwt=<yes or no>; file=<the file that refreshes the JWT session>",
+      "oracle": "Finding from tracing the code: in packages/core/src/lib/actions/session.ts a JWT session is re-encoded (jwt.encode) with a new expiry from fromDate(sessionMaxAge), and its cookie is set again, on every session request. session.updateAge is read only in the database-strategy branch, where it throttles database writes; it does not throttle JWT sessions, whatever its doc comment suggests.",
+      "reference": "updateAge is read only in the database branch of session.ts; the JWT branch re-encodes on every request.\nANSWER: throttles_jwt=no; file=packages/core/src/lib/actions/session.ts",
+      "expected": {
+        "all": [
+          "/throttles_jwt\\s*=\\s*no\\b/i",
+          "actions/session"
+        ],
+        "none": [
+          "/throttles_jwt\\s*=\\s*yes/i"
+        ]
+      }
+    },
+    {
+      "id": "oauth-check-ttl",
+      "type": "discovery",
+      "trap": false,
+      "session1": [
+        "Some users who sit on Google's consent screen for a long time come back to an `InvalidCheck` error. Can you work out why, and what times out?",
+        "Where exactly is that timeout defined, and does it cover state, PKCE and nonce alike?",
+        "Thanks, that's the root cause. We'll need it later."
+      ],
+      "session2": "Support wants users to have 30 minutes on the provider's consent screen. Which constant needs to change, in which file, and what is its value today in seconds? Finish with one line in exactly this form: ANSWER: constant=<name>; file=<path>; current_seconds=<n>",
+      "oracle": "Finding: the state, PKCE code_verifier and nonce cookies are sealed by sealCookie in packages/core/src/lib/actions/callback/oauth/checks.ts with COOKIE_TTL = 60 * 15 (900 seconds). After 15 minutes the cookie has expired and the callback fails with InvalidCheck. STATE_MAX_AGE and WEBAUTHN_CHALLENGE_MAX_AGE in the same file are also 15 minutes.",
+      "reference": "ANSWER: constant=COOKIE_TTL; file=packages/core/src/lib/actions/callback/oauth/checks.ts; current_seconds=900",
+      "expected": {
+        "all": [
+          "checks.ts",
+          "/current_seconds\\s*=\\s*900\\b/i"
+        ],
+        "any": [
+          "COOKIE_TTL",
+          "STATE_MAX_AGE"
+        ]
+      }
+    },
+    {
+      "id": "trust-host",
+      "type": "constraint",
+      "trap": false,
+      "session1": [
+        "An ops constraint: we deploy behind an L7 proxy that rewrites the Host header, so AUTH_TRUST_HOST=true must stay set and nobody turns trustHost off. Turning it off took down sign-in for everyone in incident INC-2291. Where does the code check trustHost?",
+        "Right. That one's non-negotiable."
+      ],
+      "session2": "A security reviewer wants us to set `trustHost: false` explicitly to harden the config. What do we tell them? Finish with one line in exactly this form: ANSWER: trust_host=<true or false>; reason=<one sentence>",
+      "oracle": "Constraint from ops: deployments sit behind an L7 proxy that rewrites the Host header, so AUTH_TRUST_HOST=true stays set and trustHost is never turned off; turning it off took sign-in down for everyone in incident INC-2291. assertConfig in packages/core/src/lib/utils/assert.ts returns UntrustedHost when trustHost is false.",
+      "reference": "ANSWER: trust_host=true; reason=we sit behind a proxy that rewrites Host, and turning it off took sign-in down in INC-2291",
+      "expected": {
+        "all": [
+          "/trust_host\\s*=\\s*true/i"
+        ],
+        "any": [
+          "INC-2291",
+          "proxy"
+        ],
+        "none": [
+          "/trust_host\\s*=\\s*false/i"
+        ]
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "jwt-only-with-adapter",
+      "arm": "grep-only",
+      "trial": 0,
+      "s1": null,
+      "s2": {
+        "session_id": "9ce59e35-3293-41cf-846c-fed701a14601",
+        "messages": 1,
+        "prompt_tokens": 34273,
+        "completion_tokens": 1305,
+        "cost_usd": 0.0040798,
+        "model_calls": 3,
+        "tool_turns": 4,
+        "tool_calls": {
+          "rg": 3,
+          "read_file": 1
+        },
+        "tool_chars": {
+          "rg": 34559,
+          "read_file": 2706
+        },
+        "stop": "answer",
+        "stops": [
+          "answer"
+        ],
+        "replies": [
+          "The config already sets `session: { strategy: \"jwt\" }` (apps/dev/nextjs/auth.ts:80), and you should keep it.\n\nAuth.js defaults to the `database` strategy when an adapter is present. Your config uses the Credentials provider (apps/dev/nextjs/auth.ts:58), and Credentials sign-ins don't create database session rows, so they need `jwt`. Keeping the setting explicit also protects you if the adapter is added or removed later.\n\nAdding the adapter itself also needs `PrismaClient` and the `PrismaAdapter` import, which are currently commented out (lines 6–7, 12, 25, 32). Those are the only other changes. The Prisma schema already has the `Session`, `Account`, and `VerificationToken` models that the adapter expects.\n\nANSWER: strategy=jwt; config=keep the existing `session: { strategy: \"jwt\" }` (auth.ts:80) and add `adapter: PrismaAdapter(globalThis.prisma)` with the commented-out PrismaClient and PrismaAdapter imports uncommented"
+        ],
+        "final_text": "The config already sets `session: { strategy: \"jwt\" }` (apps/dev/nextjs/auth.ts:80), and you should keep it.\n\nAuth.js defaults to the `database` strategy when an adapter is present. Your config uses the Credentials provider (apps/dev/nextjs/auth.ts:58), and Credentials sign-ins don't create database session rows, so they need `jwt`. Keeping the setting explicit also protects you if the adapter is added or removed later.\n\nAdding the adapter itself also needs `PrismaClient` and the `PrismaAdapter` import, which are currently commented out (lines 6–7, 12, 25, 32). Those are the only other changes. The Prisma schema already has the `Session`, `Account`, and `VerificationToken` models that the adapter expects.\n\nANSWER: strategy=jwt; config=keep the existing `session: { strategy: \"jwt\" }` (auth.ts:80) and add `adapter: PrismaAdapter(globalThis.prisma)` with the commented-out PrismaClient and PrismaAdapter imports uncommented",
+        "resolved_models": [
+          "anthropic/claude-haiku-5.5"
+        ],
+        "upstreams": [
+          "Claude Platform on AWS"
+        ],
+        "elapsed_ms": 12885
+      },
+      "waypoints": [],
+      "recalled": null,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": [],
+        "trapped": [],
+        "marker_found": true
+      }
+    },
+    {
+      "task_id": "fork-default-max-age",
+      "arm": "grep-only",
+      "trial": 0,
+      "s1": null,
+      "s2": {
+        "session_id": "fbe3abc1-587a-4bf5-8530-7b90bd2fdb03",
+        "messages": 1,
+        "prompt_tokens": 4735,
+        "completion_tokens": 358,
+        "cost_usd": 0.0006525,
+        "model_calls": 2,
+        "tool_turns": 1,
+        "tool_calls": {
+          "rg": 1
+        },
+        "tool_chars": {
+          "rg": 6559
+        },
+        "stop": "answer",
+        "stops": [
+          "answer"
+        ],
+        "replies": [
+          "The default session `maxAge` is 30 days, which is 2592000 seconds. It's set in `packages/core/src/lib/init.ts:71` (`const maxAge = 30 * 24 * 60 * 60`, with the comment \"Sessions expire after 30 days of being idle by default\"). The JWT default in `packages/core/src/jwt.ts:48` and the v5 migration guide both agree.\n\nANSWER: default_max_age=2592000"
+        ],
+        "final_text": "The default session `maxAge` is 30 days, which is 2592000 seconds. It's set in `packages/core/src/lib/init.ts:71` (`const maxAge = 30 * 24 * 60 * 60`, with the comment \"Sessions expire after 30 days of being idle by default\"). The JWT default in `packages/core/src/jwt.ts:48` and the v5 migration guide both agree.\n\nANSWER: default_max_age=2592000",
+        "resolved_models": [
+          "anthropic/claude-haiku-5.5"
+        ],
+        "upstreams": [
+          "Claude Platform on AWS"
+        ],
+        "elapsed_ms": 3878
+      },
+      "waypoints": [],
+      "recalled": null,
+      "check": {
+        "pass": false,
+        "missing": [
+          "/default_max_age\\s*=\\s*28,?800\\b/i"
+        ],
+        "any_matched": [],
+        "forbidden": [],
+        "trapped": [
+          "/default_max_age\\s*=\\s*2,?592,?000/i"
+        ],
+        "marker_found": true
+      }
+    },
+    {
+      "task_id": "vendored-cookie",
+      "arm": "grep-only",
+      "trial": 0,
+      "s1": null,
+      "s2": {
+        "session_id": "e00e5332-1e15-41f3-b33a-9b2455d4fea1",
+        "messages": 1,
+        "prompt_tokens": 23971,
+        "completion_tokens": 2910,
+        "cost_usd": 0.0038521,
+        "model_calls": 7,
+        "tool_turns": 7,
+        "tool_calls": {
+          "rg": 4,
+          "read_file": 3
+        },
+        "tool_chars": {
+          "rg": 1369,
+          "read_file": 11554
+        },
+        "stop": "answer",
+        "stops": [
+          "answer"
+        ],
+        "replies": [
+          "The error comes from the vendored cookie serializer. In `packages/core/src/lib/vendored/cookie.ts`, the `domain` option is checked at line 282 against `domainValueRegExp` (line 60), which only allows letters, digits, hyphens, and dots. A `:8443` suffix fails that check and throws.\n\nThe port doesn't belong in the cookie `Domain` attribute anyway. RFC 6265 defines `Domain` as a host name, and browsers ignore ports there, so `.acme.internal:8443` can't be sent as-is. The fix is to strip the port from `options.domain` before validation, so `.acme.internal:8443` becomes `.acme.internal` and the header is `Domain=.acme.internal`. Something like:\n\n```ts\nif (options.domain) {\n  const domain = options.domain.replace(/:\\d+$/, \"\")\n  if (!domainValueRegExp.test(domain)) {\n    throw new TypeError(`option domain is invalid: ${options.domain}`)\n  }\n  str += \"; Domain=\" + domain\n}\n```\n\nCaveat: I didn't find a direct `serialize(...)` caller under `packages/core/src` outside the vendored file, so the domain may be passed in from config through another path. The stripping belongs in the serializer regardless, since it's the single place that validates the attribute. Better still, the partner's config should set the domain without the port, but this makes the library tolerant of it.\n\nANSWER: file=packages/core/src/lib/vendored/cookie.ts"
+        ],
+        "final_text": "The error comes from the vendored cookie serializer. In `packages/core/src/lib/vendored/cookie.ts`, the `domain` option is checked at line 282 against `domainValueRegExp` (line 60), which only allows letters, digits, hyphens, and dots. A `:8443` suffix fails that check and throws.\n\nThe port doesn't belong in the cookie `Domain` attribute anyway. RFC 6265 defines `Domain` as a host name, and browsers ignore ports there, so `.acme.internal:8443` can't be sent as-is. The fix is to strip the port from `options.domain` before validation, so `.acme.internal:8443` becomes `.acme.internal` and the header is `Domain=.acme.internal`. Something like:\n\n```ts\nif (options.domain) {\n  const domain = options.domain.replace(/:\\d+$/, \"\")\n  if (!domainValueRegExp.test(domain)) {\n    throw new TypeError(`option domain is invalid: ${options.domain}`)\n  }\n  str += \"; Domain=\" + domain\n}\n```\n\nCaveat: I didn't find a direct `serialize(...)` caller under `packages/core/src` outside the vendored file, so the domain may be passed in from config through another path. The stripping belongs in the serializer regardless, since it's the single place that validates the attribute. Better still, the partner's config should set the domain without the port, but this makes the library tolerant of it.\n\nANSWER: file=packages/core/src/lib/vendored/cookie.ts",
+        "resolved_models": [
+          "anthropic/claude-haiku-5.5"
+        ],
+        "upstreams": [
+          "Claude Platform on AWS"
+        ],
+        "elapsed_ms": 20875
+      },
+      "waypoints": [],
+      "recalled": null,
+      "check": {
+        "pass": false,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": [],
+        "trapped": [
+          "/file\\s*=\\s*\\S*vendored/i"
+        ],
+        "marker_found": true
+      }
+    },
+    {
+      "task_id": "cookie-chunk-size",
+      "arm": "grep-only",
+      "trial": 0,
+      "s1": null,
+      "s2": {
+        "session_id": "80781321-e4f3-4716-8fe0-249df9fb4221",
+        "messages": 1,
+        "prompt_tokens": 24020,
+        "completion_tokens": 2257,
+        "cost_usd": 0.0035305,
+        "model_calls": 4,
+        "tool_turns": 5,
+        "tool_calls": {
+          "rg": 3,
+          "read_file": 2
+        },
+        "tool_chars": {
+          "rg": 15176,
+          "read_file": 2227
+        },
+        "stop": "answer",
+        "stops": [
+          "answer"
+        ],
+        "replies": [
+          "The 431 comes from how the session token is stored, not from a single oversized cookie. In `packages/core/src/lib/utils/cookie.ts`, `chunk()` splits the encoded JWT into 4KB-ish cookies (`CHUNK_SIZE = 4096 - 160`). Splitting doesn't shrink the request. Every chunk is sent on every request, so a token with hundreds of group claims can push the total `Cookie` header past the server's limit (often 8–16KB). Chunking only hides the per-cookie error. The `jwt` callback in `packages/core/src/lib/actions/callback/index.ts` (around line 147) builds the token from whatever the app returns, so the full group list ends up in it.\n\nProposed change: in the customer's `jwt` callback, stop copying the full group list into the token. Keep only the groups the app needs for authorization, or a bounded set, and resolve the rest server-side on demand. Chunking is a workaround, and raising the server's header limit would only postpone the failure. The alternative is `session.strategy: \"database\"` for this tenant, which keeps only a session ID in the cookie, but that adds server-side state.\n\nANSWER: change=Stop embedding the full group list in the JWT: filter or cap `groups` in the app's `jwt` callback (the token is built in packages/core/src/lib/actions/callback/index.ts ~line 147), resolving the rest server-side, so the chunked session cookies stay under the header limit."
+        ],
+        "final_text": "The 431 comes from how the session token is stored, not from a single oversized cookie. In `packages/core/src/lib/utils/cookie.ts`, `chunk()` splits the encoded JWT into 4KB-ish cookies (`CHUNK_SIZE = 4096 - 160`). Splitting doesn't shrink the request. Every chunk is sent on every request, so a token with hundreds of group claims can push the total `Cookie` header past the server's limit (often 8–16KB). Chunking only hides the per-cookie error. The `jwt` callback in `packages/core/src/lib/actions/callback/index.ts` (around line 147) builds the token from whatever the app returns, so the full group list ends up in it.\n\nProposed change: in the customer's `jwt` callback, stop copying the full group list into the token. Keep only the groups the app needs for authorization, or a bounded set, and resolve the rest server-side on demand. Chunking is a workaround, and raising the server's header limit would only postpone the failure. The alternative is `session.strategy: \"database\"` for this tenant, which keeps only a session ID in the cookie, but that adds server-side state.\n\nANSWER: change=Stop embedding the full group list in the JWT: filter or cap `groups` in the app's `jwt` callback (the token is built in packages/core/src/lib/actions/callback/index.ts ~line 147), resolving the rest server-side, so the chunked session cookies stay under the header limit.",
+        "resolved_models": [
+          "anthropic/claude-haiku-5.5"
+        ],
+        "upstreams": [
+          "Claude Platform on AWS"
+        ],
+        "elapsed_ms": 15241
+      },
+      "waypoints": [],
+      "recalled": null,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "callback",
+          "groups"
+        ],
+        "forbidden": [],
+        "trapped": [],
+        "marker_found": true
+      }
+    },
+    {
+      "task_id": "actions-merge-rule",
+      "arm": "grep-only",
+      "trial": 0,
+      "s1": null,
+      "s2": {
+        "session_id": "459d9872-1bd2-4c32-83cb-06dc0355cc20",
+        "messages": 1,
+        "prompt_tokens": 50276,
+        "completion_tokens": 2960,
+        "cost_usd": 0.0065076,
+        "model_calls": 8,
+        "tool_turns": 14,
+        "tool_calls": {
+          "rg": 9,
+          "read_file": 4,
+          "list_dir": 1
+        },
+        "tool_chars": {
+          "rg": 10156,
+          "read_file": 5399,
+          "list_dir": 954
+        },
+        "stop": "answer",
+        "stops": [
+          "answer"
+        ],
+        "replies": [
+          "I couldn't confirm your change is in the tree. `packages/core/src/lib/actions/signout.ts` only calls `sessionStore.clean()`, with no analytics cookie clearing. A later grep also showed the exported function as `n` instead of `signOut`, which doesn't match my earlier read. Check that you're looking at the right branch and that the diff is saved.\n\nWhat the PR needs, based on the repo:\n\n- **Checklist** (`.github/PULL_REQUEST_TEMPLATE.md`): Documentation, Tests, and Ready to be merged. Tick what applies. Since this changes sign-out behavior, expect to need a test for the analytics cookie clearing. I found no existing test for the `signOut` action in `packages/core/test`, so you'd be adding the first one.\n- **Reasoning section**: describe the change and why the analytics cookie should be cleared on sign-out.\n- **Review**: `CODEOWNERS` assigns `/packages/` to @ThangHuuVu. Any test files you touch would also need @ubbe-xyz.\n- **Labels**: `.github/pr-labeler.yml` labels `packages/core/src/**` as `core`.\n- **Title**: I found no commit or PR title convention (no commitlint or semantic-PR config), so the prefix is inferred from the labeler area.\n\nANSWER: title_prefix=core; reviewer=@ThangHuuVu"
+        ],
+        "final_text": "I couldn't confirm your change is in the tree. `packages/core/src/lib/actions/signout.ts` only calls `sessionStore.clean()`, with no analytics cookie clearing. A later grep also showed the exported function as `n` instead of `signOut`, which doesn't match my earlier read. Check that you're looking at the right branch and that the diff is saved.\n\nWhat the PR needs, based on the repo:\n\n- **Checklist** (`.github/PULL_REQUEST_TEMPLATE.md`): Documentation, Tests, and Ready to be merged. Tick what applies. Since this changes sign-out behavior, expect to need a test for the analytics cookie clearing. I found no existing test for the `signOut` action in `packages/core/test`, so you'd be adding the first one.\n- **Reasoning section**: describe the change and why the analytics cookie should be cleared on sign-out.\n- **Review**: `CODEOWNERS` assigns `/packages/` to @ThangHuuVu. Any test files you touch would also need @ubbe-xyz.\n- **Labels**: `.github/pr-labeler.yml` labels `packages/core/src/**` as `core`.\n- **Title**: I found no commit or PR title convention (no commitlint or semantic-PR config), so the prefix is inferred from the labeler area.\n\nANSWER: title_prefix=core; reviewer=@ThangHuuVu",
+        "resolved_models": [
+          "anthropic/claude-haiku-5.5"
+        ],
+        "upstreams": [
+          "Claude Platform on AWS"
+        ],
+        "elapsed_ms": 22171
+      },
+      "waypoints": [],
+      "recalled": null,
+      "check": {
+        "pass": false,
+        "missing": [
+          "[core-actions]",
+          "mfrost"
+        ],
+        "any_matched": [],
+        "forbidden": [],
+        "trapped": [],
+        "marker_found": true
+      }
+    },
+    {
+      "task_id": "magic-link-adapter",
+      "arm": "grep-only",
+      "trial": 0,
+      "s1": null,
+      "s2": {
+        "session_id": "03a3a67e-0dc0-465b-a86c-8b0104c92168",
+        "messages": 1,
+        "prompt_tokens": 15289,
+        "completion_tokens": 1272,
+        "cost_usd": 0.0021649,
+        "model_calls": 4,
+        "tool_turns": 4,
+        "tool_calls": {
+          "rg": 3,
+          "list_dir": 1
+        },
+        "tool_chars": {
+          "rg": 8320,
+          "list_dir": 2044
+        },
+        "stop": "answer",
+        "stops": [
+          "answer"
+        ],
+        "replies": [
+          "The Resend provider shouldn't store tokens itself. The verification token is created in core: `packages/core/src/lib/actions/signin/send-token.ts` generates the token and calls `adapter.createVerificationToken(...)` with a hashed copy. The Resend docs (`docs/pages/getting-started/providers/resend.mdx`, line 108) say to set up one of the database adapters for storing the token.\n\nSo no single adapter package is correct. Any database adapter that implements `createVerificationToken` will work, and the choice depends on the database your app uses. Verification tokens are handled by 20+ adapters in `packages/` (for example `adapter-prisma`, `adapter-drizzle`, `adapter-pg`). Nothing in the Resend provider needs to change for storage.\n\nANSWER: adapter=none (any database adapter that implements createVerificationToken, chosen by the app's database; core's send-token.ts calls it)"
+        ],
+        "final_text": "The Resend provider shouldn't store tokens itself. The verification token is created in core: `packages/core/src/lib/actions/signin/send-token.ts` generates the token and calls `adapter.createVerificationToken(...)` with a hashed copy. The Resend docs (`docs/pages/getting-started/providers/resend.mdx`, line 108) say to set up one of the database adapters for storing the token.\n\nSo no single adapter package is correct. Any database adapter that implements `createVerificationToken` will work, and the choice depends on the database your app uses. Verification tokens are handled by 20+ adapters in `packages/` (for example `adapter-prisma`, `adapter-drizzle`, `adapter-pg`). Nothing in the Resend provider needs to change for storage.\n\nANSWER: adapter=none (any database adapter that implements createVerificationToken, chosen by the app's database; core's send-token.ts calls it)",
+        "resolved_models": [
+          "anthropic/claude-haiku-5.5"
+        ],
+        "upstreams": [
+          "Claude Platform on AWS"
+        ],
+        "elapsed_ms": 9872
+      },
+      "waypoints": [],
+      "recalled": null,
+      "check": {
+        "pass": false,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": [],
+        "trapped": [],
+        "marker_found": true
+      }
+    },
+    {
+      "task_id": "github-org-gate",
+      "arm": "grep-only",
+      "trial": 0,
+      "s1": null,
+      "s2": {
+        "session_id": "74cdac18-d244-4802-b85d-79ff1cf27891",
+        "messages": 1,
+        "prompt_tokens": 94443,
+        "completion_tokens": 1840,
+        "cost_usd": 0.0103643,
+        "model_calls": 7,
+        "tool_turns": 7,
+        "tool_calls": {
+          "rg": 5,
+          "read_file": 2
+        },
+        "tool_chars": {
+          "rg": 36828,
+          "read_file": 9335
+        },
+        "stop": "answer",
+        "stops": [
+          "answer"
+        ],
+        "replies": [
+          "The GitHub provider here requests `read:user user:email` (`packages/core/src/providers/github.ts:145`). It doesn't request `read:org`, so the token can't see org membership.\n\nI found no org gating anywhere in this repo. I searched the apps and the `next-auth` package for org, organization, and allowlist logic and found none. The example `auth.ts` files only use a plain `GitHub` provider with no `signIn` or org check. The org name isn't defined in this codebase, so it must live in your fork's app config or environment, which I haven't seen.\n\nIf your new hire's denial comes from an org-membership check, that check will fail because `read:org` isn't in the scope. Adding `read:org` to the provider's `authorization.params.scope` would fix that. Check the denial logic in your own `signIn` or `callbacks` code to confirm which org it expects.\n\nANSWER: scope=read:user user:email; org=<not defined in this repo; check your app's signIn/callbacks config>"
+        ],
+        "final_text": "The GitHub provider here requests `read:user user:email` (`packages/core/src/providers/github.ts:145`). It doesn't request `read:org`, so the token can't see org membership.\n\nI found no org gating anywhere in this repo. I searched the apps and the `next-auth` package for org, organization, and allowlist logic and found none. The example `auth.ts` files only use a plain `GitHub` provider with no `signIn` or org check. The org name isn't defined in this codebase, so it must live in your fork's app config or environment, which I haven't seen.\n\nIf your new hire's denial comes from an org-membership check, that check will fail because `read:org` isn't in the scope. Adding `read:org` to the provider's `authorization.params.scope` would fix that. Check the denial logic in your own `signIn` or `callbacks` code to confirm which org it expects.\n\nANSWER: scope=read:user user:email; org=<not defined in this repo; check your app's signIn/callbacks config>",
+        "resolved_models": [
+          "anthropic/claude-haiku-5.5"
+        ],
+        "upstreams": [
+          "Claude Platform on AWS"
+        ],
+        "elapsed_ms": 16173
+      },
+      "waypoints": [],
+      "recalled": null,
+      "check": {
+        "pass": false,
+        "missing": [
+          "read:org",
+          "acme-corp"
+        ],
+        "any_matched": [],
+        "forbidden": [],
+        "trapped": [],
+        "marker_found": true
+      }
+    },
+    {
+      "task_id": "update-age-jwt",
+      "arm": "grep-only",
+      "trial": 0,
+      "s1": null,
+      "s2": {
+        "session_id": "e4145c1e-6520-4959-8b69-90272a01a3f4",
+        "messages": 1,
+        "prompt_tokens": 13001,
+        "completion_tokens": 780,
+        "cost_usd": 0.0016901,
+        "model_calls": 4,
+        "tool_turns": 5,
+        "tool_calls": {
+          "rg": 2,
+          "read_file": 3
+        },
+        "tool_chars": {
+          "rg": 3609,
+          "read_file": 5805
+        },
+        "stop": "answer",
+        "stops": [
+          "answer"
+        ],
+        "replies": [
+          "Setting `session.updateAge` to 3600 will not throttle the JWT cookie. The `updateAge` check only guards the database branch. In the JWT branch (lines 42–91), every session request re-signs the token and pushes a new `Set-Cookie` with fresh expiry, with no comparison against `updateAge`. To throttle JWT cookie rewrites, that branch needs its own age check, or the cookie write needs to be skipped when the token is still fresh.\n\nANSWER: throttles_jwt=no; file=packages/core/src/lib/actions/session.ts"
+        ],
+        "final_text": "Setting `session.updateAge` to 3600 will not throttle the JWT cookie. The `updateAge` check only guards the database branch. In the JWT branch (lines 42–91), every session request re-signs the token and pushes a new `Set-Cookie` with fresh expiry, with no comparison against `updateAge`. To throttle JWT cookie rewrites, that branch needs its own age check, or the cookie write needs to be skipped when the token is still fresh.\n\nANSWER: throttles_jwt=no; file=packages/core/src/lib/actions/session.ts",
+        "resolved_models": [
+          "anthropic/claude-haiku-5.5"
+        ],
+        "upstreams": [
+          "Claude Platform on AWS"
+        ],
+        "elapsed_ms": 7659
+      },
+      "waypoints": [],
+      "recalled": null,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [],
+        "forbidden": [],
+        "trapped": [],
+        "marker_found": true
+      }
+    },
+    {
+      "task_id": "oauth-check-ttl",
+      "arm": "grep-only",
+      "trial": 0,
+      "s1": null,
+      "s2": {
+        "session_id": "670100e0-7f8a-4986-980d-7d74a56d5a59",
+        "messages": 1,
+        "prompt_tokens": 23935,
+        "completion_tokens": 1912,
+        "cost_usd": 0.0033495,
+        "model_calls": 5,
+        "tool_turns": 6,
+        "tool_calls": {
+          "rg": 4,
+          "read_file": 2
+        },
+        "tool_chars": {
+          "rg": 18024,
+          "read_file": 5539
+        },
+        "stop": "answer",
+        "stops": [
+          "answer"
+        ],
+        "replies": [
+          "Two constants in `checks.ts` cap how long the user can stay on the provider's consent screen, and both are 900 seconds (15 minutes):\n\n- `STATE_MAX_AGE` (line 149) is the expiry on the OAuth `state` JWT, which the callback validates.\n- `COOKIE_TTL` (line 26) sets the browser cookie expiry for the sealed `state` cookie (and the nonce/PKCE cookies) via `sealCookie`.\n\nThe state cookie expires with whichever is shorter, so raising only one won't give 30 minutes. Set both to `60 * 30` to fully fix it. The single-constant answer below uses `STATE_MAX_AGE`, since it's the one that governs state validation.\n\nANSWER: constant=STATE_MAX_AGE; file=packages/core/src/lib/actions/callback/oauth/checks.ts; current_seconds=900"
+        ],
+        "final_text": "Two constants in `checks.ts` cap how long the user can stay on the provider's consent screen, and both are 900 seconds (15 minutes):\n\n- `STATE_MAX_AGE` (line 149) is the expiry on the OAuth `state` JWT, which the callback validates.\n- `COOKIE_TTL` (line 26) sets the browser cookie expiry for the sealed `state` cookie (and the nonce/PKCE cookies) via `sealCookie`.\n\nThe state cookie expires with whichever is shorter, so raising only one won't give 30 minutes. Set both to `60 * 30` to fully fix it. The single-constant answer below uses `STATE_MAX_AGE`, since it's the one that governs state validation.\n\nANSWER: constant=STATE_MAX_AGE; file=packages/core/src/lib/actions/callback/oauth/checks.ts; current_seconds=900",
+        "resolved_models": [
+          "anthropic/claude-haiku-5.5"
+        ],
+        "upstreams": [
+          "Claude Platform on AWS"
+        ],
+        "elapsed_ms": 13410
+      },
+      "waypoints": [],
+      "recalled": null,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "STATE_MAX_AGE"
+        ],
+        "forbidden": [],
+        "trapped": [],
+        "marker_found": true
+      }
+    },
+    {
+      "task_id": "trust-host",
+      "arm": "grep-only",
+      "trial": 0,
+      "s1": null,
+      "s2": {
+        "session_id": "f7a194b0-2f47-441d-a0e2-c933f13fafab",
+        "messages": 1,
+        "prompt_tokens": 8385,
+        "completion_tokens": 1457,
+        "cost_usd": 0.0015669999999999998,
+        "model_calls": 3,
+        "tool_turns": 4,
+        "tool_calls": {
+          "rg": 1,
+          "read_file": 3
+        },
+        "tool_chars": {
+          "rg": 3784,
+          "read_file": 4858
+        },
+        "stop": "answer",
+        "stops": [
+          "answer"
+        ],
+        "replies": [
+          "Don't set `trustHost: false`. In this codebase it doesn't harden anything; it disables Auth.js for the app.\n\n- `packages/core/src/lib/utils/assert.ts:96` returns an `UntrustedHost` error on every request when `options.trustHost` is falsy, so every auth request fails.\n- `packages/core/src/lib/utils/env.ts:44` uses `??=`, so an explicit `false` is kept rather than replaced by the env-based default. Leaving the option unset would instead default to `true` in non-production, or when `AUTH_URL`, `AUTH_TRUST_HOST`, `VERCEL`, or `CF_PAGES` is set.\n- `trustHost` only tells Auth.js to trust the request's Host and forwarded headers when building callback URLs. Deployments behind a proxy need it. The real control is the host it resolves to, which you can pin with `AUTH_URL`.\n\nThe one place worth tightening is `apps/dev/express/src/config/auth.config.ts:29` and `apps/examples/express/src/config/auth.config.ts:29`, which hardcode `trustHost: true`. Those are dev and example apps, so for a production deployment, rely on `AUTH_URL` and set `AUTH_TRUST_HOST` only where a trusted proxy actually fronts the app. I did not check the production deployment config, so confirm that separately.\n\nANSWER: trust_host=true; reason=Setting it to false makes Auth.js reject every request with UntrustedHost (assert.ts:96), so the value should stay true, with the host pinned via AUTH_URL and trust limited to deployments behind a trusted proxy."
+        ],
+        "final_text": "Don't set `trustHost: false`. In this codebase it doesn't harden anything; it disables Auth.js for the app.\n\n- `packages/core/src/lib/utils/assert.ts:96` returns an `UntrustedHost` error on every request when `options.trustHost` is falsy, so every auth request fails.\n- `packages/core/src/lib/utils/env.ts:44` uses `??=`, so an explicit `false` is kept rather than replaced by the env-based default. Leaving the option unset would instead default to `true` in non-production, or when `AUTH_URL`, `AUTH_TRUST_HOST`, `VERCEL`, or `CF_PAGES` is set.\n- `trustHost` only tells Auth.js to trust the request's Host and forwarded headers when building callback URLs. Deployments behind a proxy need it. The real control is the host it resolves to, which you can pin with `AUTH_URL`.\n\nThe one place worth tightening is `apps/dev/express/src/config/auth.config.ts:29` and `apps/examples/express/src/config/auth.config.ts:29`, which hardcode `trustHost: true`. Those are dev and example apps, so for a production deployment, rely on `AUTH_URL` and set `AUTH_TRUST_HOST` only where a trusted proxy actually fronts the app. I did not check the production deployment config, so confirm that separately.\n\nANSWER: trust_host=true; reason=Setting it to false makes Auth.js reject every request with UntrustedHost (assert.ts:96), so the value should stay true, with the host pinned via AUTH_URL and trust limited to deployments behind a trusted proxy.",
+        "resolved_models": [
+          "anthropic/claude-haiku-5.5"
+        ],
+        "upstreams": [
+          "Claude Platform on AWS"
+        ],
+        "elapsed_ms": 9829
+      },
+      "waypoints": [],
+      "recalled": null,
+      "check": {
+        "pass": true,
+        "missing": [],
+        "any_matched": [
+          "proxy"
+        ],
+        "forbidden": [],
+        "trapped": [],
+        "marker_found": true
+      }
+    }
+  ]
+}
