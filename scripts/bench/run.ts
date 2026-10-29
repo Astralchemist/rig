@@ -19,6 +19,8 @@ import {
   resolveProviderName,
   type HttpOpts,
 } from './providers.ts';
+import { SESSIONS_PATH, loadSessionsFile, parseMemoryArms } from './sessions.ts';
+import { mainSessions } from './sessions-run.ts';
 import { gitHead, indexState, prepareIndex, rigVersion } from './target.ts';
 import type { BenchFile, OverviewInfo, QueriesFile, RunResult } from './types.ts';
 
@@ -40,7 +42,16 @@ const USAGE = `usage: bun scripts/bench/run.ts [options]
   --fresh-index            rebuild the target's .rig index even if current
   --index-only             build (or check) the index and exit, call no model
   --allow-commit-mismatch  run against a target not at the pinned commit
-  --queries-file <path>    alternative queries.json`;
+  --queries-file <path>    alternative queries.json
+
+multi-session memory mode (see README.md "Multi-session memory"):
+  --mode sessions          run the task pairs in sessions.json instead of the queries
+  --arms <list>            memory-off,memory-on,oracle,grep-only (default the first three)
+  --tasks <ids>            comma-separated task ids (default all)
+  --trials, --max-turns    as above; --max-turns counts model calls per user message
+  --sessions-file <path>   alternative sessions.json
+  --work-dir <path>        keep the index snapshot and trial copies here (default: a temp
+                           dir, deleted afterwards)`;
 
 const argv = process.argv.slice(2);
 const flag = (n: string): boolean => argv.includes(n);
@@ -74,6 +85,11 @@ const main = async (): Promise<void> => {
   );
   const queriesPath = argValue('--queries-file') ?? resolve(import.meta.dir, 'queries.json');
   const qf = JSON.parse(readFileSync(queriesPath, 'utf-8')) as QueriesFile;
+  const mode = argValue('--mode') ?? 'single';
+  if (mode !== 'single' && mode !== 'sessions') {
+    throw new Error(`unknown mode "${mode}" (expected single or sessions)`);
+  }
+  if (mode === 'sessions') return sessionsMode(repo, qf);
   for (const q of qf.queries) validateExpected(q.id, q.expected);
   const wanted = argValue('--queries')
     ?.split(',')
@@ -304,6 +320,52 @@ const main = async (): Promise<void> => {
   save();
   console.log(`\nwrote ${file.results.length} runs to ${outPath} (spent ≈ ${usd(spent)})`);
   console.log(`next: bun run bench:report ${outPath}`);
+};
+
+// --mode sessions: the same provider, model, pin and label handling, then
+// sessions-run.ts. The pinned commit is the one queries.json records.
+const sessionsMode = async (repo: string, qf: QueriesFile): Promise<void> => {
+  const sf = loadSessionsFile(argValue('--sessions-file') ?? SESSIONS_PATH);
+  const wanted = argValue('--tasks')
+    ?.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const unknown = wanted?.filter((id) => !sf.tasks.some((t) => t.id === id)) ?? [];
+  if (unknown.length) throw new Error(`unknown task id(s): ${unknown.join(', ')}`);
+  const providerName = resolveProviderName(argValue('--provider'));
+  const model = argValue('--model') ?? process.env.BENCH_MODEL ?? DEFAULT_MODELS[providerName];
+  const catalogue = await fetchCatalogue();
+  const pricing = lookupPricing(catalogue, model);
+  const apiKey = apiKeyFor(providerName);
+  const label = (argValue('--label') ?? `sessions-${model.split('/').pop()!}`).replace(
+    /[^A-Za-z0-9._-]+/g,
+    '-',
+  );
+  await mainSessions({
+    repo,
+    pinned: qf.target.commit,
+    head: existsSync(repo) ? gitHead(repo) : null,
+    rig: rigVersion(),
+    sessions: sf,
+    tasks: wanted ? sf.tasks.filter((t) => wanted.includes(t.id)) : sf.tasks,
+    arms: parseMemoryArms(argValue('--arms')),
+    trials: intArg('--trials', 3),
+    maxTurns: intArg('--max-turns', 12),
+    providerName,
+    hasKey: apiKey !== undefined && apiKey !== '',
+    model,
+    pricing,
+    haveCatalogue: catalogue !== null,
+    label,
+    out: argValue('--out') ?? null,
+    workDir: argValue('--work-dir') ?? null,
+    dryRun: flag('--dry-run'),
+    estimateFrom: argValue('--estimate-from') ?? null,
+    allowCommitMismatch: flag('--allow-commit-mismatch'),
+    makeProvider: () =>
+      makeProvider(providerName, model, apiKey!, pricing, { log: (l) => log(`  ${l}`) }),
+    log,
+  });
 };
 
 main().catch((err: unknown) => {

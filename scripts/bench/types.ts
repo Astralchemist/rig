@@ -126,3 +126,123 @@ export interface BenchFile {
   queries: Query[];
   results: RunResult[];
 }
+
+// ------------------------------------------------- multi-session memory mode
+
+// memory-off, memory-on and oracle are the measured arms; grep-only is the
+// sanity check that the session-2 answers are not in the code.
+export type MemoryArmName = 'memory-off' | 'memory-on' | 'oracle' | 'grep-only';
+
+export interface SessionExpected extends Expected {
+  // Trap answers: what the code alone points to. Any match fails the check.
+  must_not?: Pattern[];
+}
+
+export interface SessionCheck extends CheckResult {
+  // must_not patterns the answer matched.
+  trapped: string[];
+  // Whether the answer had the marker line the criteria are scoped to.
+  marker_found: boolean;
+}
+
+// What session 1 establishes.
+export type SessionTaskType = 'decision' | 'constraint' | 'dead-end' | 'discovery';
+
+export interface SessionTask {
+  id: string;
+  type: SessionTaskType;
+  // True when the code alone points to a specific wrong answer, which the
+  // session-1 fact overrides; must_not holds that answer.
+  trap: boolean;
+  // Session 1: fixed user messages, each followed by real model turns.
+  session1: string[];
+  // Session 2: one user message in a fresh context.
+  session2: string;
+  // The oracle arm's reference summary of what session 1 established.
+  oracle: string;
+  // A model answer to session 2 that passes; a test checks it does.
+  reference: string;
+  expected: SessionExpected;
+  // Trap tasks: where the code points to the trap answer, checked against the
+  // target checkout ({file, pattern} with a "/regex/" or substring pattern).
+  code_evidence?: { file: string; pattern: Pattern }[];
+}
+
+export interface SessionsFile {
+  // Marker that starts the line session-2 answers are graded on.
+  answer_marker: string;
+  tasks: SessionTask[];
+}
+
+export interface SessionOutcome {
+  session_id: string;
+  messages: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  cost_usd: number | null;
+  model_calls: number;
+  tool_turns: number;
+  tool_calls: Record<string, number>;
+  tool_chars: Record<string, number>;
+  stop: StopReason;
+  stops: StopReason[];
+  replies: string[];
+  final_text: string;
+  error?: string;
+  resolved_models: string[];
+  upstreams: string[];
+  elapsed_ms: number;
+}
+
+export interface DroppedWaypoint {
+  id: string;
+  kind: string;
+  title: string;
+  summary: string;
+}
+
+export interface SessionRunResult {
+  task_id: string;
+  arm: MemoryArmName;
+  trial: number;
+  // null for the arms that have no session 1 (oracle, grep-only).
+  s1: SessionOutcome | null;
+  s2: SessionOutcome;
+  // Waypoints session 1 left in the trial's database.
+  waypoints: DroppedWaypoint[];
+  // Session 1's waypoints that a rig_waypoints call in session 2 returned
+  // (distinct ids); null when session 2 had no rig_waypoints tool.
+  recalled: number | null;
+  check: SessionCheck;
+}
+
+export interface SessionsBenchFile {
+  schema: 1;
+  mode: 'sessions';
+  // The pre-registered pass bar, verbatim, written before any run.
+  preregistered_bar: string;
+  label: string;
+  started_at: string;
+  finished_at: string | null;
+  provider: ProviderName;
+  model: string;
+  rig: RigVersion;
+  target: {
+    repo: string;
+    commit: string | null;
+    expected_commit: string;
+    // Every trial starts from a copy of this snapshot of the target's index.
+    snapshot: { sha256: string; bytes: number; nodes: number; waypoints: number };
+  };
+  // Where the arms' rig instructions came from: the generated installer
+  // instructions, and a hash of that file.
+  instructions: { path: string; sha256: string };
+  // Trap tasks' code evidence, checked against the target at run time.
+  trap_evidence: { task_id: string; file: string; pattern: Pattern; found: boolean }[];
+  answer_marker: string;
+  arms: MemoryArmName[];
+  trials: number;
+  max_turns: number;
+  tasks: SessionTask[];
+  results: SessionRunResult[];
+}
