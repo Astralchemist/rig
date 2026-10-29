@@ -260,6 +260,9 @@ export interface SessionsBenchFile {
   instructions: { path: string; sha256: string };
   // Trap tasks' code evidence, checked against the target at run time.
   trap_evidence: { task_id: string; file: string; pattern: Pattern; found: boolean }[];
+  // Tasks' session-1 secrets, searched for in the target's files at run time;
+  // in_code should be false for every one. Absent from older files.
+  secret_check?: { task_id: string; secret: string; in_code: boolean }[];
   answer_marker: string;
   arms: MemoryArmName[];
   trials: number;

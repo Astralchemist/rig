@@ -189,6 +189,229 @@
         "any": ["INC-2291", "proxy"],
         "none": ["/trust_host\\s*=\\s*false/i"]
       }
+    },
+    {
+      "id": "base-path",
+      "set": "confirmation",
+      "type": "decision",
+      "trap": true,
+      "secret": "/auth/v2",
+      "session1": [
+        "Some context on routing. Our Next.js app mounts Auth.js at /auth/v2 instead of the default path: our gateway sends everything under /api/ to a separate Go service, so auth had to move. We set basePath to /auth/v2 in our app config. Where does next-auth choose its default base path?",
+        "Right, that's the default we moved away from. Keep our path in mind for when we register OAuth apps."
+      ],
+      "session2": "I'm registering a new GitHub OAuth app for production, where the app is served at https://app.acme.dev. What exact authorization callback URL do I enter? Finish with one line in exactly this form: ANSWER: callback_url=<full URL>",
+      "oracle": "Decision: our Next.js app mounts Auth.js at basePath /auth/v2, not next-auth's default /api/auth (set in packages/next-auth/src/lib/env.ts), because the gateway routes /api/ to a separate Go service. OAuth callback URLs are therefore <origin>/auth/v2/callback/<provider>.",
+      "reference": "Our basePath is /auth/v2, not the /api/auth default.\nANSWER: callback_url=https://app.acme.dev/auth/v2/callback/github",
+      "expected": {
+        "all": [
+          "/callback_url\\s*=\\s*[`\\\"']?https:\\/\\/app\\.acme\\.dev\\/auth\\/v2\\/callback\\/github\\b/i"
+        ],
+        "must_not": ["/\\/api\\/auth\\//i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/next-auth/src/lib/env.ts",
+          "pattern": "config.basePath ||= \"/api/auth\""
+        }
+      ]
+    },
+    {
+      "id": "session-cookie-name",
+      "set": "confirmation",
+      "type": "constraint",
+      "trap": true,
+      "secret": "acme_sid",
+      "session1": [
+        "A constraint from our CDN team: the edge forwards only cookies on an explicit allowlist, and the list can't hold wildcards or prefixed names. So our session cookie is renamed to exactly acme_sid through the cookies.sessionToken.name option, and anything else is stripped at the edge. Where does Auth.js define its default cookie names?",
+        "Good. That name is fixed; the CDN config is shared with other teams."
+      ],
+      "session2": "The CDN team is rebuilding its cookie allowlist and needs the exact name of our session cookie in production, which is served over HTTPS. Finish with one line in exactly this form: ANSWER: cookie=<exact cookie name>",
+      "oracle": "Constraint: the CDN forwards only allowlisted cookies, with no wildcards or prefixes, so the session cookie is renamed to exactly acme_sid via cookies.sessionToken.name. The default names (authjs.session-token, with __Secure- over HTTPS) in packages/core/src/lib/utils/cookie.ts are not used.",
+      "reference": "We override the default name.\nANSWER: cookie=acme_sid",
+      "expected": {
+        "all": ["/cookie\\s*=\\s*[`\\\"']?acme_sid\\b/i"],
+        "must_not": ["/authjs\\.session-token/i", "/next-auth\\.session-token/i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/utils/cookie.ts",
+          "pattern": "name: `${cookiePrefix}authjs.session-token`"
+        }
+      ]
+    },
+    {
+      "id": "email-sender",
+      "set": "confirmation",
+      "type": "decision",
+      "trap": true,
+      "secret": "login@acme.dev",
+      "session1": [
+        "A decision about auth email: magic-link emails go out from login@acme.dev. With the provider's default sender they bounced at Gmail and Outlook, because that address fails DMARC alignment with our domain, so we set `from` on the Resend provider. Where does the Resend provider set its defaults?",
+        "Great. That sender is the one ops added to our SPF and DKIM setup."
+      ],
+      "session2": "Customer support needs the exact From address of our magic-link emails, so enterprise customers can allowlist it. Finish with one line in exactly this form: ANSWER: from=<email address>",
+      "oracle": "Decision: magic-link emails are sent from login@acme.dev, set via `from` on the Resend provider. The default sender in packages/core/src/providers/resend.ts (Auth.js <no-reply@authjs.dev>) bounced at Gmail and Outlook because it fails DMARC alignment with our domain.",
+      "reference": "We override the provider's default sender.\nANSWER: from=login@acme.dev",
+      "expected": {
+        "all": ["/from\\s*=.*login@acme\\.dev/i"],
+        "must_not": ["/no-reply@authjs\\.dev/i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/providers/resend.ts",
+          "pattern": "from: \"Auth.js <no-reply@authjs.dev>\""
+        }
+      ]
+    },
+    {
+      "id": "sign-in-theme",
+      "set": "confirmation",
+      "type": "decision",
+      "trap": true,
+      "secret": "0F766E",
+      "session1": [
+        "A design decision for the built-in sign-in page: it is always dark, so colorScheme is 'dark', and brandColor is our teal #0F766E. The light variant failed our contrast audit next to the teal button. We pass both through the `theme` option. Where are the theme defaults set?",
+        "Thanks. Those two values are final."
+      ],
+      "session2": "A designer is updating the brand guide and asks which colorScheme and brandColor our sign-in page uses. Finish with one line in exactly this form: ANSWER: color_scheme=<value>; brand_color=<hex, or empty>",
+      "oracle": "Decision: the built-in sign-in page uses theme colorScheme 'dark' and brandColor #0F766E (our teal), passed through the theme option, because the light variant failed a contrast audit. The defaults in packages/core/src/lib/init.ts (colorScheme \"auto\", brandColor \"\") are not used.",
+      "reference": "We override both theme defaults.\nANSWER: color_scheme=dark; brand_color=#0F766E",
+      "expected": {
+        "all": [
+          "/color_scheme\\s*=\\s*[`\\\"']?dark\\b/i",
+          "/brand_color\\s*=\\s*[`\\\"']?#?0F766E\\b/i"
+        ],
+        "must_not": ["/color_scheme\\s*=\\s*[`\\\"']?auto\\b/i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/init.ts",
+          "pattern": "colorScheme: \"auto\""
+        }
+      ]
+    },
+    {
+      "id": "secret-env-var",
+      "set": "confirmation",
+      "type": "constraint",
+      "trap": true,
+      "secret": "ACME_AUTH_SECRET",
+      "session1": [
+        "A constraint from platform security: every secret our services read must carry the ACME_ prefix, because the secrets scanner and the Vault injector only handle that namespace. So the auth secret is injected as ACME_AUTH_SECRET and passed explicitly as `secret: process.env.ACME_AUTH_SECRET`. Nobody sets the stock variable. Where does Auth.js read its secret from the environment?",
+        "Right. Don't let anyone add the stock variable back."
+      ],
+      "session2": "I'm writing the env section of the deploy manifest for a new region. Which environment variable must carry the auth secret? Finish with one line in exactly this form: ANSWER: env_var=<NAME>",
+      "oracle": "Constraint: every secret must carry the ACME_ prefix (secrets scanner and Vault injector), so the auth secret is injected as ACME_AUTH_SECRET and passed as secret: process.env.ACME_AUTH_SECRET. The stock AUTH_SECRET read in packages/core/src/lib/utils/env.ts is never set.",
+      "reference": "Our secret lives in the ACME_ namespace, not the stock variable.\nANSWER: env_var=ACME_AUTH_SECRET",
+      "expected": {
+        "all": ["/env_var\\s*=\\s*[`\\\"']?ACME_AUTH_SECRET\\b/i"],
+        "must_not": ["/env_var\\s*=\\s*[`\\\"']?(NEXT)?AUTH_SECRET\\b/i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/utils/env.ts",
+          "pattern": "const secret = envObject.AUTH_SECRET"
+        }
+      ]
+    },
+    {
+      "id": "iframe-same-site",
+      "set": "confirmation",
+      "type": "dead-end",
+      "trap": true,
+      "session1": [
+        "Background: our app runs inside a partner portal's iframe, which is a cross-site context. We first shipped the default session cookie, and users were bounced to sign-in inside the iframe because browsers don't send that cookie in cross-site frames. Dead end. We changed cookies.sessionToken.options.sameSite to 'none', with secure on. Can you show me where the default cookie options come from?",
+        "Yes, that's the option we overrode."
+      ],
+      "session2": "For the security audit sheet: which SameSite value does our production session cookie use? Finish with one line in exactly this form: ANSWER: same_site=<value>",
+      "oracle": "Dead end: the default session cookie (sameSite \"lax\" in packages/core/src/lib/utils/cookie.ts) broke sign-in inside the partner portal's cross-site iframe. The session cookie now uses sameSite 'none' with secure, via cookies.sessionToken.options.",
+      "reference": "The lax default broke the iframe, so we use none.\nANSWER: same_site=none",
+      "expected": {
+        "all": ["/same_site\\s*=\\s*[`\\\"']?none\\b/i"],
+        "must_not": ["/same_site\\s*=\\s*[`\\\"']?(lax|strict)\\b/i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/utils/cookie.ts",
+          "pattern": "sameSite: \"lax\""
+        }
+      ]
+    },
+    {
+      "id": "forwarded-headers",
+      "set": "confirmation",
+      "type": "dead-end",
+      "trap": true,
+      "secret": "https://app.acme.dev",
+      "session1": [
+        "Background on our clusters: the ingress strips X-Forwarded-Host and X-Forwarded-Proto by security policy, and the platform team won't change that. Getting the right host from forwarded headers was a dead end; callback URLs came out with the pod's internal address. What fixed it was pinning AUTH_URL to https://app.acme.dev in the environment. How does Auth.js work out its own URL?",
+        "Yes. Don't send me back to the platform team about headers again."
+      ],
+      "session2": "In a new cluster, sign-in redirects go to `http://10.0.3.7:3000/...` instead of our public URL. What one change do you make? Finish with one line in exactly this form: ANSWER: change=<the one change>",
+      "oracle": "Dead end: our ingress strips X-Forwarded-Host and X-Forwarded-Proto (security policy, won't change), so the forwarded-header detection in packages/core/src/lib/utils/env.ts yields the pod's internal address. The fix: set AUTH_URL=https://app.acme.dev in the environment.",
+      "reference": "Forwarded headers are stripped by our ingress.\nANSWER: change=set AUTH_URL=https://app.acme.dev in the cluster's environment",
+      "expected": {
+        "all": ["/change\\s*=.*AUTH_URL/i", "app.acme.dev"],
+        "must_not": ["/change\\s*=.*x-forwarded/i"]
+      },
+      "code_evidence": [
+        {
+          "file": "packages/core/src/lib/utils/env.ts",
+          "pattern": "headers.get(\"x-forwarded-host\")"
+        }
+      ]
+    },
+    {
+      "id": "account-linking",
+      "set": "confirmation",
+      "type": "discovery",
+      "trap": false,
+      "session1": [
+        "Support has tickets from users who signed up with a magic link and then can't sign in with Google using the same email address. Can you find what blocks them, and where?",
+        "Is there a per-provider switch that allows it, and what's the risk?",
+        "OK, that's what I needed. We'll decide later."
+      ],
+      "session2": "We now trust Google's email verification. Which provider option lets a Google sign-in attach to an existing user with the same email, and which file enforces the check? Finish with one line in exactly this form: ANSWER: option=<name>; file=<path>",
+      "oracle": "Finding: packages/core/src/lib/actions/callback/handle-login.ts throws OAuthAccountNotLinked when an OAuth sign-in's email matches an existing user. Setting allowDangerousEmailAccountLinking: true on the provider links the account instead. The risk is account takeover if the provider doesn't verify emails.",
+      "reference": "ANSWER: option=allowDangerousEmailAccountLinking; file=packages/core/src/lib/actions/callback/handle-login.ts",
+      "expected": {
+        "all": ["allowDangerousEmailAccountLinking", "handle-login.ts"]
+      }
+    },
+    {
+      "id": "sign-in-return-value",
+      "set": "confirmation",
+      "type": "discovery",
+      "trap": false,
+      "session1": [
+        "Product wants users whose trial has expired to land on a /billing page when they sign in, not on the generic error page. Before we design it, trace what the signIn callback's return value controls: true, false and a string.",
+        "And where in core is that return value handled?"
+      ],
+      "session2": "If our signIn callback returns the string '/billing', what happens to the user, and which function in core handles that return value? Finish with one line in exactly this form: ANSWER: result=<what happens>; function=<name>",
+      "oracle": "Finding: handleAuthorized in packages/core/src/lib/actions/callback/index.ts calls the signIn callback. A falsy return throws AccessDenied. true continues the sign-in. A string is passed to the redirect callback as the URL and the user is redirected there, so '/billing' becomes <origin>/billing.",
+      "reference": "ANSWER: result=the user is redirected to /billing (through the redirect callback); function=handleAuthorized",
+      "expected": {
+        "all": ["/result\\s*=.*redirect/i", "handleAuthorized"],
+        "none": ["/result\\s*=.*access ?denied/i"]
+      }
+    },
+    {
+      "id": "approved-providers",
+      "set": "confirmation",
+      "type": "constraint",
+      "trap": false,
+      "session1": [
+        "A legal constraint on sign-in providers: only GitHub, Google and Okta are approved. Discord was reviewed and rejected because its data-processing terms don't meet our EU data-residency commitments. Which provider files would those three map to here?",
+        "Good. That list changes only through legal."
+      ],
+      "session2": "The community team asks us to add Discord sign-in, and the provider is already in the repo. Can we ship it? Finish with one line in exactly this form: ANSWER: allowed=<yes or no>; approved=<comma-separated providers>",
+      "oracle": "Constraint from legal: the only approved sign-in providers are GitHub, Google and Okta (packages/core/src/providers/github.ts, google.ts, okta.ts). Discord was reviewed and rejected over EU data residency. The list changes only through legal.",
+      "reference": "Discord was rejected by legal.\nANSWER: allowed=no; approved=GitHub, Google, Okta",
+      "expected": {
+        "all": ["/allowed\\s*=\\s*no\\b/i", "github", "google", "okta"],
+        "none": ["/allowed\\s*=\\s*yes/i", "/approved\\s*=.*discord/i"]
+      }
     }
   ]
 }

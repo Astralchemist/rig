@@ -23,6 +23,7 @@ import {
   PREREGISTERED_BAR,
   SESSION1_ARMS,
   TrialStore,
+  checkSecrets,
   checkTrapEvidence,
   instructionsInfo,
   runSessionsLoop,
@@ -74,6 +75,7 @@ export interface SessionsPlanInfo {
   trials: number;
   maxTurns: number;
   evidence: SessionsBenchFile['trap_evidence'];
+  secrets: NonNullable<SessionsBenchFile['secret_check']>;
   estimate: SessionsPlanEstimate;
   estimateFrom: string | null;
 }
@@ -117,6 +119,17 @@ export const sessionsPlanLines = (p: SessionsPlanInfo): string[] => {
             .map((e) => `${e.task_id} ${e.file}`)
             .join(', ')})`
         : ''),
+    ...(p.secrets.length
+      ? [
+          `secrets:   session-1 facts absent from the target's files in ${p.secrets.filter((x) => !x.in_code).length}/${p.secrets.length} checks` +
+            (p.secrets.some((x) => x.in_code)
+              ? ` (FOUND in code: ${p.secrets
+                  .filter((x) => x.in_code)
+                  .map((x) => `${x.task_id} "${x.secret}"`)
+                  .join(', ')})`
+              : ''),
+        ]
+      : []),
     `trials:    ${p.trials} per (task, arm), max ${p.maxTurns} model calls per user message`,
     `runs:      ${trials * p.arms.length} trials (${trials} per arm), ${sessions} sessions`,
     '',
@@ -193,6 +206,7 @@ export const newSessionsFile = (
   >,
   snapshot: Snapshot,
   evidence: SessionsBenchFile['trap_evidence'],
+  secrets: NonNullable<SessionsBenchFile['secret_check']> = [],
 ): SessionsBenchFile => ({
   schema: 1,
   mode: 'sessions',
@@ -218,6 +232,7 @@ export const newSessionsFile = (
   },
   instructions: instructionsInfo(),
   trap_evidence: evidence,
+  secret_check: secrets,
   answer_marker: c.sessions.answer_marker,
   arms: c.arms,
   trials: c.trials,
@@ -229,6 +244,7 @@ export const newSessionsFile = (
 export const mainSessions = async (c: SessionsCli): Promise<void> => {
   const index = existsSync(c.repo) ? indexState(c.repo, c.rig.fingerprint) : 'missing';
   const evidence = existsSync(c.repo) ? checkTrapEvidence(c.repo, c.tasks) : [];
+  const secrets = existsSync(c.repo) ? checkSecrets(c.repo, c.tasks) : [];
   if (c.dryRun) {
     const measured = c.estimateFrom
       ? sessionProfilesFrom(JSON.parse(readFileSync(c.estimateFrom, 'utf-8')) as SessionsBenchFile)
@@ -258,6 +274,7 @@ export const mainSessions = async (c: SessionsCli): Promise<void> => {
       trials: c.trials,
       maxTurns: c.maxTurns,
       evidence,
+      secrets,
       estimate,
       estimateFrom: c.estimateFrom,
     });
@@ -303,7 +320,7 @@ export const mainSessions = async (c: SessionsCli): Promise<void> => {
       `snapshot: ${snapshot.nodes.toLocaleString()} nodes, ${snapshot.waypoints} waypoints, ` +
         `sha256 ${snapshot.sha256.slice(0, 12)} (${workDir})`,
     );
-    const file = newSessionsFile(c, snapshot, evidence);
+    const file = newSessionsFile(c, snapshot, evidence, secrets);
     const save = (): void => writeFileSync(outPath, JSON.stringify(file, null, 2) + '\n');
     // The bar is on disk before the first model call.
     save();

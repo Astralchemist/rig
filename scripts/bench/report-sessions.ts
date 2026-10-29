@@ -105,6 +105,7 @@ export interface SessionsReport {
   target: SessionsBenchFile['target'];
   instructions: SessionsBenchFile['instructions'];
   trap_evidence: SessionsBenchFile['trap_evidence'];
+  secret_check: NonNullable<SessionsBenchFile['secret_check']>;
   bar: string;
   confirmation_rule: string | null;
   // The runs a combined report merges; null for a single run.
@@ -395,6 +396,7 @@ export const aggregateSessions = (
     target: file.target,
     instructions: file.instructions,
     trap_evidence: file.trap_evidence,
+    secret_check: file.secret_check ?? [],
     bar: file.preregistered_bar,
     confirmation_rule: file.confirmation_rule ?? null,
     combined: file.combined ?? null,
@@ -519,7 +521,7 @@ export const renderSessionsMarkdown = (r: SessionsReport): string => {
     L.push('');
   }
 
-  if (r.sanity.length || r.trap_evidence.length) {
+  if (r.sanity.length || r.trap_evidence.length || r.secret_check.length) {
     L.push('## Sanity: are the answers in the code?', '');
     if (r.trap_evidence.length) {
       const found = r.trap_evidence.filter((e) => e.found).length;
@@ -530,6 +532,15 @@ export const renderSessionsMarkdown = (r: SessionsReport): string => {
                 .filter((e) => !e.found)
                 .map((e) => `\`${e.task_id}\` ${e.file}`)
                 .join(', ')}`
+            : ''),
+      );
+    }
+    if (r.secret_check.length) {
+      const inCode = r.secret_check.filter((c) => c.in_code);
+      L.push(
+        `- Session-1 facts absent from the target's files: ${r.secret_check.length - inCode.length}/${r.secret_check.length}` +
+          (inCode.length
+            ? ` — **found in code**: ${inCode.map((c) => `\`${c.task_id}\``).join(', ')}`
             : ''),
       );
     }
@@ -613,6 +624,7 @@ export const mergeSessionsFiles = (files: readonly SessionsBenchFile[]): Session
     finished_at: finished.some((t) => t === null) ? null : (finished as string[]).sort().at(-1)!,
     ...(rule !== undefined ? { confirmation_rule: rule } : {}),
     trap_evidence: files.flatMap((f) => f.trap_evidence),
+    secret_check: files.flatMap((f) => f.secret_check ?? []),
     tasks: files.flatMap((f) => f.tasks),
     results: files.flatMap((f) => f.results),
     combined: files.map((f) => ({

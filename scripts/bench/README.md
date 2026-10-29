@@ -290,8 +290,10 @@ the report prints it:
 
 ### Design
 
-Each of the 10 task pairs in `sessions.json` runs on the pinned next-auth commit. The pin comes
-from `queries.json`; `sessions.json` has none of its own. Each pair has two sessions:
+`sessions.json` holds 20 task pairs in two sets: tasks 1–10 (`first`, the first run's tasks,
+unchanged since) and tasks 11–20 (`confirmation`, added under the confirmation rule). All of
+them run on the pinned next-auth commit. The pin comes from `queries.json`; `sessions.json` has
+none of its own. Each pair has two sessions:
 
 - **Session 1** is a scripted conversation: 2–4 fixed user messages, each followed by real
   model turns with tools. In it the user states, or the agent finds by investigating,
@@ -308,6 +310,8 @@ other wrong answers go in `none`. Each trap task also lists `code_evidence`: the
 pattern where the code points to the trap answer. The dry run and every results file check
 that evidence against the target.
 
+Tasks 1–10, set `first`:
+
 | task                    | type       | trap | session 1 establishes                                                                       | trap answer (code alone)                                              |
 | ----------------------- | ---------- | ---- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | `jwt-only-with-adapter` | decision   | yes  | Sessions stay JWT with the Prisma adapter; database sessions rejected (Edge latency).       | `strategy=database`: `init.ts` defaults to it with an adapter         |
@@ -320,6 +324,27 @@ that evidence against the target.
 | `update-age-jwt`        | discovery  |      | The agent traces that `updateAge` only throttles database sessions, not JWT.                | –                                                                     |
 | `oauth-check-ttl`       | discovery  |      | The agent finds that state/PKCE/nonce cookies live 900 s (`COOKIE_TTL` in `checks.ts`).     | –                                                                     |
 | `trust-host`            | constraint |      | `trustHost` stays on behind the Host-rewriting proxy; turning it off caused INC-2291.       | –                                                                     |
+
+Tasks 11–20, set `confirmation`, written after the first run's sanity warning that memory-off
+avoided half the trap runs. Seven of the ten are traps, and each trap's code carries an obvious,
+greppable default that a careful reader would take as the answer. The fact that overrides it
+is stated only in session 1. Six of the seven name that fact as a `secret`; the seventh,
+`iframe-same-site`, has none, because its answer, `none`, is an ordinary word. Validation checks
+that session 1 states each secret and session 2 doesn't, and the dry run and every results file
+check that it appears nowhere in the target checkout (`secret_check`).
+
+| task                   | type       | trap | session 1 establishes                                                                                 | trap answer (code alone) and its evidence                                                       |
+| ---------------------- | ---------- | ---- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `base-path`            | decision   | yes  | The app mounts Auth.js at `/auth/v2`; the gateway owns `/api/`.                                       | `…/api/auth/callback/github`: `config.basePath \|\|= "/api/auth"` in `next-auth/src/lib/env.ts` |
+| `session-cookie-name`  | constraint | yes  | The CDN allowlists exactly `acme_sid`, set via `cookies.sessionToken.name`.                           | `authjs.session-token`: `defaultCookies` in `lib/utils/cookie.ts`                               |
+| `email-sender`         | decision   | yes  | Magic links come from `login@acme.dev`; the default sender failed DMARC.                              | `no-reply@authjs.dev`: `from:` in `providers/resend.ts`                                         |
+| `sign-in-theme`        | decision   | yes  | The sign-in page is `colorScheme: 'dark'`, `brandColor: #0F766E`.                                     | `colorScheme: "auto"` in `lib/init.ts`                                                          |
+| `secret-env-var`       | constraint | yes  | Secrets must be `ACME_`-prefixed: the secret is `ACME_AUTH_SECRET`.                                   | `AUTH_SECRET`: `envObject.AUTH_SECRET` in `lib/utils/env.ts`                                    |
+| `iframe-same-site`     | dead-end   | yes  | The default cookie broke the cross-site iframe; the session cookie uses `sameSite: 'none'`.           | `lax`: `sameSite: "lax"` in `lib/utils/cookie.ts`                                               |
+| `forwarded-headers`    | dead-end   | yes  | The ingress strips forwarded headers; the fix is `AUTH_URL=https://app.acme.dev`.                     | forward `X-Forwarded-Host`: `headers.get("x-forwarded-host")` in `lib/utils/env.ts`             |
+| `account-linking`      | discovery  |      | The agent finds `OAuthAccountNotLinked` in `handle-login.ts` and `allowDangerousEmailAccountLinking`. | –                                                                                               |
+| `sign-in-return-value` | discovery  |      | The agent traces that a string from `signIn` redirects, in `handleAuthorized`.                        | –                                                                                               |
+| `approved-providers`   | constraint |      | Legal approves only GitHub, Google and Okta; Discord was rejected.                                    | –                                                                                               |
 
 The two discovery tasks can be recovered from the code by reading carefully, so they measure
 whether memory saves the re-derivation more than whether it changes the answer. The other non-trap tasks
@@ -373,9 +398,21 @@ set -a; . ~/.config/rig-bench/openrouter.env; set +a
 bun run bench:run --index-only                            # once, if the index isn't current
 bun run bench:run --mode sessions --dry-run               # plan + cost estimate, no model call
 bun run bench:run --mode sessions --arms grep-only --trials 1 --label sessions-sanity
-bun run bench:run --mode sessions --label sessions-haiku-5.5   # 10 pairs × 3 arms × 3 trials
+bun run bench:run --mode sessions --task-set first --label sessions-haiku-5.5
 bun run bench:report scripts/bench/results/<date>-sessions-haiku-5.5.json
 ```
+
+The confirmation run covers tasks 11–20 only, with the first run's model, arms and trials (the
+defaults), and is then reported together with the first run:
+
+```sh
+bun run bench:run --mode sessions --task-set confirmation --dry-run
+bun run bench:run --mode sessions --task-set confirmation --label sessions-confirmation-0.3.0
+bun run bench:report --in scripts/bench/results/2026-10-29-sessions-0.3.0.json \
+  --in scripts/bench/results/<date>-sessions-confirmation-0.3.0.json
+```
+
+Without `--task-set` or `--tasks`, a run covers all 20 tasks.
 
 `--tasks a,b` runs a subset. `--task-set <name>` runs only the tasks of one set: `first`
 (tasks 1–10, whose entries in `sessions.json` have no `set`) or `confirmation` (tasks 11–20).
@@ -385,9 +422,10 @@ temporary directory that is deleted at the end. `--estimate-from` takes an earli
 results file. `bench:report --recheck` re-grades stored answers against the current
 `sessions.json`.
 
-The dry-run estimate for the default plan (10 pairs × 3 arms × 3 trials = 90 trials,
-150 sessions) on `anthropic/claude-haiku-5.5` at $0.10 / $0.50 per M tokens is about
-$0.80 (~7.0M tokens). It assumes about 30k prompt tokens per session-1 user message and 25k
+The dry-run estimate for one set (10 pairs × 3 arms × 3 trials = 90 trials, 150 sessions) on
+`anthropic/claude-haiku-5.5` at $0.10 / $0.50 per M tokens is about $0.80 (~7.0M tokens) with
+the assumed profiles. With `--estimate-from` the first run's per-arm means give about $0.63
+(~5.3M tokens), which is what the first run cost. It assumes about 30k prompt tokens per session-1 user message and 25k
 per session 2. memory-on adds its tool definitions and prompt paragraphs to every call and one
 extra call per session; oracle adds its summary to every call. The grep-only sanity arm costs
 about $0.03 for one trial of every task (`--trials 1`).

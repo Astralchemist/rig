@@ -18,7 +18,15 @@
 // Every trial starts from a copy of one snapshot of the target's index, and
 // the shared index itself is only ever read.
 import { createHash, randomUUID } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+} from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Database, DB_FILE_NAME, RIG_DIR_NAME, Rig, type Embedder } from '@rig/core';
 import { runConversation, type ConversationOutcome } from './agent.ts';
@@ -442,6 +450,11 @@ export const validateSessionsFile = (sf: SessionsFile): void => {
       throw new Error(`${t.id}: session 2 must ask for the "${sf.answer_marker}" line`);
     }
     if (!t.oracle.trim()) throw new Error(`${t.id}: oracle summary is empty`);
+    if (t.secret !== undefined) {
+      const has = (text: string) => text.toLowerCase().includes(t.secret!.toLowerCase());
+      if (!t.session1.some(has)) throw new Error(`${t.id}: session 1 never states its secret`);
+      if (has(t.session2)) throw new Error(`${t.id}: session 2 gives away its secret`);
+    }
     validateSessionExpected(t.id, t.expected);
     if (t.trap && !(t.expected.must_not?.length && t.code_evidence?.length)) {
       throw new Error(`${t.id}: a trap task needs must_not patterns and code_evidence`);
@@ -472,6 +485,37 @@ export const checkTrapEvidence = (
       return { task_id: t.id, file: e.file, pattern: e.pattern, found };
     }),
   );
+
+// Directories the secret search skips: dependencies, VCS, rig's own index and
+// build output, none of which is code an agent would read for the answer.
+const SKIP_DIRS = new Set(['node_modules', '.git', RIG_DIR_NAME, 'dist', '.next', '.turbo']);
+const MAX_SCAN_BYTES = 2 * 1024 * 1024;
+
+const scanFiles = (dir: string, visit: (text: string) => void): void => {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) {
+      if (!SKIP_DIRS.has(e.name)) scanFiles(p, visit);
+    } else if (e.isFile() && statSync(p).size <= MAX_SCAN_BYTES) {
+      visit(readFileSync(p, 'utf-8').toLowerCase());
+    }
+  }
+};
+
+// The other half of "stated only in session 1": no task's secret appears
+// anywhere in the target checkout (case-insensitive). Reads files, nothing else.
+export const checkSecrets = (
+  repo: string,
+  tasks: readonly SessionTask[],
+): NonNullable<SessionsBenchFile['secret_check']> => {
+  const wanted = tasks.flatMap((t) => (t.secret ? [{ task_id: t.id, secret: t.secret }] : []));
+  if (wanted.length === 0) return [];
+  const found = new Set<string>();
+  scanFiles(repo, (text) => {
+    for (const w of wanted) if (text.includes(w.secret.toLowerCase())) found.add(w.task_id);
+  });
+  return wanted.map((w) => ({ ...w, in_code: found.has(w.task_id) }));
+};
 
 export const instructionsInfo = (): SessionsBenchFile['instructions'] => ({
   path: 'generated/installer/claude.instructions.md',

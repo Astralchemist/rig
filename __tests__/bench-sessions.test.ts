@@ -3,7 +3,15 @@
 // call goes through a mocked fetch; nothing here touches the network.
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Rig } from '../packages/core/src/index.ts';
@@ -32,6 +40,7 @@ import {
   PREREGISTERED_BAR,
   SESSION_SYSTEM_PROMPT,
   TrialStore,
+  checkSecrets,
   installedParagraph,
   loadSessionsFile,
   parseMemoryArms,
@@ -259,24 +268,42 @@ describe('session criteria', () => {
     'fork-default-max-age': 'ANSWER: default_max_age=2592000',
     'vendored-cookie': 'ANSWER: file=packages/core/src/lib/vendored/cookie.ts',
     'cookie-chunk-size': 'ANSWER: change=lower CHUNK_SIZE in lib/utils/cookie.ts and trim the jwt',
+    'base-path': 'ANSWER: callback_url=https://app.acme.dev/api/auth/callback/github',
+    'session-cookie-name': 'ANSWER: cookie=__Secure-authjs.session-token',
+    'email-sender': 'ANSWER: from=Auth.js <no-reply@authjs.dev>',
+    'sign-in-theme': 'ANSWER: color_scheme=auto; brand_color=',
+    'secret-env-var': 'ANSWER: env_var=AUTH_SECRET',
+    'iframe-same-site': 'ANSWER: same_site=lax',
+    'forwarded-headers':
+      'ANSWER: change=have the ingress forward X-Forwarded-Host and X-Forwarded-Proto',
   };
+  const TYPES = ['decision', 'constraint', 'dead-end', 'discovery'] as const;
 
-  test('sessions.json: 10 valid pairs, a mix of types, 3-4 traps, references pass', () => {
+  test('sessions.json: two sets of 10 valid pairs, typed and trapped as registered', () => {
     const sf = loadSessionsFile(SESSIONS);
-    expect(sf.tasks).toHaveLength(10);
-    for (const type of ['decision', 'constraint', 'dead-end', 'discovery'] as const) {
-      expect(sf.tasks.filter((t) => t.type === type).length).toBeGreaterThanOrEqual(2);
+    expect(sf.tasks).toHaveLength(20);
+    const first = selectTasks(sf.tasks, { set: 'first' });
+    const confirmation = selectTasks(sf.tasks, { set: 'confirmation' });
+    expect([first.length, confirmation.length]).toEqual([10, 10]);
+    // Tasks 1-10 come first, then 11-20.
+    expect(sf.tasks.slice(10)).toEqual(confirmation);
+    for (const set of [first, confirmation]) {
+      for (const type of TYPES) {
+        expect(set.filter((t) => t.type === type).length).toBeGreaterThanOrEqual(2);
+      }
     }
-    const traps = sf.tasks.filter((t) => t.trap);
-    expect(traps.length).toBeGreaterThanOrEqual(3);
-    expect(traps.length).toBeLessThanOrEqual(4);
+    expect(first.filter((t) => t.trap)).toHaveLength(4);
+    expect(confirmation.filter((t) => t.trap).length).toBeGreaterThanOrEqual(6);
     for (const t of sf.tasks) {
       const ref = checkSessionAnswer(t.reference, t.expected, sf.answer_marker);
       expect({ id: t.id, ...ref }).toMatchObject({ id: t.id, pass: true, marker_found: true });
-      // Session 2 is self-contained: it never quotes session 1's fact.
-      expect(t.session1.length).toBeGreaterThanOrEqual(2);
+      // Session 2 never gives its answer away: asked of itself, it fails.
+      expect({
+        id: t.id,
+        pass: checkSessionAnswer(t.session2, t.expected, 'ANSWER:').pass,
+      }).toEqual({ id: t.id, pass: false });
     }
-    for (const t of traps) {
+    for (const t of sf.tasks.filter((x) => x.trap)) {
       const hit = checkSessionAnswer(TRAP_ANSWERS[t.id]!, t.expected, sf.answer_marker);
       expect({ id: t.id, pass: hit.pass, trapped: hit.trapped.length > 0 }).toEqual({
         id: t.id,
@@ -284,23 +311,75 @@ describe('session criteria', () => {
         trapped: true,
       });
     }
+    // Confirmation traps state their fact as a literal only session 1 holds;
+    // validation checks session 1 has it and session 2 doesn't.
+    expect(confirmation.filter((t) => t.trap && t.secret).length).toBeGreaterThanOrEqual(6);
     // The pin is the single-shot bench's: sessions.json carries none of its own.
     expect((sf as unknown as { target?: unknown }).target).toBeUndefined();
   });
 
+  const FIRST_RUN = resolve(ROOT, 'scripts/bench/results/2026-10-29-sessions-0.3.0.json');
+  test.skipIf(!existsSync(FIRST_RUN))(
+    'tasks 1-10 are exactly the tasks the first run used (the confirmation changes none)',
+    () => {
+      const run = JSON.parse(readFileSync(FIRST_RUN, 'utf-8')) as SessionsBenchFile;
+      expect(selectTasks(loadSessionsFile(SESSIONS).tasks, { set: 'first' })).toEqual(run.tasks);
+    },
+  );
+
+  test('validation: a secret must be stated in session 1 and never in session 2', () => {
+    const base: SessionTask = { ...trapTask, secret: 'acme_sid' };
+    const file = (t: SessionTask): SessionsFile => ({ answer_marker: 'ANSWER:', tasks: [t] });
+    expect(() =>
+      validateSessionsFile(file({ ...base, session1: ['the cookie is acme_sid', 'ok'] })),
+    ).not.toThrow();
+    expect(() => validateSessionsFile(file(base))).toThrow('session 1 never states its secret');
+    expect(() =>
+      validateSessionsFile(
+        file({
+          ...base,
+          session1: ['the cookie is acme_sid', 'ok'],
+          session2: 'is it ACME_SID? ANSWER: cookie=<name>',
+        }),
+      ),
+    ).toThrow('session 2 gives away its secret');
+  });
+
   test.skipIf(!existsSync(join(BENCH_TARGET, 'packages/core/src/lib/init.ts')))(
-    "each trap's code evidence is in the pinned target (the code points to the trap)",
+    "each trap's code evidence is in the pinned target, and no secret is",
     async () => {
-      const { checkTrapEvidence } = await import('../scripts/bench/sessions.ts');
+      const { checkSecrets, checkTrapEvidence } = await import('../scripts/bench/sessions.ts');
       const qf = JSON.parse(
         readFileSync(resolve(ROOT, 'scripts/bench/queries.json'), 'utf-8'),
       ) as QueriesFile;
       expect(qf.target.commit).toMatch(/^[0-9a-f]{40}$/);
-      const ev = checkTrapEvidence(BENCH_TARGET, loadSessionsFile(SESSIONS).tasks);
-      expect(ev.length).toBeGreaterThanOrEqual(4);
+      const tasks = loadSessionsFile(SESSIONS).tasks;
+      const ev = checkTrapEvidence(BENCH_TARGET, tasks);
+      expect(ev.length).toBe(tasks.filter((t) => t.trap).length);
       expect(ev.filter((e) => !e.found)).toEqual([]);
+      const secrets = checkSecrets(BENCH_TARGET, tasks);
+      expect(secrets.length).toBeGreaterThanOrEqual(6);
+      expect(secrets.filter((x) => x.in_code)).toEqual([]);
     },
   );
+
+  test('the secret search reads the checkout and skips dependencies', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'rig-membench-secret-'));
+    try {
+      writeFileSync(join(dir, 'a.ts'), 'export const name = "ACME_SID";\n');
+      const nm = join(dir, 'node_modules', 'x');
+      mkdirSync(nm, { recursive: true });
+      writeFileSync(join(nm, 'b.js'), 'login@acme.dev');
+      const t = (id: string, secret: string): SessionTask => ({ ...trapTask, id, secret });
+      expect(checkSecrets(dir, [t('a', 'acme_sid'), t('b', 'login@acme.dev')])).toEqual([
+        { task_id: 'a', secret: 'acme_sid', in_code: true },
+        { task_id: 'b', secret: 'login@acme.dev', in_code: false },
+      ]);
+      expect(checkSecrets(dir, [trapTask])).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('installed instructions', () => {
@@ -953,45 +1032,63 @@ describe('dry-run cost estimate', () => {
     );
   });
 
-  test('the plan states the bar, the arms, the tasks and the 10 × 3 × 3 cost', () => {
+  test('the plan states the bar, the arms, the task set and the 10 × 3 × 3 cost', () => {
     const sf = loadSessionsFile(SESSIONS);
     const arms = parseMemoryArms(undefined);
     expect(arms).toEqual(['memory-off', 'memory-on', 'oracle']);
-    const estimate = estimateSessions({
-      arms,
-      tasks: taskShapes(sf.tasks),
-      trials: 3,
-      pricing,
-      overheads: sessionOverheads(),
-    });
-    const lines = sessionsPlanLines({
-      provider: 'openrouter',
-      hasKey: false,
-      model: 'anthropic/claude-haiku-5.5',
-      priceLine: '$0.10 in / $0.50 out per M tokens',
-      rig: { version: '0.3.0', commit: 'abc1234', dirty: false, fingerprint: 'f' },
-      repo: '/r',
-      head: 'c',
-      pinned: 'c',
-      index: 'current',
-      rg: true,
-      arms,
-      tasks: sf.tasks,
-      taskSet: null,
-      trials: 3,
-      maxTurns: 12,
-      evidence: [],
-      estimate,
-      estimateFrom: null,
-    }).join('\n');
-    expect(lines).toContain(`> ${PREREGISTERED_BAR}`);
-    expect(lines).toContain(
-      'tasks:     10 pairs (3 decision, 3 constraint, 2 dead-end, 2 discovery; 4 traps)',
+    const plan = (
+      taskSet: string,
+      secrets: { task_id: string; secret: string; in_code: boolean }[],
+    ) => {
+      const tasks = selectTasks(sf.tasks, { set: taskSet });
+      const estimate = estimateSessions({
+        arms,
+        tasks: taskShapes(tasks),
+        trials: 3,
+        pricing,
+        overheads: sessionOverheads(),
+      });
+      expect(estimate.total_usd!).toBeGreaterThan(0);
+      return sessionsPlanLines({
+        provider: 'openrouter',
+        hasKey: false,
+        model: 'anthropic/claude-haiku-5.5',
+        priceLine: '$0.10 in / $0.50 out per M tokens',
+        rig: { version: '0.3.0', commit: 'abc1234', dirty: false, fingerprint: 'f' },
+        repo: '/r',
+        head: 'c',
+        pinned: 'c',
+        index: 'current',
+        rg: true,
+        arms,
+        tasks,
+        taskSet,
+        trials: 3,
+        maxTurns: 12,
+        evidence: [],
+        secrets,
+        estimate,
+        estimateFrom: null,
+      }).join('\n');
+    };
+    const first = plan('first', []);
+    expect(first).toContain(`> ${PREREGISTERED_BAR}`);
+    expect(first).toContain(
+      'tasks:     10 pairs in set "first" (3 decision, 3 constraint, 2 dead-end, 2 discovery; 4 traps)',
     );
-    expect(lines).toContain('runs:      90 trials (30 per arm), 150 sessions');
-    expect(lines).toContain('(no API key in env)');
-    expect(lines).toMatch(/total {7}~\d+\.\d\dM tokens ≈ \$\d/);
-    expect(estimate.total_usd!).toBeGreaterThan(0);
+    expect(first).toContain('runs:      90 trials (30 per arm), 150 sessions');
+    expect(first).toContain('(no API key in env)');
+    expect(first).toMatch(/total {7}~\d+\.\d\dM tokens ≈ \$\d/);
+    expect(first).not.toContain('secrets:');
+    const conf = plan('confirmation', [
+      { task_id: 'a', secret: 'x', in_code: false },
+      { task_id: 'b', secret: 'y', in_code: true },
+    ]);
+    expect(conf).toContain(
+      '10 pairs in set "confirmation" (3 decision, 3 constraint, 2 dead-end, 2 discovery; 7 traps)',
+    );
+    expect(conf).toContain('runs:      90 trials (30 per arm), 150 sessions');
+    expect(conf).toContain('absent from the target\'s files in 1/2 checks (FOUND in code: b "y")');
     // The results file has the bar before any trial has run.
     const fresh = newSessionsFile(
       {
