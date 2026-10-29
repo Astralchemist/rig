@@ -14,6 +14,10 @@
 //               session 1 establishes. An upper bound, for interpretation.
 //   grep-only   no session 1; session 2 with the baseline tools. The sanity
 //               check that the answers are not in the code.
+//   memory-auto session 1 exactly as memory-off; then the capture pipeline
+//               `rig hook` runs stores what session 1 settled, on the same
+//               database; session 2 gets the SessionStart brief, the
+//               session-bootstrap paragraph and rig_waypoints, as memory-on.
 //
 // Every trial starts from a copy of one snapshot of the target's index, and
 // the shared index itself is only ever read.
@@ -29,7 +33,12 @@ import {
 } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Database, DB_FILE_NAME, RIG_DIR_NAME, Rig, type Embedder } from '@rig/core';
-import { runConversation, type ConversationOutcome } from './agent.ts';
+import { buildBrief } from '@rig/core/capture/brief.ts';
+import { captureConversation } from '@rig/core/capture/pipeline.ts';
+import { WAYPOINT_KIND_OF } from '@rig/core/capture/store.ts';
+import { INJECT_THRESHOLD, INJECTABLE_KINDS } from '@rig/core/capture/trust.ts';
+import type { ConversationEvent, SettledRecord } from '@rig/core/capture/types.ts';
+import { runConversation, type ConversationOutcome, type TranscriptEvent } from './agent.ts';
 import type { Arm } from './arms.ts';
 import { checkSessionAnswer, toMatcher, validateSessionExpected } from './criteria.ts';
 import type { Provider } from './providers.ts';
@@ -37,8 +46,10 @@ import { BASELINE_TOOLS, runBaselineTool } from './tools-baseline.ts';
 import { RIG_SEARCH_TOOL_NAMES, manifestToolDefs, makeRigToolRunner } from './tools-rig-search.ts';
 import { RIG_ROOT } from './target.ts';
 import type {
+  CapturedRecord,
   DroppedWaypoint,
   MemoryArmName,
+  SessionCapture,
   SessionOutcome,
   SessionRunResult,
   SessionTask,
@@ -68,10 +79,13 @@ export const MEMORY_ARM_NAMES: readonly MemoryArmName[] = [
   'memory-on',
   'oracle',
   'grep-only',
+  'memory-auto',
 ];
 export const DEFAULT_MEMORY_ARMS: readonly MemoryArmName[] = ['memory-off', 'memory-on', 'oracle'];
 // Arms that run session 1.
-export const SESSION1_ARMS: readonly MemoryArmName[] = ['memory-off', 'memory-on'];
+export const SESSION1_ARMS: readonly MemoryArmName[] = ['memory-off', 'memory-on', 'memory-auto'];
+// Arms whose session 2 opens the database session 1 wrote to.
+export const CARRY_OVER_ARMS: readonly MemoryArmName[] = ['memory-on', 'memory-auto'];
 
 export const parseMemoryArms = (raw: string | undefined): MemoryArmName[] => {
   if (raw === undefined) return [...DEFAULT_MEMORY_ARMS];
@@ -129,6 +143,12 @@ export const systemWithInstructions = (text: string): string =>
   `${SESSION_SYSTEM_PROMPT}\n\nInstructions installed in this project for the rig MCP tools:\n` +
   `${INSTRUCTIONS_BEGIN}\n${text.trim()}\n${INSTRUCTIONS_END}`;
 
+// The SessionStart hook's additionalContext, as Claude Code adds it to the
+// session's context: the brief verbatim, after the installed instructions.
+export const BRIEF_INTRO = 'Context from the SessionStart hook installed in this project:';
+export const systemWithBrief = (instructions: string, brief: string): string =>
+  systemWithInstructions(instructions) + (brief ? `\n\n${BRIEF_INTRO}\n${brief}` : '');
+
 export const systemWithNotes = (notes: string): string =>
   `${SESSION_SYSTEM_PROMPT}\n\nNotes from your previous session with this teammate:\n` +
   `${NOTES_BEGIN}\n${notes.trim()}\n${NOTES_END}`;
@@ -165,6 +185,8 @@ export interface PhaseCtx {
   rig: Rig;
   sessionId: string;
   task: SessionTask;
+  // memory-auto, session 2: the brief the SessionStart hook would print.
+  brief?: string;
 }
 
 // The arm for one session of one trial, or null when the arm skips it.
@@ -172,7 +194,8 @@ export const sessionArm = (arm: MemoryArmName, phase: 1 | 2, ctx: PhaseCtx): Arm
   const { repo, rig, sessionId, task } = ctx;
   // The Arm type names the single-shot arms; these reuse grep+rig's machinery.
   if (phase === 1) {
-    if (arm === 'memory-off')
+    // memory-auto's session 1 is memory-off's: no guidance, no write tools.
+    if (arm === 'memory-off' || arm === 'memory-auto')
       return grepRigArm('grep+rig', repo, rig, sessionId, [], SESSION_SYSTEM_PROMPT);
     if (arm === 'memory-on') {
       return grepRigArm(
@@ -196,6 +219,16 @@ export const sessionArm = (arm: MemoryArmName, phase: 1 | 2, ctx: PhaseCtx): Arm
       sessionId,
       MEMORY_READ_TOOLS,
       systemWithInstructions(sessionBootstrap()),
+    );
+  }
+  if (arm === 'memory-auto') {
+    return grepRigArm(
+      'grep+rig',
+      repo,
+      rig,
+      sessionId,
+      MEMORY_READ_TOOLS,
+      systemWithBrief(sessionBootstrap(), ctx.brief ?? ''),
     );
   }
   if (arm === 'oracle') {
@@ -353,15 +386,86 @@ const recallTracker = (s1Ids: ReadonlySet<string>) => {
   return { wrap, count: () => seen.size };
 };
 
+// The capture client: provenance of captured waypoints is `hook:rig-bench`.
+export const CAPTURE_CLIENT = 'rig-bench';
+
+// The agent loop's events as the extractor's normalized input.
+export const toConversationEvents = (events: readonly TranscriptEvent[]): ConversationEvent[] =>
+  events.map((e): ConversationEvent => {
+    switch (e.type) {
+      case 'user':
+      case 'assistant':
+        return { type: e.type, text: e.text };
+      case 'tool_call':
+        return { type: 'tool_call', id: e.id, name: e.name, input: e.input };
+      case 'tool_result':
+        return { type: 'tool_result', id: e.id, output: e.output };
+    }
+  });
+
+/**
+ * memory-auto, between the sessions: the capture pipeline `rig hook` runs
+ * (extract, redact, dedupe, store) on session 1's conversation and the
+ * trial's database, then the brief the SessionStart hook prints. The
+ * workspace is the pinned checkout, which has no uncommitted changes, so no
+ * focus files. A failure is recorded and session 2 runs without a brief.
+ */
+export const autoCapture = async (
+  rig: Rig,
+  sessionId: string,
+  events: readonly TranscriptEvent[],
+): Promise<SessionCapture> => {
+  const t0 = Date.now();
+  try {
+    const { outcome } = await captureConversation(
+      rig,
+      { session_id: sessionId, events: toConversationEvents(events) },
+      { client: CAPTURE_CLIENT },
+    );
+    await rig.whenIdle();
+    const row = (record: SettledRecord, stored: boolean): CapturedRecord => {
+      const kind = WAYPOINT_KIND_OF[record.kind];
+      return {
+        kind: record.kind,
+        waypoint_kind: kind,
+        summary: record.summary,
+        rationale: record.rationale,
+        confidence: record.confidence,
+        stored,
+        injectable:
+          stored && INJECTABLE_KINDS.includes(kind) && record.confidence >= INJECT_THRESHOLD,
+      };
+    };
+    return {
+      events: events.length,
+      records: [
+        ...outcome.stored.map((s) => row(s.record, true)),
+        ...outcome.duplicates.map((d) => row(d.record, false)),
+      ],
+      brief: buildBrief(rig),
+      elapsed_ms: Date.now() - t0,
+    };
+  } catch (e) {
+    return {
+      events: events.length,
+      records: [],
+      brief: '',
+      elapsed_ms: Date.now() - t0,
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
+};
+
 export const sessionWaypoints = (rig: Rig, sessionId: string): DroppedWaypoint[] =>
   rig
     .getWaypoints({ sessionId, limit: 200 })
     .map((w) => ({ id: w.id, kind: w.kind, title: w.title, summary: w.summary }));
 
 /**
- * One (task, arm, trial). memory-on keeps one database copy for both
- * sessions; memory-off throws session 1's copy away and gives session 2 a
- * fresh one; oracle and grep-only only run session 2, on a fresh copy.
+ * One (task, arm, trial). memory-on and memory-auto keep one database copy
+ * for both sessions (memory-auto captures session 1 into it in between);
+ * memory-off throws session 1's copy away and gives session 2 a fresh one;
+ * oracle and grep-only only run session 2, on a fresh copy.
  */
 export const runTrial = async (
   provider: Provider,
@@ -381,20 +485,32 @@ export const runTrial = async (
   try {
     let s1: SessionOutcome | null = null;
     let waypoints: DroppedWaypoint[] = [];
+    let capture: SessionCapture | undefined;
     const a1 = sessionArm(arm, 1, { repo: store.repo, rig: db.rig, sessionId: s1Id, task });
     if (a1) {
+      const events: TranscriptEvent[] = [];
       const t0 = Date.now();
-      const o = await runConversation(provider, a1, task.session1, agentOpts);
+      const o = await runConversation(provider, a1, task.session1, {
+        ...agentOpts,
+        ...(arm === 'memory-auto' ? { onEvent: (e: TranscriptEvent) => events.push(e) } : {}),
+      });
       s1 = outcome(o, s1Id, task.session1.length, t0);
       await db.rig.whenIdle();
+      if (arm === 'memory-auto') capture = await autoCapture(db.rig, s1Id, events);
       waypoints = sessionWaypoints(db.rig, s1Id);
     }
-    if (arm !== 'memory-on' && a1) {
+    if (!CARRY_OVER_ARMS.includes(arm) && a1) {
       // The reset: session 2 never sees session 1's database.
       await db.dispose();
       db = store.open();
     }
-    const a2 = sessionArm(arm, 2, { repo: store.repo, rig: db.rig, sessionId: s2Id, task })!;
+    const a2 = sessionArm(arm, 2, {
+      repo: store.repo,
+      rig: db.rig,
+      sessionId: s2Id,
+      task,
+      ...(capture ? { brief: capture.brief } : {}),
+    })!;
     const hasRecall = a2.tools.some((t) => t.name === 'rig_waypoints');
     const recall = recallTracker(new Set(waypoints.map((w) => w.id)));
     const t0 = Date.now();
@@ -409,6 +525,7 @@ export const runTrial = async (
       waypoints,
       recalled: hasRecall ? recall.count() : null,
       check: checkSessionAnswer(s2.final_text, task.expected, opts.marker),
+      ...(capture ? { capture } : {}),
     };
   } finally {
     await db.dispose();

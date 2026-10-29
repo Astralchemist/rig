@@ -6,7 +6,8 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { estimateTokens } from '@rig/core';
+import { CHARS_PER_TOKEN, estimateTokens } from '@rig/core';
+import { BRIEF_MAX } from '@rig/core/capture/brief.ts';
 import { selectEmbedder } from '@rig/core/embed/select.ts';
 import {
   estimateSessions,
@@ -51,6 +52,8 @@ export const sessionOverheads = (): SessionOverheads => ({
   bootstrap: estimateTokens(sessionBootstrap()),
   // A load of a handful of waypoints, as JSON.
   waypoint_output: 1_500,
+  // memory-auto: a full SessionStart brief.
+  brief: Math.ceil(BRIEF_MAX / CHARS_PER_TOKEN),
 });
 
 export const taskShapes = (tasks: readonly SessionTask[]) =>
@@ -149,6 +152,8 @@ const ARM_PLAN: Record<MemoryArmName, string> = {
     'grep+rig in both; s1 + rig_drop_waypoint, rig_waypoints and the waypoint guidance; s2 + rig_waypoints and the session-bootstrap instruction, same database',
   oracle: 'session 2 only, grep+rig, with a reference summary of session 1 in its prompt',
   'grep-only': 'session 2 only, ripgrep and file reads: the sanity check (should fail most traps)',
+  'memory-auto':
+    "s1 as memory-off; then rig hook's capture pipeline on s1's conversation; s2 + the SessionStart brief, rig_waypoints and the session-bootstrap instruction, same database",
 };
 
 export const priceLine = (p: ModelPricing | null, haveCatalogue: boolean): string =>

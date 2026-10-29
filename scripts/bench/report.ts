@@ -399,7 +399,7 @@ export const renderMarkdown = (r: Report): string => {
 
 if (import.meta.main) {
   const args = process.argv.slice(2);
-  const valued = new Set(['--in', '--out', '--queries-file', '--sessions-file']);
+  const valued = new Set(['--in', '--baseline', '--out', '--queries-file', '--sessions-file']);
   const value = (n: string): string | undefined => {
     const i = args.indexOf(n);
     return i >= 0 ? args[i + 1] : undefined;
@@ -407,9 +407,12 @@ if (import.meta.main) {
   const positional = args.filter((a, i) => !a.startsWith('--') && !valued.has(args[i - 1] ?? ''));
   // Every --in, then positionals; several sessions files make one combined report.
   const inPaths = [...args.flatMap((a, i) => (a === '--in' ? [args[i + 1]!] : [])), ...positional];
+  // --baseline: stored runs of the baseline arms that the --in run's new arm
+  // (bench:run --arms memory-auto) is judged against (addArmsToBaseline).
+  const baselinePaths = args.flatMap((a, i) => (a === '--baseline' ? [args[i + 1]!] : []));
   if (inPaths.length === 0) {
     console.error(
-      'usage: bun scripts/bench/report.ts <results.json> [--in more.json ...] [--out report.md] [--recheck [--queries-file queries.json | --sessions-file sessions.json]]',
+      'usage: bun scripts/bench/report.ts <results.json> [--in more.json ...] [--baseline stored.json ...] [--out report.md] [--recheck [--queries-file queries.json | --sessions-file sessions.json]]',
     );
     process.exit(2);
   }
@@ -434,7 +437,7 @@ if (import.meta.main) {
   };
   if (isSessions(raw)) {
     // Loaded here, not at the top: report-sessions.ts imports this module.
-    const { aggregateSessions, mergeSessionsFiles, renderSessionsMarkdown } =
+    const { addArmsToBaseline, aggregateSessions, mergeSessionsFiles, renderSessionsMarkdown } =
       await import('./report-sessions.ts');
     const { loadSessionsFile } = await import('./sessions.ts');
     const tasks = args.includes('--recheck')
@@ -444,6 +447,12 @@ if (import.meta.main) {
     let merged: SessionsBenchFile;
     try {
       merged = mergeSessionsFiles(inputs as SessionsBenchFile[]);
+      if (baselinePaths.length) {
+        const stored = baselinePaths.map(
+          (p) => JSON.parse(readFileSync(p, 'utf-8')) as SessionsBenchFile,
+        );
+        merged = addArmsToBaseline(mergeSessionsFiles(stored), merged);
+      }
     } catch (err) {
       console.error(`bench:report: ${err instanceof Error ? err.message : String(err)}`);
       process.exit(1);

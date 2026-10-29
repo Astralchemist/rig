@@ -377,9 +377,22 @@ passes its own criteria and that a code-only answer to each trap task fails as a
 | `memory-on`  | `grep+rig` plus `rig_drop_waypoint` and `rig_waypoints`; the prompt adds the installed waypoint guidance | `grep+rig` plus `rig_waypoints` (with `query`), on the same database; the prompt adds the installed session-bootstrap instruction          |
 | `oracle`     | not run                                                                                                  | `grep+rig`, with a hand-written summary of session 1's key facts in the prompt: an upper bound for interpretation, not part of the verdict |
 | `grep-only`  | not run                                                                                                  | `rg`, `read_file` and `list_dir` only: the sanity check that the answers aren't in the code                                                |
+| `memory-auto` | as `memory-off`: `grep+rig`, no waypoint guidance, no write tools; then automatic capture of the conversation | `grep+rig` plus `rig_waypoints` (with `query`), on the same database; the prompt adds the session-bootstrap instruction and the SessionStart brief |
 
 `--arms` defaults to `memory-off,memory-on,oracle`. Add `grep-only` for the sanity check; it
-runs session 2 only and is cheap. The report says whether code-only answers (`grep-only`, and
+runs session 2 only and is cheap. `memory-auto` is never a default: it is run on its own
+(`--arms memory-auto`) and reported against the stored runs (see "Combined runs").
+
+memory-auto's capture step records every message of session 1 as it happens (the agent
+loop's `onEvent`), maps it to the extractor's normalized input and calls
+`captureConversation`, the function `rig hook Stop` calls through `captureSession`, on the
+trial's database with provenance `hook:rig-bench`. It then builds the brief with
+`buildBrief`, as `rig hook SessionStart` does. The pinned checkout has no uncommitted
+changes, so the brief has no focus files. Session 2's prompt is memory-on's session-2
+prompt followed by "Context from the SessionStart hook installed in this project:" and the
+brief verbatim; Claude Code adds a hook's `additionalContext` to the session's context in
+the same way. The results record each trial's captured records (kind, summary, rationale,
+confidence, stored or duplicate, injectable) and the brief. The report says whether code-only answers (`grep-only`, and
 `memory-off`'s session 2) fail most trap-task runs. If they don't, the traps can be recovered
 from the code and the delta says little about memory.
 
@@ -432,6 +445,18 @@ bun run bench:report --in scripts/bench/results/2026-10-29-sessions-0.3.0.json \
 
 Without `--task-set` or `--tasks`, a run covers all 20 tasks.
 
+The pre-registered memory-auto run covers all 20 tasks with the stored runs' model, trials
+and turn limit, and runs only the new arm. Its report pairs each trial with the stored
+memory-off and memory-on trials of the same task and index:
+
+```sh
+bun run bench:run --mode sessions --arms memory-auto --dry-run
+bun run bench:run --mode sessions --arms memory-auto --label sessions-memory-auto
+bun run bench:report --baseline scripts/bench/results/2026-10-29-sessions-0.3.0.json \
+  --baseline scripts/bench/results/2026-10-29-sessions-confirmation-0.3.0.json \
+  --in scripts/bench/results/<date>-sessions-memory-auto.json
+```
+
 `--tasks a,b` runs a subset. `--task-set <name>` runs only the tasks of one set: `first`
 (tasks 1–10, whose entries in `sessions.json` have no `set`) or `confirmation` (tasks 11–20).
 The default label then names the set. `--max-turns` counts model calls per user message, default 12.
@@ -461,6 +486,17 @@ Per arm:
 Then come the paired memory-on minus memory-off table with the bootstrap CIs, the sanity
 section, a per-task table, and the verdict line against the bar at the top.
 
+With memory-auto, the report also prints its pre-registration, a verdict line for
+memory-auto against memory-off on the same bar, and memory-auto against memory-on as a
+descriptive comparison with no bar. Each comparison gets a paired table. An "Automatic
+capture" section shows records per trial (extracted, stored, injectable), the kinds, the
+brief's length and capture errors. Capture recall is computed in the report, after the run,
+and never reaches the arm. It counts the runs whose captured records, and separately whose
+brief, contain the fact the task needs. The fact is the task's `secret`, or else the
+literal strings and `key = value` values of its answer criteria. That is a coarse proxy,
+since the criteria are written against the ANSWER line. Tasks with no usable fact (only
+`file =`, say) are marked n/a.
+
 ### Combined runs
 
 `bench:report` takes several sessions results files and reports them as one:
@@ -478,11 +514,22 @@ commit, the turn limit or the answer marker, or that share a task, since a share
 trials would count twice. `--recheck` re-grades every run against the current
 `sessions.json`.
 
+**A new arm against stored baseline arms.** `--baseline <file>` (repeatable) names stored
+runs. They are combined with the rules above, and then the `--in` run's arms are added to
+them (`addArmsToBaseline`). This is the only way runs with different arms are judged
+together. The `--in` run must have only arms the baseline lacks, and only tasks the baseline
+has, defined identically. It must also match on model, trials, bar, target commit, turn
+limit and answer marker. Its trials then pair with the stored trials of the same task and
+index. The report says which arm came from which run. Their rig builds differ, so it flags
+the fingerprints.
+
 ### What it does not measure
 
-- **Hooks or automatic memory.** Rig ships manual waypoints, so the model decides whether to
-  drop one. If session 1 drops none, memory-on has nothing to load. The report shows how often
-  that happens.
+- **The hooks themselves.** memory-on measures manual waypoints: the model decides whether
+  to drop one, and if session 1 drops none, memory-on has nothing to load. memory-auto
+  measures automatic capture through the same pipeline and brief the hooks use, but the
+  harness calls them directly. Claude Code's hook process, its transcript file and its
+  timing are not part of the run.
 - **Edits.** Session 2 answers in text. It is graded on a decision, a value or a file, not on a
   patch.
 - **Longer gaps.** There is one hop from session 1 to session 2, with no intervening sessions

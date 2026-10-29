@@ -130,8 +130,9 @@ export interface BenchFile {
 // ------------------------------------------------- multi-session memory mode
 
 // memory-off, memory-on and oracle are the measured arms; grep-only is the
-// sanity check that the session-2 answers are not in the code.
-export type MemoryArmName = 'memory-off' | 'memory-on' | 'oracle' | 'grep-only';
+// sanity check that the session-2 answers are not in the code; memory-auto is
+// memory-off's session 1 plus automatic capture and the SessionStart brief.
+export type MemoryArmName = 'memory-off' | 'memory-on' | 'oracle' | 'grep-only' | 'memory-auto';
 
 export interface SessionExpected extends Expected {
   // Trap answers: what the code alone points to. Any match fails the check.
@@ -207,6 +208,32 @@ export interface DroppedWaypoint {
   summary: string;
 }
 
+// One record automatic capture extracted from session 1 (memory-auto).
+export interface CapturedRecord {
+  // The extractor's kind (agreed, rejected, dead-end, correction, constraint,
+  // decision) and the waypoint kind it was stored as.
+  kind: string;
+  waypoint_kind: string;
+  summary: string;
+  rationale: string;
+  confidence: number;
+  // Stored (false: a duplicate of a stored waypoint).
+  stored: boolean;
+  // Eligible for the SessionStart brief.
+  injectable: boolean;
+}
+
+// What automatic capture did between session 1 and session 2 (memory-auto).
+export interface SessionCapture {
+  // Conversation events the pipeline read.
+  events: number;
+  records: CapturedRecord[];
+  // The brief session 2 got, exactly as the SessionStart hook prints it.
+  brief: string;
+  elapsed_ms: number;
+  error?: string;
+}
+
 export interface SessionRunResult {
   task_id: string;
   arm: MemoryArmName;
@@ -220,6 +247,8 @@ export interface SessionRunResult {
   // (distinct ids); null when session 2 had no rig_waypoints tool.
   recalled: number | null;
   check: SessionCheck;
+  // memory-auto only.
+  capture?: SessionCapture;
 }
 
 export interface CombinedRun {
@@ -245,6 +274,9 @@ export interface SessionsBenchFile {
   task_set?: string;
   // Set by mergeSessionsFiles: the runs a combined file was built from.
   combined?: CombinedRun[];
+  // Set by addArmsToBaseline: arms from a new run judged against stored runs
+  // of the baseline arms (same model, trials, bar and target; other builds).
+  added_arms?: { arms: MemoryArmName[]; run: string; baseline_runs: string[] };
   label: string;
   started_at: string;
   finished_at: string | null;
