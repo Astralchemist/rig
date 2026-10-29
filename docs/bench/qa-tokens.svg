@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="478" viewBox="0 0 760 478" role="img" aria-labelledby="qa-tokens-title qa-tokens-desc">
+<title id="qa-tokens-title">Single-shot Q&amp;A: tokens relative to grep-only, anthropic/claude-haiku-5.5</title>
+<desc id="qa-tokens-desc">Single-shot Q&amp;A, anthropic/claude-haiku-5.5: tokens per question relative to grep-only (median over questions of the arm's median tokens divided by grep-only's), by rig build and arm. 100% means the same cost as grep-only; above means more tokens. rig 0.2.0: rig 175.1% overall, lookup 301.1%, natural-language 135.3%, 43/48 correct vs grep-only 48/48; rig-search 161.2% overall, lookup 155.5%, natural-language 271.3%, 41/48 correct vs grep-only 48/48; grep+rig 152.6% overall, lookup 190.3%, natural-language 125.0%, 47/48 correct vs grep-only 47/48. rig 0.2.0 + hybrid search: rig 268.4% overall, lookup 245.5%, natural-language 294.3%, 44/48 correct vs grep-only 48/48; rig-search 131.5% overall, lookup 178.0%, natural-language 84.4%, 46/48 correct vs grep-only 48/48; grep+rig 125.8% overall, lookup 148.5%, natural-language 107.2%, 47/48 correct vs grep-only 48/48. rig 0.3.0 + orientation map: grep+rig 133.6% overall, lookup 175.0%, natural-language 99.3%, 48/48 correct vs grep-only 48/48; grep+rig+map 187.2% overall, lookup 203.4%, natural-language 128.2%, 48/48 correct vs grep-only 48/48.</desc>
+<style>
+svg{--bg:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,0.10);--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a}
+@media (prefers-color-scheme: dark){svg{--bg:#1a1a19;--ink:#ffffff;--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,0.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70}}
+text{font-family:system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:12px;fill:var(--ink2)}
+.bg{fill:var(--bg);stroke:var(--border)}
+.title{font-size:15px;font-weight:600;fill:var(--ink)}
+.sub{fill:var(--ink2)}
+.head{font-weight:600;fill:var(--ink)}
+.lab{fill:var(--ink)}
+.val{fill:var(--ink2);font-variant-numeric:tabular-nums}
+.tick{font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums}
+.note{font-size:11px;fill:var(--muted)}
+.empty{font-size:11px;fill:var(--muted);font-style:italic}
+.grid{stroke:var(--grid);stroke-width:1}
+.axis{stroke:var(--axis);stroke-width:1}
+.ref{stroke:var(--ink2);stroke-width:1.5}
+.hit{fill:transparent}
+.ring{stroke:var(--bg);stroke-width:2}
+.f-s1{fill:var(--s1)}
+.w-s1{stroke:var(--s1);stroke-width:2;stroke-linecap:round;fill:none}
+.f-s2{fill:var(--s2)}
+.w-s2{stroke:var(--s2);stroke-width:2;stroke-linecap:round;fill:none}
+.f-s3{fill:var(--s3)}
+.w-s3{stroke:var(--s3);stroke-width:2;stroke-linecap:round;fill:none}
+.f-muted{fill:var(--muted)}
+.w-muted{stroke:var(--muted);stroke-width:2;stroke-linecap:round;fill:none}
+</style>
+<rect x="0.5" y="0.5" width="759" height="477" rx="8" class="bg"/>
+<text x="24" y="32" class="title">Single-shot Q&amp;A: tokens relative to grep-only, anthropic/claude-haiku-5.5</text>
+<text x="24" y="52" class="sub">Per question: arm median tokens ÷ grep-only median tokens; the dot is the median over questions. Left of 100% is cheaper.</text>
+<circle cx="29" cy="74" r="5" class="f-s1 ring"/>
+<text x="39" y="78" class="lab">all 16 questions</text>
+<circle cx="168.4" cy="74" r="5" class="f-s2 ring"/>
+<text x="178.4" y="78" class="lab">lookup questions (10)</text>
+<circle cx="339.8" cy="74" r="5" class="f-s3 ring"/>
+<text x="349.8" y="78" class="lab">natural-language questions (6)</text>
+<text x="580" y="102" class="note">all · correct (arm, grep)</text>
+<line x1="200" y1="108" x2="200" y2="426" class="grid"/><text x="200" y="441" class="tick" text-anchor="middle">0%</text><line x1="251.43" y1="108" x2="251.43" y2="426" class="grid"/><text x="251.43" y="441" class="tick" text-anchor="middle">50%</text><line x1="302.86" y1="108" x2="302.86" y2="426" class="grid"/><text x="302.86" y="441" class="tick" text-anchor="middle">100%</text><line x1="354.29" y1="108" x2="354.29" y2="426" class="grid"/><text x="354.29" y="441" class="tick" text-anchor="middle">150%</text><line x1="405.71" y1="108" x2="405.71" y2="426" class="grid"/><text x="405.71" y="441" class="tick" text-anchor="middle">200%</text><line x1="457.14" y1="108" x2="457.14" y2="426" class="grid"/><text x="457.14" y="441" class="tick" text-anchor="middle">250%</text><line x1="508.57" y1="108" x2="508.57" y2="426" class="grid"/><text x="508.57" y="441" class="tick" text-anchor="middle">300%</text><line x1="560" y1="108" x2="560" y2="426" class="grid"/><text x="560" y="441" class="tick" text-anchor="middle">350%</text>
+<line x1="302.86" y1="104" x2="302.86" y2="426" class="ref"/>
+<text x="306.86" y="102" class="note">grep-only = 100%</text>
+<text x="24" y="126" class="head">rig 0.2.0</text>
+<text x="36" y="149" class="lab" dominant-baseline="middle">rig</text>
+<circle cx="509.66" cy="142" r="4.5" class="f-s2 ring"/>
+<circle cx="339.2" cy="156" r="4.5" class="f-s3 ring"/>
+<circle cx="380.14" cy="149" r="4.5" class="f-s1 ring"/>
+<text x="580" y="149" class="val" dominant-baseline="middle">175.1% · 43/48, 48/48</text>
+<g><title>rig 0.2.0, rig (run 0.2.0-baseline): all 175.1%, lookup 301.1%, natural-language 135.3%; correct 43/48 vs grep-only 48/48</title><rect x="24" y="134" width="712" height="30" class="hit"/></g>
+<text x="36" y="179" class="lab" dominant-baseline="middle">rig-search</text>
+<circle cx="359.9" cy="172" r="4.5" class="f-s2 ring"/>
+<circle cx="479.06" cy="186" r="4.5" class="f-s3 ring"/>
+<circle cx="365.82" cy="179" r="4.5" class="f-s1 ring"/>
+<text x="580" y="179" class="val" dominant-baseline="middle">161.2% · 41/48, 48/48</text>
+<g><title>rig 0.2.0, rig-search (run 0.2.0-baseline): all 161.2%, lookup 155.5%, natural-language 271.3%; correct 41/48 vs grep-only 48/48</title><rect x="24" y="164" width="712" height="30" class="hit"/></g>
+<text x="36" y="209" class="lab" dominant-baseline="middle">grep+rig</text>
+<circle cx="395.78" cy="202" r="4.5" class="f-s2 ring"/>
+<circle cx="328.6" cy="216" r="4.5" class="f-s3 ring"/>
+<circle cx="356.91" cy="209" r="4.5" class="f-s1 ring"/>
+<text x="580" y="209" class="val" dominant-baseline="middle">152.6% · 47/48, 47/48</text>
+<g><title>rig 0.2.0, grep+rig (run 0.2.0-grep-rig): all 152.6%, lookup 190.3%, natural-language 125.0%; correct 47/48 vs grep-only 47/48</title><rect x="24" y="194" width="712" height="30" class="hit"/></g>
+<text x="24" y="242" class="head">rig 0.2.0 + hybrid search</text>
+<text x="36" y="265" class="lab" dominant-baseline="middle">rig</text>
+<circle cx="452.49" cy="258" r="4.5" class="f-s2 ring"/>
+<circle cx="502.68" cy="272" r="4.5" class="f-s3 ring"/>
+<circle cx="476.03" cy="265" r="4.5" class="f-s1 ring"/>
+<text x="580" y="265" class="val" dominant-baseline="middle">268.4% · 44/48, 48/48</text>
+<g><title>rig 0.2.0 + hybrid search, rig (run hybrid-search): all 268.4%, lookup 245.5%, natural-language 294.3%; correct 44/48 vs grep-only 48/48</title><rect x="24" y="250" width="712" height="30" class="hit"/></g>
+<text x="36" y="295" class="lab" dominant-baseline="middle">rig-search</text>
+<circle cx="383.08" cy="288" r="4.5" class="f-s2 ring"/>
+<circle cx="286.83" cy="302" r="4.5" class="f-s3 ring"/>
+<circle cx="335.3" cy="295" r="4.5" class="f-s1 ring"/>
+<text x="580" y="295" class="val" dominant-baseline="middle">131.5% · 46/48, 48/48</text>
+<g><title>rig 0.2.0 + hybrid search, rig-search (run hybrid-search): all 131.5%, lookup 178.0%, natural-language 84.4%; correct 46/48 vs grep-only 48/48</title><rect x="24" y="280" width="712" height="30" class="hit"/></g>
+<text x="36" y="325" class="lab" dominant-baseline="middle">grep+rig</text>
+<circle cx="352.75" cy="318" r="4.5" class="f-s2 ring"/>
+<circle cx="310.24" cy="332" r="4.5" class="f-s3 ring"/>
+<circle cx="329.43" cy="325" r="4.5" class="f-s1 ring"/>
+<text x="580" y="325" class="val" dominant-baseline="middle">125.8% · 47/48, 48/48</text>
+<g><title>rig 0.2.0 + hybrid search, grep+rig (run hybrid-grep-rig): all 125.8%, lookup 148.5%, natural-language 107.2%; correct 47/48 vs grep-only 48/48</title><rect x="24" y="310" width="712" height="30" class="hit"/></g>
+<text x="24" y="358" class="head">rig 0.3.0 + orientation map</text>
+<text x="36" y="381" class="lab" dominant-baseline="middle">grep+rig</text>
+<circle cx="379.98" cy="374" r="4.5" class="f-s2 ring"/>
+<circle cx="302.12" cy="388" r="4.5" class="f-s3 ring"/>
+<circle cx="337.38" cy="381" r="4.5" class="f-s1 ring"/>
+<text x="580" y="381" class="val" dominant-baseline="middle">133.6% · 48/48, 48/48</text>
+<g><title>rig 0.3.0 + orientation map, grep+rig (run orientation-map): all 133.6%, lookup 175.0%, natural-language 99.3%; correct 48/48 vs grep-only 48/48</title><rect x="24" y="366" width="712" height="30" class="hit"/></g>
+<text x="36" y="411" class="lab" dominant-baseline="middle">grep+rig+map</text>
+<circle cx="409.2" cy="404" r="4.5" class="f-s2 ring"/>
+<circle cx="331.84" cy="418" r="4.5" class="f-s3 ring"/>
+<circle cx="392.53" cy="411" r="4.5" class="f-s1 ring"/>
+<text x="580" y="411" class="val" dominant-baseline="middle">187.2% · 48/48, 48/48</text>
+<g><title>rig 0.3.0 + orientation map, grep+rig+map (run orientation-map): all 187.2%, lookup 203.4%, natural-language 128.2%; correct 48/48 vs grep-only 48/48</title><rect x="24" y="396" width="712" height="30" class="hit"/></g>
+<text x="24" y="460" class="note">3 trials per question and arm; each build measured against its own grep-only arm in the same run.</text>
+</svg>

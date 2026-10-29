@@ -203,6 +203,88 @@ export const bootstrapPaired = (
   };
 };
 
+export interface RateCI {
+  runs: number;
+  tasks: number;
+  rate: number;
+  ci: [number, number];
+  iterations: number;
+  seed: number;
+}
+
+/**
+ * One arm's session-2 pass rate with a 95% CI from the same two-level
+ * bootstrap as `bootstrapPaired` (tasks, then trials within each task; same
+ * default draws and seed), so the per-arm whiskers in the charts and the
+ * paired delta come from one procedure.
+ */
+export const bootstrapRate = (
+  runs: readonly { task: string; pass: number }[],
+  opts: { iterations?: number; seed?: number } = {},
+): RateCI | null => {
+  if (runs.length === 0) return null;
+  const iterations = opts.iterations ?? 10_000;
+  const seed = opts.seed ?? 20261029;
+  const byTask = new Map<string, number[]>();
+  for (const r of runs) byTask.set(r.task, [...(byTask.get(r.task) ?? []), r.pass]);
+  const groups = [...byTask.values()];
+  const rand = seededRandom(seed);
+  const pick = <T>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)]!;
+  const rates: number[] = [];
+  for (let b = 0; b < iterations; b++) {
+    let sum = 0;
+    let n = 0;
+    for (let g = 0; g < groups.length; g++) {
+      const group = pick(groups);
+      for (let k = 0; k < group.length; k++) {
+        sum += pick(group);
+        n++;
+      }
+    }
+    rates.push(sum / n);
+  }
+  rates.sort((a, b) => a - b);
+  return {
+    runs: runs.length,
+    tasks: groups.length,
+    rate: runs.reduce((s, r) => s + r.pass, 0) / runs.length,
+    ci: [quantile(rates, 0.025), quantile(rates, 0.975)],
+    iterations,
+    seed,
+  };
+};
+
+/**
+ * `arm` minus `base` over the (task, trial) pairs both ran, as in the report's
+ * memory-on minus memory-off table; any two arms of a file work, so an arm
+ * added later gets its delta without changes here.
+ */
+export const pairArms = (
+  results: readonly SessionRunResult[],
+  arm: string,
+  base: string,
+): Pair[] => {
+  const key = (r: SessionRunResult) => `${r.task_id}\u0000${r.trial}`;
+  const off = new Map(results.filter((r) => r.arm === base).map((r) => [key(r), r]));
+  return results
+    .filter((r) => r.arm === arm)
+    .flatMap((on) => {
+      const o = off.get(key(on));
+      return o
+        ? [
+            {
+              task: on.task_id,
+              trial: on.trial,
+              on: on.check.pass ? 1 : 0,
+              off: o.check.pass ? 1 : 0,
+              on_tokens: totalTokens(on),
+              off_tokens: totalTokens(o),
+            },
+          ]
+        : [];
+    });
+};
+
 const pp = (v: number): string => `${(v * 100).toFixed(1)} pp`;
 const pc = (v: number): string => `${(v * 100).toFixed(1)}%`;
 
