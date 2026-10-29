@@ -13,12 +13,27 @@ export interface RunProfile {
 
 // Baseline re-sends grep output and file slices on every call; the rig arms
 // send short node lists, rig-search sometimes a source bundle. grep+rig is
-// assumed to cost about what baseline does until a run says otherwise.
+// assumed to cost about what baseline does until a run says otherwise;
+// grep+rig+map pays the ~2k-token overview again on every call (the bench
+// enables no prompt caching).
+const GREP_RIG_PROFILE: RunProfile = {
+  prompt_tokens: 60_000,
+  completion_tokens: 1_500,
+  model_calls: 6,
+};
+
+// grep+rig's profile with a `mapTokens` overview added to every call.
+export const withOverview = (p: RunProfile, mapTokens: number): RunProfile => ({
+  ...p,
+  prompt_tokens: p.prompt_tokens + mapTokens * p.model_calls,
+});
+
 export const DEFAULT_PROFILES: Record<ArmName, RunProfile> = {
   baseline: { prompt_tokens: 60_000, completion_tokens: 1_500, model_calls: 6 },
   rig: { prompt_tokens: 20_000, completion_tokens: 1_000, model_calls: 5 },
   'rig-search': { prompt_tokens: 30_000, completion_tokens: 1_000, model_calls: 4 },
-  'grep+rig': { prompt_tokens: 60_000, completion_tokens: 1_500, model_calls: 6 },
+  'grep+rig': GREP_RIG_PROFILE,
+  'grep+rig+map': withOverview(GREP_RIG_PROFILE, 2_000),
 };
 
 // A judge call: question, reference and answer in, a one-line verdict out.
@@ -72,9 +87,16 @@ export const estimatePlan = (opts: {
   profiles?: Partial<Record<ArmName, RunProfile>>;
   judgePricing?: ModelPricing | null;
   judge?: boolean;
+  // grep+rig+map's overview budget in tokens (default 2000).
+  mapTokens?: number;
 }): PlanEstimate => {
+  // Without a measured grep+rig+map profile, take grep+rig's (measured or
+  // assumed) and add the overview to every call.
+  const mapProfile = (): RunProfile =>
+    withOverview(opts.profiles?.['grep+rig'] ?? GREP_RIG_PROFILE, opts.mapTokens ?? 2_000);
   const arms = opts.arms.map((arm): ArmEstimate => {
-    const profile = opts.profiles?.[arm] ?? DEFAULT_PROFILES[arm];
+    const profile =
+      opts.profiles?.[arm] ?? (arm === 'grep+rig+map' ? mapProfile() : DEFAULT_PROFILES[arm]);
     return {
       arm,
       runs: opts.runsPerArm,

@@ -29,6 +29,8 @@ import { makeWalkFilter, walkProject, type WalkOptions } from './extract/walker.
 import { detectCommunities } from './graph/communities.ts';
 import { recomputeHubness, recomputeHubnessForFiles } from './graph/hubness.ts';
 import { inferTestsEdges } from './graph/tests-edges.ts';
+import { logWarn } from './errors.ts';
+import { refreshOverview } from './orientation.ts';
 import {
   positionOrdinals,
   reconcileNodes,
@@ -50,7 +52,8 @@ import { rebuildStructuralEdges } from './resolve/rebuild-edges.ts';
 //   6. rebuild the derived ('ast') edges from the artifacts of ALL files
 //   7. tests-edges, hubness, lockfile enrichment and communities
 //   8. record the completion time in meta (last_index_ts / last_sync_ts), so
-//      status can tell when the graph last matched the files
+//      status can tell when the graph last matched the files, and refresh
+//      the orientation map (orientation.ts) unless nothing it reads changed
 //   9. embed the changed nodes, and any extracted node, waypoint or skill
 //      still missing a vector from the current model or embedded from an
 //      older version of its embedding text
@@ -319,10 +322,18 @@ export async function runUpdate(
 
   const nothingChanged = changed.length === 0 && deleted.length === 0;
   const healOnly = mode === 'sync' && nothingChanged;
-  const markDone = (): Promise<void> =>
-    retryWhenBusy(() =>
+  const markDone = async (): Promise<void> => {
+    await retryWhenBusy(() =>
       setMeta(db, mode === 'index' ? META_LAST_INDEX_TS : META_LAST_SYNC_TS, String(Date.now())),
     );
+    // A cheap fingerprint check when nothing the map reads changed. Never
+    // fails the update: readers regenerate a stale map themselves.
+    try {
+      await retryWhenBusy(() => refreshOverview(db, projectRoot));
+    } catch (e) {
+      logWarn('Could not refresh the orientation map', { error: String(e) });
+    }
+  };
   if (healOnly && !(embedder && anyMissingEmbedding(db, embedder.model))) {
     await markDone();
     return {

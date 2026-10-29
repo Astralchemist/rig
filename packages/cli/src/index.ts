@@ -10,6 +10,7 @@ import { runIndex } from './index-cmd.ts';
 import { runInit } from './init.ts';
 import { runInstall } from './install-cmd.ts';
 import { runExportMemory, runImportMemory } from './memory-cmd.ts';
+import { runOverview } from './overview-cmd.ts';
 import { runQuery } from './query-cmd.ts';
 import { runServe } from './serve-cmd.ts';
 import { runStart } from './start.ts';
@@ -27,6 +28,7 @@ const COMMANDS: Record<string, (cwd: string) => void | Promise<void>> = {
   sync: runSync,
   query: runQuery,
   files: runFiles,
+  overview: runOverview,
   install: runInstall,
   uninstall: runUninstall,
   serve: runServe,
@@ -51,6 +53,8 @@ commands:
   sync        incremental update
   query       CLI search
   files       list indexed files
+  overview    print the orientation map your agent gets from rig_overview
+              (--budget <tokens>, default 2000; --json)
   install     wire Rig into Claude Code / Cursor / Codex / opencode — writes into this
               project by default; --global writes your user-level config
               (openrouter: writes a reference config only — it isn't an MCP host)

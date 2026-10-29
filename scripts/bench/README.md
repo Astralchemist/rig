@@ -1,30 +1,53 @@
 # Rig token-cost benchmark
 
 An end-to-end comparison of tool surfaces. Each run gives the same question to the same model,
-with the same system prompt and a fresh context. Only the tools differ. The harness records the
+with the same system prompt and a fresh context. Only the tools differ, except in `grep+rig+map`,
+whose system prompt also carries rig's repository overview. The harness records the
 tokens and dollars each run spends, checks the answer automatically, and the report compares
 every rig arm with plain grep-and-read.
 
 ## Arms
 
-Choose arms with `--arms baseline,rig,rig-search,grep+rig`. All four run by default.
+Choose arms with `--arms baseline,rig,rig-search,grep+rig,grep+rig+map`. All five run by
+default.
 
-| Arm          | Tools                                                                                                | What it measures                                                                                                                                                   |
-| ------------ | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `baseline`   | `rg`, `read_file`, `list_dir`                                                                        | An agent finding its way around a fresh repo, without artificial limits.                                                                                           |
-| `rig`        | `rig_search`, `rig_node`, `rig_callers`, `rig_neighbors`, `rig_deps`, `rig_unused_deps`, `rig_files` | The original light-tier slice (`tools-rig.ts`). It calls `Rig` methods directly and uses its own descriptions.                                                     |
-| `rig-search` | `rig_search`, `rig_context`, `rig_explore`, `rig_node`, `rig_callers`, `rig_neighbors`, `rig_files`  | Rig's search-facing MCP tools as an MCP client sees them: the generated handlers with contract validation, plus the manifest's descriptions and input schemas.     |
-| `grep+rig`   | the `baseline` tools plus the `rig-search` tools                                                     | What an agent has in real use: it can locate code with rig and read it with `read_file` or `rg`. Rig tools run through the same real-handler path as `rig-search`. |
+| Arm            | Tools                                                                                                | What it measures                                                                                                                                                   |
+| -------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `baseline`     | `rg`, `read_file`, `list_dir`                                                                        | An agent finding its way around a fresh repo, without artificial limits.                                                                                           |
+| `rig`          | `rig_search`, `rig_node`, `rig_callers`, `rig_neighbors`, `rig_deps`, `rig_unused_deps`, `rig_files` | The original light-tier slice (`tools-rig.ts`). It calls `Rig` methods directly and uses its own descriptions.                                                     |
+| `rig-search`   | `rig_search`, `rig_context`, `rig_explore`, `rig_node`, `rig_callers`, `rig_neighbors`, `rig_files`  | Rig's search-facing MCP tools as an MCP client sees them: the generated handlers with contract validation, plus the manifest's descriptions and input schemas.     |
+| `grep+rig`     | the `baseline` tools plus the `rig-search` tools                                                     | What an agent has in real use: it can locate code with rig and read it with `read_file` or `rg`. Rig tools run through the same real-handler path as `rig-search`. |
+| `grep+rig+map` | the `grep+rig` tools                                                                                 | `grep+rig` plus rig's repository overview in the system prompt: what an agent has when it calls `rig_overview` first, as the installed instructions say.           |
 
 `rig-search` exists to measure search changes. It copies no tool code, so a change to search, a
 tool implementation or a contract shows up in the next bench run with no change to the harness.
 The harness doesn't record activations, so earlier runs can't affect later ones.
 
+`grep+rig+map` measures the orientation map (`rig_overview`, `rig://overview`). The harness
+generates the map of the target from its index with this checkout's rig, then appends it to the
+shared system prompt, unchanged, as a delimited block:
+
+```
+<shared system prompt>
+
+Repository overview, generated from an index of this repository:
+<repository-overview>
+# Repository overview: next-auth
+…
+</repository-overview>
+```
+
+Everything else matches `grep+rig`: the same tools, descriptions and routing. The map's budget is
+2,000 tokens (about 8,000 characters); `--map-budget` changes it. The results file records the
+map's size in characters and estimated tokens under `overview`, and the report prints it. The
+bench enables no prompt caching, so the map is billed again on every model call: about 2,000
+tokens × model calls per run. The arm pays off only if it saves more turns than that.
+
 `grep+rig` exists because the rig-only arms can't read source code. In a run they sometimes stop
 at a location and a docstring where the question needs the code. It uses the same system prompt
 as every other arm and gives no hint about which tools to use.
 
-The `baseline` and `grep+rig` arms need ripgrep: run `brew install ripgrep`, or point `BENCH_RG` at an `rg`
+The `baseline`, `grep+rig` and `grep+rig+map` arms need ripgrep: run `brew install ripgrep`, or point `BENCH_RG` at an `rg`
 binary. `--dry-run` reports whether it found one. ripgrep output is cut at 200 lines, and both
 `rg` and `read_file` output at 60,000 characters. That 60,000 is the same budget rig's heavy
 tools use.
@@ -143,7 +166,7 @@ Keys come from the environment. Load them without printing them:
 ```sh
 set -a; . ~/.config/rig-bench/openrouter.env; set +a   # exports OPENROUTER_API_KEY
 bun run bench:run --dry-run                             # plan + cost estimate, no model call
-bun run bench:run --label baseline-0.2.0                # full run: 16 queries × 3 trials × 4 arms
+bun run bench:run --label baseline-0.2.0                # full run: 16 queries × 3 trials × 5 arms
 bun run bench:report scripts/bench/results/<date>-baseline-0.2.0.json
 ```
 
@@ -154,6 +177,7 @@ Useful flags:
 | `--queries nl-csrf,routes`           | Run a subset of query ids.                                     |
 | `--trials N`                         | Trials per (query, arm). Default 3.                            |
 | `--arms grep+rig,baseline`           | Run a subset of arms.                                          |
+| `--map-budget N`                     | Token budget of `grep+rig+map`'s overview. Default 2000.       |
 | `--max-turns N`                      | Model calls per run before giving up. Default 12.              |
 | `--judge anthropic/claude-haiku-5.5` | Add the LLM judge.                                             |
 | `--label NAME` / `--out PATH`        | Results go to `scripts/bench/results/<UTC date>-<label>.json`. |
@@ -168,23 +192,24 @@ two reports side by side. The `rig.fingerprint` in each file shows which sources
 
 ## Cost estimates
 
-These are `--dry-run` figures for the default plan: 16 queries × 3 trials × 4 arms = 192 runs.
+These are `--dry-run` figures for the default plan: 16 queries × 3 trials × 5 arms = 240 runs.
 They use OpenRouter list prices as of 2026-10-29 and assumed token profiles per run: baseline
-~60k in / 1.5k out, `rig` ~20k / 1k, `rig-search` ~30k / 1k, `grep+rig` ~60k / 1.5k. After the first real run, pass
-`--estimate-from` to replace the assumed profiles with measured ones.
+~60k in / 1.5k out, `rig` ~20k / 1k, `rig-search` ~30k / 1k, `grep+rig` ~60k / 1.5k,
+`grep+rig+map` ~72k / 1.5k (`grep+rig` plus the 2k-token map on each of ~6 calls). After the
+first real run, pass `--estimate-from` to replace the assumed profiles with measured ones.
 
 | Model (OpenRouter id)         | $ / M in · out | Default plan |
 | ----------------------------- | -------------- | -----------: |
-| `anthropic/claude-haiku-5.5`  | 0.10 · 0.50    |      ≈ $0.94 |
-| `anthropic/claude-haiku-4.5`  | 1.00 · 5.00    |      ≈ $9.36 |
-| `anthropic/claude-sonnet-5`   | 2.00 · 10.00   |     ≈ $18.72 |
-| `anthropic/claude-sonnet-5.5` | 2.00 · 10.00   |     ≈ $18.72 |
-| `anthropic/claude-opus-5.5`   | 4.00 · 20.00   |     ≈ $37.44 |
+| `anthropic/claude-haiku-5.5`  | 0.10 · 0.50    |      ≈ $1.32 |
+| `anthropic/claude-haiku-4.5`  | 1.00 · 5.00    |     ≈ $13.18 |
+| `anthropic/claude-sonnet-5`   | 2.00 · 10.00   |     ≈ $26.35 |
+| `anthropic/claude-sonnet-5.5` | 2.00 · 10.00   |     ≈ $26.35 |
+| `anthropic/claude-opus-5.5`   | 4.00 · 20.00   |     ≈ $52.70 |
 
 For prompts over 100k tokens in a single call, Haiku 5.5 bills at its long-context tier
 ($0.50 / $2.50). Calls in this bench should stay below that, and both OpenRouter's reported cost
-and the computed Anthropic-path cost apply the higher tier if a call crosses it. A Haiku 5.5 judge adds about $0.03 per
-192 runs. The Anthropic-direct path costs the same per token as the matching OpenRouter id.
+and the computed Anthropic-path cost apply the higher tier if a call crosses it. A Haiku 5.5 judge adds about $0.04 per
+240 runs. The Anthropic-direct path costs the same per token as the matching OpenRouter id.
 
 ## Report
 
@@ -244,7 +269,8 @@ correctness exists, they are only hypotheses:
   selection.
 - `agent.ts`: the tool loop, with usage and cost summed over calls.
 - `arms.ts`, `tools-baseline.ts`, `tools-rig.ts`, `tools-rig-search.ts`: the tool surfaces
-  (`grep+rig` combines baseline and rig-search in `arms.ts`).
+  (`grep+rig` combines baseline and rig-search in `arms.ts`, and `grep+rig+map` adds the overview
+  to its system prompt there).
 - `criteria.ts`: expected-criteria matching. `judge.ts`: the optional LLM judge.
 - `pricing.ts`, `plan.ts`: the OpenRouter catalogue and the dry-run estimate.
 - `target.ts`: the rig version fingerprint and index preparation.

@@ -75,6 +75,7 @@ export interface Report {
   judge_model: string | null;
   rig: BenchFile['rig'];
   target: BenchFile['target'];
+  overview: BenchFile['overview'] | null;
   trials: number;
   arms: ArmStats[];
   queries: QueryRow[];
@@ -245,6 +246,7 @@ export const aggregate = (file: BenchFile, opts: { queries?: readonly Query[] } 
     judge_model: file.judge_model,
     rig: file.rig,
     target: file.target,
+    overview: file.overview ?? null,
     trials: file.trials,
     arms,
     queries,
@@ -286,6 +288,14 @@ export const renderMarkdown = (r: Report): string => {
         ? `, ${int(r.target.index.nodes)} nodes / ${int(r.target.index.files)} files`
         : ''),
   );
+  if (r.overview) {
+    L.push(
+      `- **Repository overview** (grep+rig+map system prompt): ${int(r.overview.chars)} chars ≈ ${int(r.overview.est_tokens)} tokens, budget ${int(r.overview.budget_tokens)}` +
+        (r.overview.cached
+          ? ', from the index cache'
+          : `, generated in ${r.overview.elapsed_ms} ms`),
+    );
+  }
   L.push(`- **Trials**: ${r.trials}; **total cost**: ${money(r.total_cost)}`, '');
 
   L.push('## Per arm', '');

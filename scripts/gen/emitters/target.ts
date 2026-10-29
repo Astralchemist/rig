@@ -109,7 +109,11 @@ const buildInstructions = (
   );
   lines.push('## Session bootstrap', '');
   lines.push(
-    'At the start of a new conversation, before responding to the user, call `rig_waypoints` with `session_id="last"` and `limit=20`. The returned waypoints are the prior session\'s structured decision/observation markers — read them to reorient on what was decided, what constraints are in play, and what open questions remain. Do not re-derive context the prior session already settled.',
+    'When you need to get oriented in an unfamiliar part of the repo, call `rig_overview` (also the MCP resource `rig://overview`). In about 2,000 tokens it lists the packages and what they are for, the entry points, the most-referenced files and symbols with `file:line`, route and handler tables, where the tests live, and recent decisions. Don\'t call it by reflex: for an exact identifier or file name, grep is cheaper.',
+    '',
+  );
+  lines.push(
+    'Before responding to the user in a new conversation, call `rig_waypoints` with `session_id="last"` and `limit=20`. The returned waypoints are the prior session\'s structured decision/observation markers — read them to reorient on what was decided, what constraints are in play, and what open questions remain. Do not re-derive context the prior session already settled.',
     '',
   );
   lines.push(

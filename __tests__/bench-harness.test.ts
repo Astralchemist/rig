@@ -7,11 +7,18 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Rig } from '../packages/core/src/index.ts';
 import { DeterministicEmbedder } from '../packages/core/src/embed/deterministic-embedder.ts';
-import { runAgent } from '../scripts/bench/agent.ts';
-import { makeArm, parseArms, type Arm } from '../scripts/bench/arms.ts';
+import { SYSTEM_PROMPT, runAgent } from '../scripts/bench/agent.ts';
+import {
+  OVERVIEW_BEGIN,
+  OVERVIEW_END,
+  makeArm,
+  parseArms,
+  systemWithOverview,
+  type Arm,
+} from '../scripts/bench/arms.ts';
 import { checkAnswer, validateExpected } from '../scripts/bench/criteria.ts';
 import { judgeAnswer, parseVerdict } from '../scripts/bench/judge.ts';
-import { estimatePlan } from '../scripts/bench/plan.ts';
+import { DEFAULT_PROFILES, estimatePlan } from '../scripts/bench/plan.ts';
 import {
   fetchCatalogue,
   lookupPricing,
@@ -566,6 +573,24 @@ describe('report aggregation', () => {
     expect(renderMarkdown(r)).toContain('| grep+rig | 3 | 20.0% | 160.0% | 1 | 1 | 1 | 0 |');
   });
 
+  test('records the overview size in the header when grep+rig+map ran', () => {
+    expect(renderMarkdown(aggregate(file))).not.toContain('Repository overview');
+    const withMap: BenchFile = {
+      ...file,
+      overview: {
+        budget_tokens: 2000,
+        chars: 7951,
+        est_tokens: 1988,
+        elapsed_ms: 24.5,
+        cached: false,
+        generated_at: '2026-10-29T00:00:00.000Z',
+      },
+    };
+    expect(renderMarkdown(aggregate(withMap))).toContain(
+      '- **Repository overview** (grep+rig+map system prompt): 7,951 chars ≈ 1,988 tokens, budget 2,000, generated in 24.5 ms',
+    );
+  });
+
   test('renders markdown with every section', () => {
     const md = renderMarkdown(aggregate(file));
     expect(md).toContain('## Per arm');
@@ -613,6 +638,24 @@ describe('pricing and plan', () => {
     expect(est.arms[0]!.cost_usd).toBeCloseTo(10 * (0.005 + 0.0005));
     expect(est.total_usd).toBeCloseTo(10 * (0.005 + 0.0005 + 0.001 + 0.0005));
     expect(estimatePlan({ arms: ['rig'], runsPerArm: 1, pricing: null }).total_usd).toBeNull();
+    // The map arm is priced like grep+rig plus the ~2k-token overview on every call.
+    const map = DEFAULT_PROFILES['grep+rig+map'];
+    const grepRig = DEFAULT_PROFILES['grep+rig'];
+    expect(map.prompt_tokens).toBe(grepRig.prompt_tokens + 2_000 * grepRig.model_calls);
+    // From a run that predates the arm: grep+rig's measured profile plus the map.
+    const measured = { prompt_tokens: 14_000, completion_tokens: 600, model_calls: 4 };
+    expect(
+      estimatePlan({
+        arms: ['grep+rig+map'],
+        runsPerArm: 1,
+        pricing: null,
+        profiles: { 'grep+rig': measured },
+        mapTokens: 1_000,
+      }).arms[0]!.profile,
+    ).toEqual({ ...measured, prompt_tokens: 18_000 });
+    expect(estimatePlan({ arms: ['grep+rig+map'], runsPerArm: 2, pricing: p }).arms[0]!.runs).toBe(
+      2,
+    );
     expect(
       await fetchCatalogue(
         (async () => new Response('', { status: 500 })) as unknown as typeof fetch,
@@ -629,8 +672,19 @@ describe('pricing and plan', () => {
     expect(resolveProviderName(undefined, { ANTHROPIC_API_KEY: 'y' })).toBe('anthropic');
     expect(resolveProviderName(undefined, {})).toBe('openrouter');
     expect(() => resolveProviderName('openai', {})).toThrow('unknown provider');
-    expect(parseArms(undefined)).toEqual(['baseline', 'rig', 'rig-search', 'grep+rig']);
+    expect(parseArms(undefined)).toEqual([
+      'baseline',
+      'rig',
+      'rig-search',
+      'grep+rig',
+      'grep+rig+map',
+    ]);
     expect(parseArms('grep+rig')).toEqual(['grep+rig']);
+    expect(parseArms('baseline,grep+rig,grep+rig+map')).toEqual([
+      'baseline',
+      'grep+rig',
+      'grep+rig+map',
+    ]);
     expect(parseArms('rig-search, baseline')).toEqual(['rig-search', 'baseline']);
     expect(() => parseArms('grep')).toThrow('unknown arm');
   });
@@ -723,5 +777,57 @@ describe('rig-search arm', () => {
     expect(search.nodes.some((n) => n.name === 'AuthStore')).toBe(true);
     expect(await arm.exec('rig_search', {})).toStartWith('error: INPUT_INVALID');
     expect(await arm.exec('rig_deps', {})).toBe('error: unknown tool rig_deps');
+  });
+});
+
+describe('grep+rig+map arm', () => {
+  let project: string;
+  let rig: Rig;
+
+  beforeAll(async () => {
+    project = mkdtempSync(join(tmpdir(), 'rig-bench-map-'));
+    writeFileSync(join(project, 'package.json'), JSON.stringify({ name: 'mapped' }));
+    writeFileSync(join(project, 'auth.ts'), `export class AuthStore {}\n`);
+    rig = await Rig.init(project, { embedder: new DeterministicEmbedder() });
+    await rig.indexAll();
+  });
+
+  afterAll(() => {
+    rig.close();
+    rmSync(project, { recursive: true, force: true });
+  });
+
+  test("grep+rig's tools and routing; the overview appended to the shared system prompt", async () => {
+    const map = rig.overview().map;
+    const grepRig = makeArm('grep+rig', project, rig);
+    const arm = makeArm('grep+rig+map', project, rig, { overview: map });
+    expect(arm.name).toBe('grep+rig+map');
+    expect(arm.tools).toEqual(grepRig.tools);
+    expect(grepRig.system).toBeUndefined();
+    expect(arm.system).toBe(systemWithOverview(map));
+    // The shared prompt verbatim, then one delimited block holding the map.
+    expect(arm.system).toStartWith(`${SYSTEM_PROMPT}\n\n`);
+    expect(arm.system).toContain(`\n${OVERVIEW_BEGIN}\n# Repository overview: mapped\n`);
+    expect(arm.system).toEndWith(`\n${OVERVIEW_END}`);
+    expect(arm.system!.split(OVERVIEW_BEGIN)).toHaveLength(2);
+    expect(await arm.exec('read_file', { path: 'auth.ts' })).toBe(
+      await grepRig.exec('read_file', { path: 'auth.ts' }),
+    );
+    expect(() => makeArm('grep+rig+map', project, rig)).toThrow('needs the repository overview');
+  });
+
+  test('the provider receives that system prompt; other arms keep the shared one', async () => {
+    const arm = makeArm('grep+rig+map', project, rig, { overview: rig.overview().map });
+    const { fetch, calls } = scriptedFetch([
+      orReply({ content: 'done' }),
+      orReply({ content: 'done' }),
+    ]);
+    const p = new OpenRouterProvider('m', 'k', { fetch, ...noSleep });
+    await runAgent(p, arm, 'where is AuthStore?', { maxTurns: 2, maxTokens: 100 });
+    await runAgent(p, echoArm(), 'where is AuthStore?', { maxTurns: 2, maxTokens: 100 });
+    const system = (i: number) =>
+      (calls[i]!.body.messages as { role: string; content: string }[])[0]!;
+    expect(system(0)).toEqual({ role: 'system', content: arm.system! });
+    expect(system(1)).toEqual({ role: 'system', content: SYSTEM_PROMPT });
   });
 });

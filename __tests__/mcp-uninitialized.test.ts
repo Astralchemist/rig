@@ -26,6 +26,8 @@ describe('rig serve --mcp in a directory without .rig/', () => {
       { id: 3, method: 'tools/call', params: { name: 'rig_status', arguments: {} } },
       { id: 4, method: 'tools/call', params: { name: 'rig_search', arguments: { query: 'x' } } },
       { id: 5, method: 'tools/call', params: { name: 'rig_nope', arguments: {} } },
+      { id: 6, method: 'resources/list', params: {} },
+      { id: 7, method: 'resources/read', params: { uri: 'rig://overview' } },
     ]);
   });
   afterAll(() => rmSync(base, { recursive: true, force: true }));
@@ -50,6 +52,12 @@ describe('rig serve --mcp in a directory without .rig/', () => {
       expect(err?.message).toContain('rig is not initialised in');
       expect(err?.message).toContain('`rig init`');
     }
+  });
+
+  test('resources/list works; reading the overview answers NOT_INITIALIZED', () => {
+    const r = run.byId['6']?.result as { resources?: Array<{ uri: string }> } | undefined;
+    expect(r?.resources?.map((x) => x.uri)).toEqual(['rig://overview']);
+    expect(run.byId['7']?.error?.data?.rigError).toBe('NOT_INITIALIZED');
   });
 
   test('unknown tools still report TOOL_NOT_FOUND', () => {

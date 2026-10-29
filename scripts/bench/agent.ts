@@ -34,7 +34,7 @@ export const runAgent = async (
   opts: AgentOpts,
 ): Promise<AgentOutcome> => {
   const convo = provider.start({
-    system: SYSTEM_PROMPT,
+    system: arm.system ?? SYSTEM_PROMPT,
     user: ask,
     tools: arm.tools,
     maxTokens: opts.maxTokens,

@@ -8,7 +8,7 @@ All notable changes to Rig are documented here. The format follows
 
 ## [0.3.0] - 2026-10-29
 
-Natural-language search, measured. Benchmark (Claude Haiku 5.5 via OpenRouter, next-auth, 3 trials): with grep and rig together, the agent now uses 126% of grep-alone's median tokens (153% on 0.2.0). On natural-language questions it is cheaper than grep alone. With rig's search tools alone, correctness rose from 85% to 96%. See `scripts/bench/results/`.
+Natural-language search, measured. Benchmark (Claude Haiku 5.5 via OpenRouter, next-auth, 3 trials): with grep and rig together, the agent now uses 126% of grep-alone's median tokens (153% on 0.2.0). On natural-language questions it is cheaper than grep alone. With rig's search tools alone, correctness rose from 85% to 96%. A repository orientation map is available on demand; injected into every prompt it cost more than it saved (187%), so it isn't. See `scripts/bench/results/`.
 
 ### Added
 - **Natural-language search.** `rig_search` fuses three candidate lists by reciprocal rank (k = 60): exact name and alias matches (always first), keyword matches and semantic matches from the local embeddings. A question such as "where do we refresh expired sessions?" now finds code; a symbol name still returns that symbol first. Each node carries `score` and `matched_by`.
@@ -24,6 +24,21 @@ Natural-language search, measured. Benchmark (Claude Haiku 5.5 via OpenRouter, n
   - next-auth target pinned to a fixed commit, with 16 machine-checked questions, 6 of them natural-language
   - per-run cost, plus paired comparisons against grep-only
   - the 0.2.0 and 0.3.0 runs are recorded
+
+- **Orientation map.** A compact markdown map of the repository that an agent can fetch when it needs to get oriented, instead of spending turns exploring the repo's shape. It is built from the index and the indexed files alone, with no model call, and fits a token budget (default 2,000 tokens, about 8,000 characters). Every line names real paths. Sections are ranked and trimmed to fit:
+  - project basics: languages, workspace packages, key runtime dependencies
+  - entry points: manifest `exports`, `main` and `bin` mapped to their source files, index and CLI files
+  - module layout: packages (sibling families such as `packages/adapter-*` folded into one line) with one-line purposes from manifests, READMEs and module docstrings
+  - key symbols: hub files and the most-referenced exported functions, classes and types, with signature and `file:line`
+  - request/handler surfaces: string-literal unions and enums (route and action tables), directories of modules each exporting a handler named after it, the function that dispatches to them, HTTP verb exports
+  - tests: where they live and which sources they import
+  - recent decision waypoints
+- The map is cached in `meta` and refreshed at the end of the shared update pipeline, so `rig index`, `rig sync` and the file watcher keep it current. A fingerprint of everything it reads skips regeneration when nothing changed. On next-auth (about 2,950 nodes) it generates in about 20–35 ms.
+- `rig_overview(budget?)`, a light tool returning `{ map, generated_at, nodes }`. It is on demand: a benchmark arm that injected the map into every prompt cost 187% of grep-only's median tokens (against 134% without the map), so the installed instructions describe it but don't make it a mandatory first call.
+- The MCP server now advertises the `resources` capability and serves the same map as `rig://overview` (`resources/list`, `resources/read`).
+- `rig overview [--budget <tokens>] [--json]` prints the map.
+- Benchmark arm `grep+rig+map`: `grep+rig` with the target's map in the system prompt. The results record the map's size, and `--map-budget` sets its budget.
+- The README describes what Rig can do and what the benchmark measured.
 
 ### Changed
 - Embedding text now includes identifier words, and its version is part of the stored text hash. The first `rig index` or `rig sync` after upgrading re-embeds every node once. The extractor version is bumped for markdown excerpts, so every file is re-extracted once (in place).

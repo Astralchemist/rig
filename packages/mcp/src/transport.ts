@@ -53,6 +53,8 @@ export const ErrorCodes = {
   MethodNotFound: -32601,
   InvalidParams: -32602,
   InternalError: -32603,
+  // MCP: resources/read for a URI the server does not have.
+  ResourceNotFound: -32002,
 } as const;
 
 export type MessageHandler = (message: JsonRpcRequest | JsonRpcNotification) => Promise<void>;
