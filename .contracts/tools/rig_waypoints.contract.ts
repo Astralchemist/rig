@@ -15,7 +15,7 @@ const waypoint = z.object({
   id: z.string(),
   ts: z.number().int(),
   session_id: z.string(),
-  kind: z.enum(['decision', 'observation', 'constraint', 'open-question', 'principle']),
+  kind: z.enum(['decision', 'observation', 'constraint', 'open-question', 'principle', 'dead-end']),
   title: z.string(),
   summary: z.string(),
   analogy: z.string().nullable(),
@@ -25,6 +25,14 @@ const waypoint = z.object({
   compactable: z.boolean(),
   payloads: z.array(payload),
   rationale: z.string().optional().describe('Why it was dropped (absent on older waypoints)'),
+  source: z
+    .enum(['agent', 'hook'])
+    .optional()
+    .describe(
+      'hook: captured automatically from the conversation (absent on agent-dropped waypoints)',
+    ),
+  provenance: z.string().optional().describe('Who wrote a captured waypoint, e.g. hook:claude'),
+  confidence: z.number().optional().describe('Extractor confidence (0..1) of a captured waypoint'),
 });
 
 export default defineToolContract({
@@ -40,7 +48,9 @@ Optional filters: session_id (pass
 other than your own — useful at session start to rehydrate the previous
 thread, and it keeps finding that thread after you drop waypoints of your
 own), kind (decision / observation / constraint / open-question /
-principle).
+principle / dead-end), source (agent: dropped with rig_drop_waypoint;
+hook: captured automatically from the conversation — agreed decisions,
+corrections, constraints and dead ends, each with a confidence).
 
 Call this on session start, before the first user turn, with
 session_id="last" limit=20 to pick up where the previous session ended.
@@ -49,8 +59,12 @@ session_id="last" limit=20 to pick up where the previous session ended.
     .object({
       session_id: z.string().optional(),
       kind: z
-        .enum(['decision', 'observation', 'constraint', 'open-question', 'principle'])
+        .enum(['decision', 'observation', 'constraint', 'open-question', 'principle', 'dead-end'])
         .optional(),
+      source: z
+        .enum(['agent', 'hook'])
+        .optional()
+        .describe('agent: dropped by an agent; hook: captured automatically from conversations'),
       limit: z.number().int().min(1).max(200).default(50),
       query: z
         .string()

@@ -6,7 +6,15 @@ export type WaypointKind =
   | 'observation'
   | 'constraint'
   | 'open-question'
-  | 'principle';
+  | 'principle'
+  // An approach that was tried or proposed and ruled out (failed, reverted,
+  // declined). Written by automatic capture; agents may drop one too.
+  | 'dead-end';
+
+// Who wrote a waypoint: an agent through rig_drop_waypoint, or automatic
+// capture from a conversation hook. Waypoints stored before capture existed
+// carry no source and count as 'agent'.
+export type WaypointSource = 'agent' | 'hook';
 
 // B2 — payloads carried inline on a waypoint. Each shape is a self-contained
 // chunk re-renderable in a UI / re-injectable into a future prompt. The union
@@ -35,6 +43,11 @@ export interface WaypointRow {
   payloads: WaypointPayload[];
   // Why it was dropped; absent on waypoints dropped before it was kept.
   rationale?: string;
+  // Set on captured waypoints: source 'hook', provenance `hook:<client>` and
+  // the extractor's confidence (0..1).
+  source?: WaypointSource;
+  provenance?: string;
+  confidence?: number;
 }
 
 interface RawNode {
@@ -55,6 +68,9 @@ interface RawData {
   compactable?: boolean;
   payloads?: WaypointPayload[];
   rationale?: string;
+  source?: WaypointSource;
+  provenance?: string;
+  confidence?: number;
 }
 
 const parse = (r: RawNode): WaypointRow => {
@@ -73,6 +89,9 @@ const parse = (r: RawNode): WaypointRow => {
     compactable: d.compactable === true,
     payloads: d.payloads ?? [],
     ...(typeof d.rationale === 'string' ? { rationale: d.rationale } : {}),
+    ...(d.source === 'hook' || d.source === 'agent' ? { source: d.source } : {}),
+    ...(typeof d.provenance === 'string' ? { provenance: d.provenance } : {}),
+    ...(typeof d.confidence === 'number' ? { confidence: d.confidence } : {}),
   };
 };
 
@@ -83,6 +102,8 @@ export interface ListWaypointsOpts {
   // The session asking. 'last' never resolves to it.
   callerSessionId?: string;
   kind?: WaypointKind;
+  // 'agent' also matches waypoints stored without a source.
+  source?: WaypointSource;
   limit?: number;
 }
 
@@ -129,6 +150,11 @@ export const listWaypoints = (db: SqliteAdapter, opts: ListWaypointsOpts = {}): 
   if (opts.kind) {
     filters.push(`json_extract(data, '$.type') = ?`);
     params.push(opts.kind);
+  }
+  if (opts.source === 'hook') {
+    filters.push(`json_extract(data, '$.source') = 'hook'`);
+  } else if (opts.source === 'agent') {
+    filters.push(`COALESCE(json_extract(data, '$.source'), 'agent') = 'agent'`);
   }
   params.push(limit);
   const rows = db

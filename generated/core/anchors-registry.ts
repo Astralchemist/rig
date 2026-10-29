@@ -33,7 +33,7 @@ export const ANCHOR_REGISTRY: Record<string, AnchorTypeMeta> = {
   },
   'conversation-waypoint': {
     type: 'conversation-waypoint',
-    description: "A discrete decision/observation/constraint/open-question/principle marker dropped by the AI during a session. Carries an analogy + summary + refs into the graph so future sessions can rehydrate the reasoning thread.",
+    description: "A discrete decision/observation/constraint/open-question/principle/dead-end marker, dropped by the AI during a session or captured automatically from the conversation by a hook. Carries an analogy + summary + refs into the graph so future sessions can rehydrate the reasoning thread.",
     extractor: 'manual',
     ui: {"icon":"flag","color":"c-cyan","label_field":"title","detail_fields":["type","summary","analogy","key_terms"]},
     allowed_edges: {"outgoing":["waypoint_succeeds","waypoint_references"],"incoming":["waypoint_succeeds"]},

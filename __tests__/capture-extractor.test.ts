@@ -4,6 +4,7 @@ import { extractSettled } from '@rig/core/capture/extractor.ts';
 import { filesIn, mask, symbolsIn } from '@rig/core/capture/text.ts';
 import type { ConversationEvent } from '@rig/core/capture/types.ts';
 import { CAPTURE_FIXTURES } from './support/capture-fixtures.ts';
+import { CAPTURE_HELDOUT } from './support/capture-heldout.ts';
 import { scoreFixtures } from './support/capture-score.ts';
 
 const u = (text: string): ConversationEvent => ({ type: 'user', text });
@@ -20,6 +21,15 @@ describe('settled-moment extractor', () => {
           `${o.name}: fp=${o.fp.map((r) => r.summary).join(' | ')} fn=${o.fn.map((e) => e.includes).join(' | ')}`,
       );
     expect(misses).toEqual([]);
+    expect(s.precision).toBeGreaterThanOrEqual(0.9);
+    expect(s.recall).toBeGreaterThanOrEqual(0.85);
+  });
+
+  // Written after the extractor was frozen and never tuned on: at freeze it
+  // scored P=1.00, R=0.91 (one miss, "actually, use X rather than Y"). The
+  // floor guards against regressions; it is not a target to tune toward.
+  test('held-out fixtures: precision and recall floor', () => {
+    const s = scoreFixtures(CAPTURE_HELDOUT);
     expect(s.precision).toBeGreaterThanOrEqual(0.9);
     expect(s.recall).toBeGreaterThanOrEqual(0.85);
   });

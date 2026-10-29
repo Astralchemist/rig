@@ -18,7 +18,12 @@ import {
   restorePendingToPending,
   type PendingEdgeRow,
 } from './db/pending-edges.ts';
-import { touchSession, type WaypointKind, type WaypointPayload } from './db/waypoint-queries.ts';
+import {
+  touchSession,
+  type WaypointKind,
+  type WaypointPayload,
+  type WaypointSource,
+} from './db/waypoint-queries.ts';
 import { recomputeHubness } from './graph/hubness.ts';
 
 export interface WriteCtx {
@@ -78,6 +83,13 @@ export interface DropWaypointArgs {
   // Why the waypoint was dropped (required by rig_drop_waypoint); stored in
   // its data and returned by rig_waypoints / rig_chain.
   rationale?: string;
+  // Automatic capture: who wrote it, the extractor's confidence, and the
+  // capture details (extractor kind, cue, source span, raw anchors), kept in
+  // data under `capture`.
+  source?: WaypointSource;
+  provenance?: string;
+  confidence?: number;
+  capture?: Record<string, unknown>;
 }
 
 // A waypoint named ids that are not in the graph; nothing was written.
@@ -290,6 +302,10 @@ export class RigWrites {
       compactable: args.compactable === true,
       payloads: args.payloads ?? [],
       ...(args.rationale ? { rationale: args.rationale } : {}),
+      ...(args.source ? { source: args.source } : {}),
+      ...(args.provenance ? { provenance: args.provenance } : {}),
+      ...(args.confidence !== undefined ? { confidence: args.confidence } : {}),
+      ...(args.capture ? { capture: args.capture } : {}),
     };
     adapter.transaction(() => {
       const exists = adapter.prepare(`SELECT 1 AS x FROM nodes WHERE id = ?`);

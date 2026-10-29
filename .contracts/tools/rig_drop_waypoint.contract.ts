@@ -18,7 +18,8 @@ export default defineToolContract({
   description: `
 Record a discrete marker the AI considers worth preserving across context
 compaction or session boundaries — a decision, a constraint stated by the
-user, a recurring observation, an open question, or a principle. The
+user, a recurring observation, an open question, a principle, or a dead
+end (an approach tried or proposed and ruled out). The
 waypoint becomes a graph anchor with structured payload; predecessor ids
 form a \`waypoint_succeeds\` chain; constellation refs form
 \`waypoint_references\` edges to other anchors.
@@ -33,7 +34,14 @@ rig_chain return it.
   `.trim(),
   input: z
     .object({
-      kind: z.enum(['decision', 'observation', 'constraint', 'open-question', 'principle']),
+      kind: z.enum([
+        'decision',
+        'observation',
+        'constraint',
+        'open-question',
+        'principle',
+        'dead-end',
+      ]),
       title: z.string().min(3).max(120),
       summary: z.string().min(10).max(2000),
       analogy: z.string().optional(),
