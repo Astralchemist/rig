@@ -306,6 +306,15 @@ capture pipeline `rig hook` runs, on that trial's database. Session 2 gets the b
 `SessionStart` hook would print, plus the session-bootstrap paragraph and `rig_waypoints`
 (with `query`), as memory-on does.
 
+**Result: FAIL** (`results/2026-10-29-sessions-memory-auto-0.3.0.md`). memory-auto passed
+30/60 session-2 trials against memory-off's 18/60: +20.0 pp, 95% CI 1.7 to 40.0 pp. It used
+115.7% of memory-off's median total tokens, above the 110% cap. Against memory-on (descriptive)
+it was 20 pp lower. Capture stored the needed fact in 9 of 57 runs and put it in the brief in
+3, so the extractor is the bottleneck. The stored arms ran on an earlier rig build and index
+snapshot (`9275ea806c22`; memory-auto's is `c05b2cce5e56`); the report lists both. Under the
+pre-registration the extractor is not tuned against these tasks; any change is judged by a
+new pre-registered run.
+
 ### Design
 
 `sessions.json` holds 20 task pairs in two sets: tasks 1–10 (`first`, the first run's tasks,

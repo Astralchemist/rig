@@ -105,6 +105,7 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
 - Natural-language questions cost fewer tokens than with grep alone.
 - Exact identifier lookups still cost more. The installed guide tells agents to use grep for those.
 - Injecting the orientation map into every prompt cost more than it saved. That's why it's on demand.
+- Across two sessions, waypoints the agent drops itself raised session-2 success from 30% to 70% (+40 pp, pre-registered bar passed) at 94% of the tokens. Automatic capture alone reached 50% (+20 pp) but used 116% of the tokens, so it failed the same bar: today it is a backstop to agent-dropped waypoints, not a replacement.
 
 The raw results and reports are in [`scripts/bench/results/`](scripts/bench/results/).
 
@@ -180,6 +181,11 @@ For Claude Code, `rig install claude` (and `rig start`) also adds hooks to the p
 conversation settles something, so the next session doesn't have to rediscover them.
 They don't record the conversation itself. Capture is deterministic pattern matching
 over the transcript: no model call, no API key, and nothing leaves the machine.
+
+**Measured.** On the pre-registered multi-session benchmark, capture alone (no waypoint
+guidance) did not pass the bar: +20 pp success over no memory, but 116% of its tokens
+([report](scripts/bench/results/2026-10-29-sessions-memory-auto-0.3.0.md)). The extractor
+found the needed fact in 9 of 57 runs.
 
 **What's captured.** Only what the user's own words settle:
 - **agreed:** the agent proposed something and the user approved it ("yes", "go ahead",
