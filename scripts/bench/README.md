@@ -377,7 +377,9 @@ bun run bench:run --mode sessions --label sessions-haiku-5.5   # 10 pairs × 3 a
 bun run bench:report scripts/bench/results/<date>-sessions-haiku-5.5.json
 ```
 
-`--tasks a,b` runs a subset. `--max-turns` counts model calls per user message, default 12.
+`--tasks a,b` runs a subset. `--task-set <name>` runs only the tasks of one set: `first`
+(tasks 1–10, whose entries in `sessions.json` have no `set`) or `confirmation` (tasks 11–20).
+The default label then names the set. `--max-turns` counts model calls per user message, default 12.
 `--work-dir` keeps the snapshot and copies in a directory you choose; by default they go to a
 temporary directory that is deleted at the end. `--estimate-from` takes an earlier sessions
 results file. `bench:report --recheck` re-grades stored answers against the current
@@ -402,6 +404,23 @@ Per arm:
 
 Then come the paired memory-on minus memory-off table with the bootstrap CIs, the sanity
 section, a per-task table, and the verdict line against the bar at the top.
+
+### Combined runs
+
+`bench:report` takes several sessions results files and reports them as one:
+
+```sh
+bun run bench:report --in scripts/bench/results/2026-10-29-sessions-0.3.0.json \
+  --in scripts/bench/results/<date>-sessions-confirmation-haiku-5.5.json
+```
+
+The merged report has one per-arm table, one bootstrap over every task of every run, and one
+verdict line that reads "Verdict, combined (2 runs): …". The header lists each run's label,
+tasks, trials, rig build and index snapshot, and flags runs whose rig fingerprints differ.
+The report refuses to merge runs that differ in model, arms, trials, the bar, the target
+commit, the turn limit or the answer marker, or that share a task, since a shared task's
+trials would count twice. `--recheck` re-grades every run against the current
+`sessions.json`.
 
 ### What it does not measure
 

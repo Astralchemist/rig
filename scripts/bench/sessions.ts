@@ -406,6 +406,29 @@ export const runTrial = async (
 
 export const SESSIONS_PATH = resolve(import.meta.dir, 'sessions.json');
 
+// Tasks with no `set` are the first ten, written before the first run.
+export const taskSetOf = (t: SessionTask): string => t.set ?? 'first';
+
+// --tasks and --task-set: both narrow, and an unknown id or set is an error.
+export const selectTasks = (
+  tasks: readonly SessionTask[],
+  opts: { ids?: readonly string[]; set?: string },
+): SessionTask[] => {
+  const unknown = opts.ids?.filter((id) => !tasks.some((t) => t.id === id)) ?? [];
+  if (unknown.length) throw new Error(`unknown task id(s): ${unknown.join(', ')}`);
+  const sets = [...new Set(tasks.map(taskSetOf))];
+  if (opts.set !== undefined && !sets.includes(opts.set)) {
+    throw new Error(`unknown task set "${opts.set}" (expected ${sets.join(', ')})`);
+  }
+  const out = tasks.filter(
+    (t) =>
+      (!opts.ids || opts.ids.includes(t.id)) &&
+      (opts.set === undefined || taskSetOf(t) === opts.set),
+  );
+  if (out.length === 0) throw new Error('--tasks and --task-set select no task');
+  return out;
+};
+
 export const validateSessionsFile = (sf: SessionsFile): void => {
   if (!sf.answer_marker) throw new Error('sessions.json: answer_marker is empty');
   const ids = new Set<string>();

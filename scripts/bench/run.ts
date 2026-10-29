@@ -19,7 +19,7 @@ import {
   resolveProviderName,
   type HttpOpts,
 } from './providers.ts';
-import { SESSIONS_PATH, loadSessionsFile, parseMemoryArms } from './sessions.ts';
+import { SESSIONS_PATH, loadSessionsFile, parseMemoryArms, selectTasks } from './sessions.ts';
 import { mainSessions } from './sessions-run.ts';
 import { gitHead, indexState, prepareIndex, rigVersion } from './target.ts';
 import type { BenchFile, OverviewInfo, QueriesFile, RunResult } from './types.ts';
@@ -48,6 +48,7 @@ multi-session memory mode (see README.md "Multi-session memory"):
   --mode sessions          run the task pairs in sessions.json instead of the queries
   --arms <list>            memory-off,memory-on,oracle,grep-only (default the first three)
   --tasks <ids>            comma-separated task ids (default all)
+  --task-set <name>        only the tasks of one set: first (1-10) or confirmation (11-20)
   --trials, --max-turns    as above; --max-turns counts model calls per user message
   --sessions-file <path>   alternative sessions.json
   --work-dir <path>        keep the index snapshot and trial copies here (default: a temp
@@ -330,24 +331,26 @@ const sessionsMode = async (repo: string, qf: QueriesFile): Promise<void> => {
     ?.split(',')
     .map((s) => s.trim())
     .filter(Boolean);
-  const unknown = wanted?.filter((id) => !sf.tasks.some((t) => t.id === id)) ?? [];
-  if (unknown.length) throw new Error(`unknown task id(s): ${unknown.join(', ')}`);
+  const taskSet = argValue('--task-set');
+  const tasks = selectTasks(sf.tasks, {
+    ...(wanted ? { ids: wanted } : {}),
+    ...(taskSet !== undefined ? { set: taskSet } : {}),
+  });
   const providerName = resolveProviderName(argValue('--provider'));
   const model = argValue('--model') ?? process.env.BENCH_MODEL ?? DEFAULT_MODELS[providerName];
   const catalogue = await fetchCatalogue();
   const pricing = lookupPricing(catalogue, model);
   const apiKey = apiKeyFor(providerName);
-  const label = (argValue('--label') ?? `sessions-${model.split('/').pop()!}`).replace(
-    /[^A-Za-z0-9._-]+/g,
-    '-',
-  );
+  const defaultLabel = `sessions-${taskSet ? `${taskSet}-` : ''}${model.split('/').pop()!}`;
+  const label = (argValue('--label') ?? defaultLabel).replace(/[^A-Za-z0-9._-]+/g, '-');
   await mainSessions({
     repo,
     pinned: qf.target.commit,
     head: existsSync(repo) ? gitHead(repo) : null,
     rig: rigVersion(),
     sessions: sf,
-    tasks: wanted ? sf.tasks.filter((t) => wanted.includes(t.id)) : sf.tasks,
+    tasks,
+    taskSet: taskSet ?? null,
     arms: parseMemoryArms(argValue('--arms')),
     trials: intArg('--trials', 3),
     maxTurns: intArg('--max-turns', 12),

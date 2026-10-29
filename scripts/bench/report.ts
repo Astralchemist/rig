@@ -405,14 +405,24 @@ if (import.meta.main) {
     return i >= 0 ? args[i + 1] : undefined;
   };
   const positional = args.filter((a, i) => !a.startsWith('--') && !valued.has(args[i - 1] ?? ''));
-  const inPath = value('--in') ?? positional[0];
-  if (!inPath) {
+  // Every --in, then positionals; several sessions files make one combined report.
+  const inPaths = [...args.flatMap((a, i) => (a === '--in' ? [args[i + 1]!] : [])), ...positional];
+  if (inPaths.length === 0) {
     console.error(
-      'usage: bun scripts/bench/report.ts <results.json> [--out report.md] [--recheck [--queries-file queries.json | --sessions-file sessions.json]]',
+      'usage: bun scripts/bench/report.ts <results.json> [--in more.json ...] [--out report.md] [--recheck [--queries-file queries.json | --sessions-file sessions.json]]',
     );
     process.exit(2);
   }
-  const raw = JSON.parse(readFileSync(inPath, 'utf-8')) as BenchFile | SessionsBenchFile;
+  const inputs = inPaths.map(
+    (p) => JSON.parse(readFileSync(p, 'utf-8')) as BenchFile | SessionsBenchFile,
+  );
+  const isSessions = (f: BenchFile | SessionsBenchFile): f is SessionsBenchFile =>
+    'mode' in f && f.mode === 'sessions';
+  if (inputs.length > 1 && !inputs.every(isSessions)) {
+    console.error('bench:report: only sessions-mode results files can be combined');
+    process.exit(2);
+  }
+  const raw = inputs[0]!;
   const write = (md: string): void => {
     const outPath = value('--out');
     if (outPath) {
@@ -422,15 +432,23 @@ if (import.meta.main) {
       process.stdout.write(md);
     }
   };
-  if ('mode' in raw && raw.mode === 'sessions') {
+  if (isSessions(raw)) {
     // Loaded here, not at the top: report-sessions.ts imports this module.
-    const { aggregateSessions, renderSessionsMarkdown } = await import('./report-sessions.ts');
+    const { aggregateSessions, mergeSessionsFiles, renderSessionsMarkdown } =
+      await import('./report-sessions.ts');
     const { loadSessionsFile } = await import('./sessions.ts');
     const tasks = args.includes('--recheck')
       ? loadSessionsFile(value('--sessions-file') ?? resolve(import.meta.dir, 'sessions.json'))
           .tasks
       : undefined;
-    write(renderSessionsMarkdown(aggregateSessions(raw, tasks ? { tasks } : {})));
+    let merged: SessionsBenchFile;
+    try {
+      merged = mergeSessionsFiles(inputs as SessionsBenchFile[]);
+    } catch (err) {
+      console.error(`bench:report: ${err instanceof Error ? err.message : String(err)}`);
+      process.exit(1);
+    }
+    write(renderSessionsMarkdown(aggregateSessions(merged, tasks ? { tasks } : {})));
     process.exit(0);
   }
   const file = raw as BenchFile;

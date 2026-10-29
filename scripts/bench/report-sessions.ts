@@ -7,7 +7,13 @@
 import { checkSessionAnswer } from './criteria.ts';
 import { median } from './report.ts';
 import { BAR_DELTA, BAR_TOKEN_RATIO } from './sessions.ts';
-import type { MemoryArmName, SessionRunResult, SessionTask, SessionsBenchFile } from './types.ts';
+import type {
+  CombinedRun,
+  MemoryArmName,
+  SessionRunResult,
+  SessionTask,
+  SessionsBenchFile,
+} from './types.ts';
 
 export interface Summary {
   median: number;
@@ -101,6 +107,8 @@ export interface SessionsReport {
   trap_evidence: SessionsBenchFile['trap_evidence'];
   bar: string;
   confirmation_rule: string | null;
+  // The runs a combined report merges; null for a single run.
+  combined: CombinedRun[] | null;
   trials: number;
   arms: SessionArmStats[];
   paired: PairedDelta | null;
@@ -389,6 +397,7 @@ export const aggregateSessions = (
     trap_evidence: file.trap_evidence,
     bar: file.preregistered_bar,
     confirmation_rule: file.confirmation_rule ?? null,
+    combined: file.combined ?? null,
     trials: file.trials,
     arms,
     paired,
@@ -415,8 +424,9 @@ export const renderSessionsMarkdown = (r: SessionsReport): string => {
   if (r.confirmation_rule) {
     L.push('**Confirmation rule** (pre-registered):', '', `> ${r.confirmation_rule}`, '');
   }
+  const scope = r.combined ? `, combined (${r.combined.length} runs)` : '';
   if (r.verdict) {
-    L.push(`**Verdict: ${r.verdict.verdict}** — ${r.verdict.reason}.`, '');
+    L.push(`**Verdict${scope}: ${r.verdict.verdict}** — ${r.verdict.reason}.`, '');
   } else {
     L.push('**Verdict: not computed** — needs both memory-on and memory-off runs.', '');
   }
@@ -438,6 +448,18 @@ export const renderSessionsMarkdown = (r: SessionsReport): string => {
   L.push(
     `- **Installed instructions quoted**: \`${r.instructions.path}\` (sha256 \`${r.instructions.sha256.slice(0, 12)}\`)`,
   );
+  if (r.combined) {
+    const prints = new Set(r.combined.map((c) => c.rig.fingerprint));
+    L.push(
+      `- **Combined runs**: ${r.combined.length}` +
+        (prints.size > 1 ? ' — **rig fingerprints differ between runs**' : ''),
+    );
+    for (const c of r.combined) {
+      L.push(
+        `  - \`${c.label}\` (${c.started_at.slice(0, 10)}): ${c.tasks.length} tasks, ${c.trials} trials, rig \`${c.rig.commit?.slice(0, 7) ?? '?'}\`${c.rig.dirty ? ' (dirty)' : ''} fingerprint \`${c.rig.fingerprint}\`, snapshot \`${c.snapshot_sha256.slice(0, 12)}\``,
+      );
+    }
+  }
   L.push(`- **Trials**: ${r.trials}; **total cost**: ${money(r.total_cost)}`, '');
 
   L.push('## Per arm', '');
@@ -536,4 +558,70 @@ export const renderSessionsMarkdown = (r: SessionsReport): string => {
   }
   L.push('');
   return L.join('\n') + '\n';
+};
+
+// What must match for runs to be judged together: the same procedure on the
+// same target, so only the tasks differ.
+const MERGE_KEYS: [string, (f: SessionsBenchFile) => unknown][] = [
+  ['mode', (f) => f.mode],
+  ['model', (f) => f.model],
+  ['arms', (f) => [...f.arms].sort()],
+  ['trials', (f) => f.trials],
+  ['pre-registered bar', (f) => f.preregistered_bar],
+  ['target commit', (f) => f.target.commit],
+  ['max turns', (f) => f.max_turns],
+  ['answer marker', (f) => f.answer_marker],
+];
+
+/**
+ * Merge sessions results files into one, for a single table and verdict over
+ * all their tasks. Refuses runs that differ in anything but their tasks, and
+ * runs that share a task (its trials would count twice).
+ */
+export const mergeSessionsFiles = (files: readonly SessionsBenchFile[]): SessionsBenchFile => {
+  const first = files[0];
+  if (!first) throw new Error('nothing to merge');
+  if (files.length === 1) return first;
+  for (const [what, key] of MERGE_KEYS) {
+    const want = JSON.stringify(key(first));
+    for (const f of files.slice(1)) {
+      const got = JSON.stringify(key(f));
+      if (got !== want) {
+        throw new Error(
+          `refusing to merge: ${what} differs (${first.label}: ${want}; ${f.label}: ${got})`,
+        );
+      }
+    }
+  }
+  const owner = new Map<string, string>();
+  for (const f of files) {
+    const ids = new Set([...f.tasks.map((t) => t.id), ...f.results.map((r) => r.task_id)]);
+    for (const id of ids) {
+      const prev = owner.get(id);
+      if (prev !== undefined) {
+        throw new Error(`refusing to merge: task ${id} is in both ${prev} and ${f.label}`);
+      }
+      owner.set(id, f.label);
+    }
+  }
+  const rule = files.find((f) => f.confirmation_rule)?.confirmation_rule;
+  const finished = files.map((f) => f.finished_at);
+  return {
+    ...first,
+    label: files.map((f) => f.label).join(' + '),
+    started_at: files.map((f) => f.started_at).sort()[0]!,
+    finished_at: finished.some((t) => t === null) ? null : (finished as string[]).sort().at(-1)!,
+    ...(rule !== undefined ? { confirmation_rule: rule } : {}),
+    trap_evidence: files.flatMap((f) => f.trap_evidence),
+    tasks: files.flatMap((f) => f.tasks),
+    results: files.flatMap((f) => f.results),
+    combined: files.map((f) => ({
+      label: f.label,
+      started_at: f.started_at,
+      rig: f.rig,
+      snapshot_sha256: f.target.snapshot.sha256,
+      tasks: f.tasks.map((t) => t.id),
+      trials: f.results.length,
+    })),
+  };
 };

@@ -158,6 +158,12 @@ export interface SessionTask {
   session1: string[];
   // Session 2: one user message in a fresh context.
   session2: string;
+  // Which task set the pair belongs to: "first" (tasks 1-10, the default
+  // when absent) or "confirmation" (tasks 11-20). --task-set selects one.
+  set?: string;
+  // Trap tasks of the confirmation set: the session-1 fact, as a literal
+  // that session 2 must not contain and the target's code must not either.
+  secret?: string;
   // The oracle arm's reference summary of what session 1 established.
   oracle: string;
   // A model answer to session 2 that passes; a test checks it does.
@@ -216,6 +222,15 @@ export interface SessionRunResult {
   check: SessionCheck;
 }
 
+export interface CombinedRun {
+  label: string;
+  started_at: string;
+  rig: RigVersion;
+  snapshot_sha256: string;
+  tasks: string[];
+  trials: number;
+}
+
 export interface SessionsBenchFile {
   schema: 1;
   mode: 'sessions';
@@ -223,6 +238,10 @@ export interface SessionsBenchFile {
   preregistered_bar: string;
   // The confirmation rule, verbatim; absent from files written before it.
   confirmation_rule?: string;
+  // The --task-set the run was limited to, when it was.
+  task_set?: string;
+  // Set by mergeSessionsFiles: the runs a combined file was built from.
+  combined?: CombinedRun[];
   label: string;
   started_at: string;
   finished_at: string | null;

@@ -70,6 +70,7 @@ export interface SessionsPlanInfo {
   rg: boolean;
   arms: readonly MemoryArmName[];
   tasks: readonly SessionTask[];
+  taskSet: string | null;
   trials: number;
   maxTurns: number;
   evidence: SessionsBenchFile['trap_evidence'];
@@ -104,7 +105,7 @@ export const sessionsPlanLines = (p: SessionsPlanInfo): string[] => {
     `           session 2 "${sessionBootstrap().slice(0, 60)}…"`,
     `arms:      ${p.arms.join(', ')}`,
     ...p.arms.map((a) => `  ${a.padEnd(11)} ${ARM_PLAN[a]}`),
-    `tasks:     ${p.tasks.length} pairs (${types.map((ty) => `${count(ty)} ${ty}`).join(', ')}; ${traps.length} traps)`,
+    `tasks:     ${p.tasks.length} pairs${p.taskSet ? ` in set "${p.taskSet}"` : ''} (${types.map((ty) => `${count(ty)} ${ty}`).join(', ')}; ${traps.length} traps)`,
     ...p.tasks.map(
       (t) =>
         `  ${t.id.padEnd(22)} ${t.type.padEnd(10)} ${t.trap ? 'TRAP' : '    '}  session 1: ${t.session1.length} user messages`,
@@ -150,6 +151,8 @@ export interface SessionsCli {
   rig: RigVersion;
   sessions: SessionsFile;
   tasks: SessionTask[];
+  // The --task-set the tasks were limited to, if any.
+  taskSet: string | null;
   arms: MemoryArmName[];
   trials: number;
   maxTurns: number;
@@ -184,6 +187,7 @@ export const newSessionsFile = (
     | 'sessions'
     | 'arms'
     | 'tasks'
+    | 'taskSet'
     | 'trials'
     | 'maxTurns'
   >,
@@ -194,6 +198,7 @@ export const newSessionsFile = (
   mode: 'sessions',
   preregistered_bar: PREREGISTERED_BAR,
   confirmation_rule: CONFIRMATION_RULE,
+  ...(c.taskSet !== null ? { task_set: c.taskSet } : {}),
   label: c.label,
   started_at: new Date().toISOString(),
   finished_at: null,
@@ -249,6 +254,7 @@ export const mainSessions = async (c: SessionsCli): Promise<void> => {
       rg: rgAvailable(),
       arms: c.arms,
       tasks: c.tasks,
+      taskSet: c.taskSet,
       trials: c.trials,
       maxTurns: c.maxTurns,
       evidence,

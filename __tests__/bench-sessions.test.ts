@@ -21,6 +21,7 @@ import { AnthropicProvider, OpenRouterProvider } from '../scripts/bench/provider
 import {
   aggregateSessions,
   bootstrapPaired,
+  mergeSessionsFiles,
   renderSessionsMarkdown,
   verdictFor,
   type PairedDelta,
@@ -36,6 +37,7 @@ import {
   parseMemoryArms,
   runSessionsLoop,
   runTrial,
+  selectTasks,
   sessionBootstrap,
   snapshotIndex,
   validateSessionsFile,
@@ -727,6 +729,159 @@ describe('verdict against the pre-registered bar', () => {
   });
 });
 
+describe('combined runs', () => {
+  // A run over `ids`: memory-on passes every trial, memory-off the first only.
+  const run = (label: string, ids: string[], over: Partial<SessionsBenchFile> = {}) => {
+    const results: SessionRunResult[] = ids.flatMap((task_id) =>
+      [0, 1, 2].flatMap((trial) => [
+        result({ task_id, arm: 'memory-on', trial }),
+        result({
+          task_id,
+          arm: 'memory-off',
+          trial,
+          ...(trial === 0
+            ? {}
+            : {
+                check: {
+                  pass: false,
+                  missing: ['x'],
+                  any_matched: [],
+                  forbidden: [],
+                  trapped: [],
+                  marker_found: true,
+                },
+              }),
+        }),
+      ]),
+    );
+    return {
+      schema: 1,
+      mode: 'sessions',
+      preregistered_bar: PREREGISTERED_BAR,
+      label,
+      started_at: `2026-10-29T0${ids.length}:00:00Z`,
+      finished_at: `2026-10-29T0${ids.length}:30:00Z`,
+      provider: 'openrouter',
+      model: 'anthropic/claude-haiku-5.5',
+      rig: { version: '0.3.0', commit: label, dirty: false, fingerprint: 'f' },
+      target: {
+        repo: '/r',
+        commit: 'c',
+        expected_commit: 'c',
+        snapshot: { sha256: 'a'.repeat(64), bytes: 1, nodes: 5, waypoints: 0 },
+      },
+      instructions: { path: 'generated/installer/claude.instructions.md', sha256: 'b'.repeat(64) },
+      trap_evidence: [],
+      answer_marker: 'ANSWER:',
+      arms: ['memory-off', 'memory-on'],
+      trials: 3,
+      max_turns: 12,
+      tasks: ids.map((id): SessionTask => ({ ...trapTask, id })),
+      results,
+      ...over,
+    } satisfies SessionsBenchFile;
+  };
+  const ten = (from: number) => Array.from({ length: 10 }, (_, i) => `t${from + i}`);
+
+  test('two runs merge into one table, one bootstrap over all tasks and one verdict', () => {
+    const a = run('first', ten(1));
+    const b = run('confirmation', ten(11), { confirmation_rule: CONFIRMATION_RULE });
+    const merged = mergeSessionsFiles([a, b]);
+    expect(merged.tasks).toHaveLength(20);
+    expect(merged.results).toHaveLength(120);
+    expect(merged.label).toBe('first + confirmation');
+    expect(merged.confirmation_rule).toBe(CONFIRMATION_RULE);
+    expect(merged.combined!.map((c) => [c.label, c.tasks.length, c.trials])).toEqual([
+      ['first', 10, 60],
+      ['confirmation', 10, 60],
+    ]);
+    const r = aggregateSessions(merged, { iterations: 500 });
+    expect(r.paired).toMatchObject({ pairs: 60, tasks: 20 });
+    expect(r.paired!.delta).toBeCloseTo(2 / 3);
+    expect(r.tasks).toHaveLength(20);
+    const md = renderSessionsMarkdown(r);
+    expect(md).toContain(`**Verdict, combined (2 runs): ${r.verdict!.verdict}**`);
+    expect(md).toContain('- **Combined runs**: 2\n');
+    expect(md).toContain(`> ${CONFIRMATION_RULE}`);
+    // One file is not a combination.
+    expect(mergeSessionsFiles([a])).toBe(a);
+    expect(renderSessionsMarkdown(aggregateSessions(a, { iterations: 50 }))).toContain(
+      '**Verdict: ',
+    );
+    // Differing rig builds still merge, but the header says so.
+    const other = run('confirmation', ten(11), {
+      rig: { version: '0.3.0', commit: 'x', dirty: true, fingerprint: 'g' },
+    });
+    expect(
+      renderSessionsMarkdown(aggregateSessions(mergeSessionsFiles([a, other]), { iterations: 50 })),
+    ).toContain('rig fingerprints differ between runs');
+  });
+
+  test('refuses runs that differ in model, arms, trials, bar, target or share a task', () => {
+    const a = run('first', ten(1));
+    const differing: [string, Partial<SessionsBenchFile>][] = [
+      ['model', { model: 'anthropic/claude-sonnet-5' }],
+      ['arms', { arms: ['memory-off', 'memory-on', 'oracle'] }],
+      ['trials', { trials: 2 }],
+      ['pre-registered bar', { preregistered_bar: `${PREREGISTERED_BAR} ` }],
+      ['target commit', { target: { ...a.target, commit: 'd' } }],
+      ['max turns', { max_turns: 8 }],
+    ];
+    for (const [what, over] of differing) {
+      expect(() => mergeSessionsFiles([a, run('b', ten(11), over)])).toThrow(
+        `refusing to merge: ${what} differs`,
+      );
+    }
+    // Same arms in another order are the same arms.
+    expect(() =>
+      mergeSessionsFiles([a, run('b', ten(11), { arms: ['memory-on', 'memory-off'] })]),
+    ).not.toThrow();
+    expect(() => mergeSessionsFiles([a, run('b', ['t10', 't11'])])).toThrow(
+      'task t10 is in both first and b',
+    );
+    expect(() => mergeSessionsFiles([])).toThrow('nothing to merge');
+  });
+
+  test('--tasks and --task-set select the tasks a run covers', () => {
+    const ts = [
+      { ...trapTask, id: 'a' },
+      { ...trapTask, id: 'b' },
+      { ...trapTask, id: 'c', set: 'confirmation' },
+      { ...trapTask, id: 'd', set: 'confirmation' },
+    ];
+    const ids = (xs: SessionTask[]) => xs.map((t) => t.id);
+    expect(ids(selectTasks(ts, {}))).toEqual(['a', 'b', 'c', 'd']);
+    expect(ids(selectTasks(ts, { set: 'confirmation' }))).toEqual(['c', 'd']);
+    expect(ids(selectTasks(ts, { set: 'first' }))).toEqual(['a', 'b']);
+    expect(ids(selectTasks(ts, { set: 'confirmation', ids: ['a', 'd'] }))).toEqual(['d']);
+    expect(() => selectTasks(ts, { set: 'second' })).toThrow('unknown task set "second"');
+    expect(() => selectTasks(ts, { ids: ['z'] })).toThrow('unknown task id(s): z');
+    expect(() => selectTasks(ts, { set: 'first', ids: ['c'] })).toThrow('select no task');
+  });
+
+  test('bench:report --in a --in b prints the combined report; a mismatch exits 1', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'rig-membench-merge-'));
+    try {
+      const pa = join(dir, 'a.json');
+      const pb = join(dir, 'b.json');
+      const pc = join(dir, 'c.json');
+      writeFileSync(pa, JSON.stringify(run('first', ten(1))));
+      writeFileSync(pb, JSON.stringify(run('confirmation', ten(11))));
+      writeFileSync(pc, JSON.stringify(run('other', ten(11), { model: 'm2' })));
+      const report = resolve(ROOT, 'scripts/bench/report.ts');
+      const ok = Bun.spawnSync(['bun', report, '--in', pa, '--in', pb], { cwd: ROOT });
+      expect(ok.exitCode).toBe(0);
+      expect(ok.stdout.toString()).toContain('combined (2 runs)');
+      expect(ok.stdout.toString()).toContain('Over 60 (task, trial) pairs from 20 tasks');
+      const bad = Bun.spawnSync(['bun', report, '--in', pa, '--in', pc], { cwd: ROOT });
+      expect(bad.exitCode).toBe(1);
+      expect(bad.stderr.toString()).toContain('refusing to merge: model differs');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('dry-run cost estimate', () => {
   const pricing: ModelPricing = {
     id: 'anthropic/claude-haiku-5.5',
@@ -822,6 +977,7 @@ describe('dry-run cost estimate', () => {
       rg: true,
       arms,
       tasks: sf.tasks,
+      taskSet: null,
       trials: 3,
       maxTurns: 12,
       evidence: [],
@@ -849,6 +1005,7 @@ describe('dry-run cost estimate', () => {
         sessions: sf,
         arms,
         tasks: sf.tasks,
+        taskSet: 'confirmation',
         trials: 3,
         maxTurns: 12,
       },
@@ -857,6 +1014,7 @@ describe('dry-run cost estimate', () => {
     );
     expect(fresh.preregistered_bar).toBe(PREREGISTERED_BAR);
     expect(fresh.confirmation_rule).toBe(CONFIRMATION_RULE);
+    expect(fresh.task_set).toBe('confirmation');
     expect(fresh.results).toEqual([]);
   });
 });
