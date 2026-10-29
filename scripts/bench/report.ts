@@ -399,17 +399,42 @@ export const renderMarkdown = (r: Report): string => {
 
 if (import.meta.main) {
   const args = process.argv.slice(2);
-  const valued = new Set(['--in', '--out', '--queries-file', '--sessions-file']);
+  const valued = new Set(['--in', '--out', '--queries-file', '--sessions-file', '--index']);
   const value = (n: string): string | undefined => {
     const i = args.indexOf(n);
     return i >= 0 ? args[i + 1] : undefined;
   };
+  // --by-model: one row per model in results/index.json (bench:matrix writes it).
+  if (args.includes('--by-model')) {
+    const { modelRows, renderByModelMarkdown } = await import('./report-models.ts');
+    const { RESULTS_DIR, loadIndex } = await import('./models.ts');
+    const indexPath = value('--index') ?? resolve(RESULTS_DIR, 'index.json');
+    const index = loadIndex(indexPath);
+    if (!index) {
+      console.error(`bench:report: no ${indexPath}; run bun run bench:matrix --reindex`);
+      process.exit(1);
+    }
+    const dir = resolve(indexPath, '..');
+    const md = renderByModelMarkdown(
+      index,
+      modelRows(index, (run) => JSON.parse(readFileSync(resolve(dir, run.file), 'utf-8'))),
+    );
+    const outPath = value('--out');
+    if (outPath) {
+      writeFileSync(resolve(outPath), md);
+      console.log(`wrote ${resolve(outPath)}`);
+    } else {
+      process.stdout.write(md);
+    }
+    process.exit(0);
+  }
   const positional = args.filter((a, i) => !a.startsWith('--') && !valued.has(args[i - 1] ?? ''));
   // Every --in, then positionals; several sessions files make one combined report.
   const inPaths = [...args.flatMap((a, i) => (a === '--in' ? [args[i + 1]!] : [])), ...positional];
   if (inPaths.length === 0) {
     console.error(
-      'usage: bun scripts/bench/report.ts <results.json> [--in more.json ...] [--out report.md] [--recheck [--queries-file queries.json | --sessions-file sessions.json]]',
+      'usage: bun scripts/bench/report.ts <results.json> [--in more.json ...] [--out report.md] [--recheck [--queries-file queries.json | --sessions-file sessions.json]]\n' +
+        '       bun scripts/bench/report.ts --by-model [--index results/index.json] [--out report.md]',
     );
     process.exit(2);
   }

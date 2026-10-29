@@ -179,6 +179,8 @@ export interface SessionsCli {
   workDir: string | null;
   dryRun: boolean;
   estimateFrom: string | null;
+  // Stop once the run has spent this much (bench:matrix sets it); null: no cap.
+  maxSpendUsd?: number | null;
   allowCommitMismatch: boolean;
   // Built only for a real run, after every check passed.
   makeProvider: () => Provider;
@@ -349,6 +351,12 @@ export const mainSessions = async (c: SessionsCli): Promise<void> => {
             `${r.recalled !== null ? `, ${r.recalled} recalled` : ''}` +
             `${(r.s2.error ?? r.s1?.error) ? ` (err: ${(r.s2.error ?? r.s1?.error ?? '').slice(0, 120)})` : ''}`,
         );
+        if (c.maxSpendUsd != null && spent >= c.maxSpendUsd) {
+          throw new Error(
+            `spend cap reached: ${usd(spent)} ≥ ${usd(c.maxSpendUsd)} after ${file.results.length} trials; ` +
+              `partial results in ${outPath}`,
+          );
+        }
       },
     });
     file.finished_at = new Date().toISOString();

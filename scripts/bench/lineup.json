@@ -1,0 +1,13 @@
+{
+  "comment": "The cross-model lineup: bench:matrix --models lineup runs these, and the charts show a 'not run yet' row for any without results. Tiers come from list prices (index.json), not from this file.",
+  "models": [
+    "anthropic/claude-haiku-5.5",
+    "openai/gpt-6-luna",
+    "deepseek/deepseek-v4.1-flash",
+    "qwen/qwen3.8-flash",
+    "google/gemini-3.8-flash",
+    "anthropic/claude-sonnet-5.5",
+    "openai/gpt-6.1-sol",
+    "google/gemini-4-argon"
+  ]
+}

@@ -61,6 +61,7 @@
     "test:e2e": "playwright test",
     "bench:run": "bun run scripts/bench/run.ts",
     "bench:report": "bun run scripts/bench/report.ts",
+    "bench:matrix": "bun run scripts/bench/matrix.ts",
     "install:hooks": "bash scripts/install-hooks.sh",
     "build": "bun run build:web && bun run build:cli",
     "build:web": "cd packages/web && bunx vite build",
