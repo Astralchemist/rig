@@ -81,6 +81,14 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
 - **Magnetic pull.** "What's related to X", ranked by graph distance, semantic similarity and recent activity, with the score components broken out.
 - **Dependency intelligence.** Installed versions, declared-but-unused packages, imports with no declaration, and version conflicts across a monorepo. It covers npm and Python: PyPI names are matched to their import names (`PyYAML` → `yaml`), and the standard library is never flagged.
 
+<p align="center">
+  <img src="docs/map/constellation-before-after.png" alt="Before and after slider of the whole-repo map in the light theme. After: a faint dot grid behind the graph, file labels with the directory dimmed and the file name in front, outlined nodes, and a legend that says 500 of 956 nodes are shown, by hubness." width="820">
+  <br>
+  <img src="docs/map/selection-before-after.png" alt="Before and after slider of a selected node, buildOverviewMap. After: its links draw in the accent colour, hubs carry a soft halo, and its neighbours' labels no longer overlap." width="820">
+  <br>
+  <em>The map before and after the canvas pass: the divider sweeps from before (right) to after (left).</em>
+</p>
+
 **Remember across sessions and agents**
 - **Memory that survives re-indexing.** Index, sync, file edits and line moves keep everything agents attach to code:
   - waypoints (decisions, constraints, open questions)
