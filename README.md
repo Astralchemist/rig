@@ -19,6 +19,8 @@
 
 Rig builds a local-first semantic knowledge graph of your project, renders it as an interactive map you can fly through, and exposes it to coding agents (Claude Code, Cursor, Codex, opencode) over MCP. Agents navigate by structure and by meaning, and they keep what earlier sessions decided, attached to the code it is about.
 
+Rig is to agent memory what `.git` is to history: it belongs to the project, not to whichever agent is working in it. Claude Code, Cursor, Codex and opencode all read and write the same map and memory over MCP.
+
 Everything runs on your machine. No API key, no upload, nothing leaves your laptop.
 
 ---
@@ -115,7 +117,7 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
   <img src="https://raw.githubusercontent.com/Astralchemist/rig/main/docs/bench/memory.svg" alt="Session-2 success: memory-off 30%, memory-on 70%, oracle 82%. memory-on minus memory-off: +40 pp, 95% CI +20 to +60 pp, above the pre-registered +15 pp bar." width="760">
 </p>
 
-**Memory across sessions passed its pre-registered bar.** On 20 two-session tasks with Claude Haiku 5.5, session 2 succeeded 70% of the time with rig's waypoints and 30% without. That is +40 pp (95% CI +20 to +60 pp), at 94% of memory-off's tokens. The bar (the whole CI at or above +15 pp, tokens at or below 110%) was written before any run. The losses: the first 10 tasks alone were inconclusive, the 10 confirmation tasks alone went over the token cap (110.2%), and two trap tasks beat every arm, oracle included. Automatic capture alone (hooks, without agent-dropped waypoints) reached 50% (+20 pp) but used 116% of the tokens, so it failed the same bar: it is a backstop to agent-dropped waypoints, not a replacement.
+**Memory across sessions passed its pre-registered bar.** On 20 two-session tasks with Claude Haiku 5.5, session 2 succeeded 70% of the time with rig's waypoints and 30% without. That is +40 pp (95% CI +20 to +60 pp), at 94% of memory-off's tokens. The bar (the whole CI at or above +15 pp, tokens at or below 110%) was written before any run. The losses: the first 10 tasks alone were inconclusive, the 10 confirmation tasks alone went over the token cap (110.2%), and two trap tasks beat every arm, oracle included. Automatic capture alone (hooks, without agent-dropped waypoints) reached 50% (+20 pp) but used 116% of the tokens, so it failed the same bar, and its extractor found the needed fact in only 9 of 57 runs. The product is the explicit waypoint: tell your agent to drop one before you stop. Capture is the backstop.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/Astralchemist/rig/main/docs/bench/qa-tokens.svg" alt="Single-shot tokens relative to grep-only, by rig build and arm. Every arm is above 100% overall; at rig 0.3.0 grep+rig is 134% overall, 175% on lookups and 99% on natural-language questions." width="760">

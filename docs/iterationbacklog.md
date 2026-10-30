@@ -422,6 +422,35 @@ docs/
 
 ---
 
+#### B6. Handoff: continue in another agent
+
+**One-liner.** When a session stops (usage limit, compaction, end of day), rig keeps a short, transient "where we are" record, and whichever agent opens the project next (another account, Codex, Cursor) starts from it.
+
+**Why.** "Claude ran out, Codex picked up where it left off" is the one-sentence version of rig's neutrality claim, and the benchmark arm for it changes only one thing: whether `.rig/` was there.
+
+**What it is.** A different object from the rest of rig's memory. Waypoints hold what was settled; a handoff holds what is in progress (the plan, the open question, the next step) and is deliberately not settled. So it is transient: one current handoff per workstream (branch or worktree, optional task label), overwritten by the next. Earlier versions stay in the mutation log for undo but never reach recall or the brief. It expires once consumed or after a set age.
+
+**Where the content comes from** (no model call; capture stays deterministic):
+- The agent's own handoff when asked ("drop a handoff before you stop"): still the most reliable source.
+- Claude Code's compaction summary: `SessionStart` with source `compact` fires after compaction, and the summary is in the transcript, so rig stores it as the handoff.
+- The transcript: the last user request, the current todo list, files edited this session, and the last failing command with its error.
+- Written on `Stop` (each turn), `PreCompact` and `SessionEnd`. A usage limit fires no event, so the handoff is at most one completed turn old.
+
+**Delivery.** The baseline is a file every agent loads on startup, so no model can skip it: local, gitignored, always-loaded files in a fenced, rig-managed section, merged not clobbered (`CLAUDE.local.md`; a gitignored `.cursor/rules/rig-handoff.mdc` with `alwaysApply`; Codex's project-local equivalent, to verify: rig wires Codex through the global `~/.codex/AGENTS.md` today, which would leak a handoff into every project). Not committed `AGENTS.md` or `.cursor/rules`: a brief that changes every session floods diffs, puts in-progress thoughts in commits and PRs, conflicts on merge, and is read as instructions where rig's brief is fenced as data. The `SessionStart` hook stays the Claude Code upgrade. At most 1,500 characters, and only while a handoff is fresh: injecting the orientation map into every prompt cost 187%.
+
+**New tools.** `rig_handoff` (write/read), `rig handoff [show|clear]`; capture writes `kind: handoff` records.
+
+**Acceptance.**
+- [ ] Bench arm, pre-registered: session 1 on one model, interrupted mid-task; session 2 on a different model with the handoff vs cold, on the same tasks and bar as the memory bench
+- [ ] A real run across clients: Claude Code stops, Codex and Cursor each open the project and their first reply names the in-progress step without being asked
+- [ ] Two worktrees keep separate handoffs; a consumed or expired handoff leaves every brief file
+
+**Dependencies.** Automatic capture (shipped); C5's agent identity (to say who handed off to whom); B5 only if handoffs are ever shared, which by default they aren't (they stay local).
+
+**★ Risk surface.** A stale plan injected as if current; private in-progress wording written into agent files; the token cost of an always-loaded brief; parallel agents overwriting each other; client file-loading rules that differ by version (Codex in particular). ★ **Deep research before building:** when this item's turn comes, we run a deep-research pass on these risks first and write its findings into the item before any code.
+
+---
+
 ### C. Observability layer
 
 #### C1. Hot-node tracking + heat scoring
@@ -946,6 +975,7 @@ Acceptance for Phase 5: ✅ Rig generates its own architecture docs from its way
 - **E4** Architecture blueprints: a first Mermaid and Blueprint-lens cut can use the orientation map today; inferred data stores wait for step 2's edge provenance.
 - **E5** PR review action: first in the current order, dogfooded on rig's own PRs before anyone else sees it; built alongside step 1, which its reviewer verdicts feed.
 - **C5** live overlay (update): after E5; agent identity from the MCP handshake first, trails second, then the paired clip.
+- **B6** Handoff: alongside E5; the cross-model handoff arm is the neutrality claim's benchmark.
 - Bench harness: accept any OpenAI-compatible endpoint, so contributors can run the pinned bench on their own models.
 
 ### Phase 6 — Scale
