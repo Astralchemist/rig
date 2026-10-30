@@ -96,3 +96,35 @@ commits and why; run time.
 **Verdict.** PASS if the primary bar and the baseline bar both hold and at
 least 50 commits were scored; FAIL if either bar fails on at least 50; else
 INCONCLUSIVE.
+
+## Result (2026-10-30): INCONCLUSIVE, recall far below the bar
+
+`results/2026-10-30-impact-eval.md`. 105 commits examined, 60 qualifying:
+47 scored, 10 whose changed symbols the suite never executes, 3 skipped (a
+tree-sitter abort). 47 is under the pre-registered 50, so the verdict is
+INCONCLUSIVE by the rule, but no plausible 3 more commits move recall from
+53% to 80%:
+
+| measure | rig (depth 2) | file-level baseline | bar | |
+|---|---:|---:|---:|---|
+| micro recall | 52.7% | 49.3% | ≥ 80% | fails |
+| micro precision | 27.3% | 2.1% | ≥ baseline + 10 pp, at recall ≥ baseline's | holds (+25 pp) |
+| commits with an unflagged miss | 46.8% | | ≤ 20% | fails |
+| median `rig impact` text lines | 15 | | ≤ 25 | holds |
+
+What it says: rig's static graph is far more precise than file-level
+imports at about the same recall, and it misses roughly half of what the
+tests show calling into a change. The misses are the blind spots the
+research named: functions passed as callbacks (`retryWhenBusy(fn)` wrappers),
+tool handlers reached through the generated dispatch table (`run`), and
+request guards registered as middleware. So the E5 comment needs its
+blind-spots line, and the static graph needs callback and dispatch-table
+edges, before the blast radius can be trusted; both are a new
+pre-registration and a new run.
+
+**Disclosure.** A first run on 2026-10-30 was invalid: it loaded the recorder
+from a checkout that was switched to another branch mid-run, so every later
+commit failed instantly (18 scored before that, recall 43.9%; set aside, not
+reported as a result). This rerun ran from its own worktree with the rules
+unchanged; the only harness change, generating the embedded grammars in each
+replayed parent (`e307872`), turned out to be a no-op safeguard.
