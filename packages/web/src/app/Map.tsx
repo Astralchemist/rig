@@ -1,383 +1,657 @@
 // SPDX-License-Identifier: Apache-2.0
+import { Maximize2, Minus, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
+import type { Snapshot, SnapshotNode } from './api.ts';
+import { GROUPS, groupOf, kindLabel, type GroupId, type Shape } from './kinds.ts';
 import { useTheme } from './theme.tsx';
+import { readGraphPalette, type GraphPalette } from './themes.ts';
 
-export interface SnapshotNode {
-  id: string;
-  type: string;
-  name: string;
-  pull_score: number;
-  is_hub?: number;
-  hubness?: number;
-  community_id?: number;
-}
-
-export interface SnapshotPending {
-  id: number;
-  src: string;
-  dst: string;
-  kind: string;
-  weight: number;
-  rationale: string;
-  provenance: string;
-}
-
-export interface Snapshot {
-  nodes: SnapshotNode[];
-  edges_structural: Array<{ src: string; dst: string; kind: string }>;
-  edges_semantic: Array<{ src: string; dst: string; weight: number }>;
-  pending_edges: SnapshotPending[];
-}
+// The whole-repo constellation, drawn on canvas (react-force-graph-2d).
+// Canvas because the measured alternative, React Flow, drops to 54-70 fps
+// with 58-75 ms p95 frames at 5,000 nodes and needs a precomputed layout;
+// force-graph holds 98-120 fps at every size the map serves. React Flow is
+// used for the focused views instead (flow/).
 
 interface GraphNode extends SnapshotNode {
   x?: number;
   y?: number;
+  vx?: number;
+  vy?: number;
+  fx?: number;
+  fy?: number;
+  __deg: number;
+  __group: GroupId;
+  __shape: Shape;
 }
 
 interface GraphLink {
-  source: string;
-  target: string;
+  source: string | GraphNode;
+  target: string | GraphNode;
   table: 'structural' | 'semantic' | 'pending';
-  weight?: number;
-  pending?: SnapshotPending;
+  kind: string;
 }
 
-// Compose an #rrggbb hex with an alpha (0–1) into an rgba() string — canvas
-// strokes/fills need a real color value, not a CSS var.
-const withAlpha = (hex: string, a: number): string => {
-  const h = hex.replace('#', '');
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${a})`;
-};
-
-const radiusFor = (n: SnapshotNode): number => {
-  const base = 4 + Math.max(0, Math.min(1, n.pull_score)) * 14;
-  const hubBoost = n.is_hub ? 6 + (n.hubness ?? 0) * 8 : 0;
-  return base + hubBoost;
-};
+export interface MapFilters {
+  hidden: Set<GroupId>;
+  hubsOnly: boolean;
+}
 
 export interface MapProps {
   snapshot: Snapshot;
-  onSelect: (id: string, clickPos?: { x: number; y: number }) => void;
-  onAccept: (pendingId: number) => void;
-  onReject: (pendingId: number) => void;
-  // Bump the token to programmatically zoom-to-node (e.g. from the Cmd-K palette).
-  // Plain selection via canvas click does NOT bump this — only intentional jumps.
-  focusToken?: { id: string; ts: number } | null;
-  selectedId?: string | null;
-  // Map from node id → timestamp of last pulse. Used to render a fading halo
-  // when the AI (or any tool) touches that anchor.
-  pulses?: Map<string, number>;
+  filters: MapFilters;
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  // Bump to fly the camera to a node (search, deep link, list view).
+  focusToken: { id: string; ts: number } | null;
+  // node id -> when an agent last touched it; drawn as a fading ring.
+  pulses: Map<string, number>;
+  // Nodes an agent asked the user to look at (focus:requested).
+  highlight: Set<string>;
+  onOpenNeighbourhood: (id: string) => void;
 }
 
-export function Map({ snapshot, onSelect, onAccept, onReject, focusToken, selectedId, pulses }: MapProps): JSX.Element {
+const PULSE_MS = 1600;
+// Dot-grid pitch in CSS pixels, before snapping to a power of two in graph
+// units so the grid doesn't swim while zooming.
+const GRID_PX = 22;
+
+// `#rrggbb` (the theme tokens' form) at an alpha; anything else unchanged.
+const withAlpha = (color: string, a: number): string => {
+  const m = /^#([0-9a-f]{6})$/i.exec(color);
+  if (!m) return color;
+  const n = parseInt(m[1]!, 16);
+  return `rgb(${n >> 16} ${(n >> 8) & 255} ${n & 255} / ${a})`;
+};
+const endId = (e: string | GraphNode): string => (typeof e === 'string' ? e : e.id);
+
+const radiusFor = (n: GraphNode): number => {
+  const base = 2.2 + Math.min(4.5, Math.sqrt(n.__deg) * 0.6);
+  return n.is_hub ? base + 1.5 + (n.hubness ?? 0) * 2.5 : base;
+};
+
+// A weak pull toward the origin. Without it, nodes with no links in the
+// snapshot drift into a wide ring and zoom-to-fit shrinks everything else.
+const gravity = (strength: number) => {
+  let nodes: GraphNode[] = [];
+  const force = (alpha: number): void => {
+    for (const n of nodes) {
+      const k = (n.__deg === 0 ? strength * 3 : strength) * alpha;
+      n.vx = (n.vx ?? 0) - (n.x ?? 0) * k;
+      n.vy = (n.vy ?? 0) - (n.y ?? 0) * k;
+    }
+  };
+  force.initialize = (ns: GraphNode[]): void => {
+    nodes = ns;
+  };
+  return force;
+};
+
+const fillFor = (p: GraphPalette, g: GroupId): string =>
+  g === 'callable'
+    ? p.series[0]
+    : g === 'type'
+      ? p.series[1]
+      : g === 'value'
+        ? p.series[2]
+        : g === 'memory'
+          ? p.memory
+          : p.neutral;
+
+// Filled marks get a knockout: a thin outline in the canvas colour drawn
+// under the fill, so marks that touch stay separate and edges stop short of
+// them instead of running into the fill.
+const drawShape = (
+  ctx: CanvasRenderingContext2D,
+  shape: Shape,
+  x: number,
+  y: number,
+  r: number,
+  scale: number,
+  knockout: string,
+): void => {
+  const fill = (): void => {
+    ctx.lineWidth = 2.4 / scale;
+    ctx.lineJoin = 'round';
+    const ink = ctx.fillStyle;
+    ctx.strokeStyle = knockout;
+    ctx.stroke();
+    ctx.fillStyle = ink;
+    ctx.fill();
+  };
+  ctx.beginPath();
+  switch (shape) {
+    case 'square': {
+      const s = r * 1.7;
+      ctx.roundRect(x - s / 2, y - s / 2, s, s, Math.max(0.6, s * 0.18));
+      fill();
+      return;
+    }
+    case 'diamond': {
+      const s = r * 1.3;
+      ctx.moveTo(x, y - s);
+      ctx.lineTo(x + s, y);
+      ctx.lineTo(x, y + s);
+      ctx.lineTo(x - s, y);
+      ctx.closePath();
+      fill();
+      return;
+    }
+    case 'triangle': {
+      const s = r * 1.35;
+      ctx.moveTo(x, y - s);
+      ctx.lineTo(x + s * 0.95, y + s * 0.7);
+      ctx.lineTo(x - s * 0.95, y + s * 0.7);
+      ctx.closePath();
+      fill();
+      return;
+    }
+    case 'ring':
+      ctx.arc(x, y, r, 0, 2 * Math.PI);
+      ctx.lineWidth = Math.max(1.2 / scale, r * 0.32) + 2.4 / scale;
+      ctx.strokeStyle = knockout;
+      ctx.stroke();
+      ctx.lineWidth = Math.max(1.2 / scale, r * 0.32);
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.stroke();
+      return;
+    default:
+      ctx.arc(x, y, r, 0, 2 * Math.PI);
+      fill();
+  }
+};
+
+function Constellation({
+  snapshot,
+  filters,
+  selectedId,
+  onSelect,
+  focusToken,
+  pulses,
+  highlight,
+  onOpenNeighbourhood,
+}: MapProps): JSX.Element {
   const { theme } = useTheme();
-  const colorFor = (kind: string): string => theme.nodeKinds[kind] ?? theme.tokens.muted;
-  const communityColor = (cid: number | undefined): string =>
-    cid === undefined ? theme.tokens.muted : theme.community[cid % theme.community.length]!;
-
-  // Visible-kind set. Mutable via filter chips above the canvas. `null` means
-  // "show everything"; a Set means "show only these kinds".
-  const allKinds = useMemo(
-    () =>
-      Array.from(new Set(snapshot.nodes.map((n) => n.type))).sort((a, b) =>
-        a.localeCompare(b),
-      ),
-    [snapshot.nodes],
-  );
-  const [hiddenKinds, setHiddenKinds] = useState<Set<string>>(new Set());
-  const [hubsOnly, setHubsOnly] = useState(false);
-  const [colorMode, setColorMode] = useState<'kind' | 'community'>('kind');
-
-  const graphData = useMemo(() => {
-    const visible = (n: SnapshotNode): boolean => {
-      if (hubsOnly && !n.is_hub) return false;
-      return !hiddenKinds.has(n.type);
-    };
-    const visibleNodes = snapshot.nodes.filter(visible);
-    const visibleIds = new Set(visibleNodes.map((n) => n.id));
-    const nodes: GraphNode[] = visibleNodes.map((n) => ({ ...n }));
-    const linkFilter = <T extends { src: string; dst: string }>(e: T): boolean =>
-      visibleIds.has(e.src) && visibleIds.has(e.dst);
-    const links: GraphLink[] = [
-      ...snapshot.edges_structural.filter(linkFilter).map((e) => ({
-        source: e.src,
-        target: e.dst,
-        table: 'structural' as const,
-      })),
-      ...snapshot.edges_semantic.filter(linkFilter).map((e) => ({
-        source: e.src,
-        target: e.dst,
-        table: 'semantic' as const,
-        weight: e.weight,
-      })),
-      ...snapshot.pending_edges
-        .filter((p) => visibleIds.has(p.src) && visibleIds.has(p.dst))
-        .map((p) => ({
-          source: p.src,
-          target: p.dst,
-          table: 'pending' as const,
-          pending: p,
-        })),
-    ];
-    return { nodes, links };
-  }, [snapshot, hiddenKinds, hubsOnly]);
-
-  const ref = useRef<ForceGraphMethods<GraphNode, GraphLink>>(undefined);
-  const [size, setSize] = useState({ w: 800, h: 600 });
-  const [hovered, setHovered] = useState<SnapshotPending | null>(null);
-  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
-
+  const [palette, setPalette] = useState<GraphPalette>(() => readGraphPalette());
+  // Tokens change with the [data-theme] stamp, which lands after render.
   useEffect(() => {
-    const onResize = (): void => setSize({ w: window.innerWidth, h: window.innerHeight });
-    onResize();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  // Camera pan to the focused node when the parent bumps focusToken.
-  useEffect(() => {
-    if (!focusToken) return;
-    const node = graphData.nodes.find((n) => n.id === focusToken.id);
-    if (!node || node.x === undefined || node.y === undefined) return;
-    ref.current?.centerAt(node.x, node.y, 600);
-    ref.current?.zoom(4, 600);
-  }, [focusToken, graphData.nodes]);
-
-  // Drive repaints while a pulse halo fades. force-graph only repaints on
-  // simulation ticks, so we reheat the sim when a pulse batch arrives — the
-  // resulting frames animate the halo over its fade window.
-  useEffect(() => {
-    if (!pulses || pulses.size === 0) return;
-    ref.current?.d3ReheatSimulation();
-  }, [pulses]);
-
-  // Repaint when the theme swaps. backgroundColor changing already triggers a
-  // canvas repaint (which re-runs the node/edge draw closures with the new
-  // colors); a brief reheat guarantees it even if two themes shared a bg.
-  useEffect(() => {
-    ref.current?.d3ReheatSimulation();
+    const id = requestAnimationFrame(() => setPalette(readGraphPalette()));
+    return () => cancelAnimationFrame(id);
   }, [theme]);
 
-  const toggleKind = (k: string): void => {
-    setHiddenKinds((s) => {
-      const next = new Set(s);
-      next.has(k) ? next.delete(k) : next.add(k);
-      return next;
+  // Positions survive refreshes: a db change re-fetches the snapshot, and
+  // without this every accept, note or selection re-ran the whole layout.
+  const positions = useRef(new Map<string, { x: number; y: number }>());
+  const pinned = useRef(new Set<string>());
+  const settled = useRef(false);
+
+  const graphData = useMemo(() => {
+    const keep = (n: SnapshotNode): boolean => {
+      if (filters.hubsOnly && !n.is_hub) return false;
+      return !filters.hidden.has(groupOf(n.type).id);
+    };
+    const visible = snapshot.nodes.filter(keep);
+    const ids = new Set(visible.map((n) => n.id));
+    const deg = new Map<string, number>();
+    const links: GraphLink[] = [];
+    const add = (src: string, dst: string, table: GraphLink['table'], kind: string): void => {
+      if (!ids.has(src) || !ids.has(dst) || src === dst) return;
+      links.push({ source: src, target: dst, table, kind });
+      deg.set(src, (deg.get(src) ?? 0) + 1);
+      deg.set(dst, (deg.get(dst) ?? 0) + 1);
+    };
+    for (const e of snapshot.edges_structural) add(e.src, e.dst, 'structural', e.kind);
+    for (const e of snapshot.edges_semantic) add(e.src, e.dst, 'semantic', e.kind ?? 'related');
+    for (const e of snapshot.pending_edges) add(e.src, e.dst, 'pending', e.kind);
+    pinned.current.clear();
+    const nodes: GraphNode[] = visible.map((n) => {
+      const g = groupOf(n.type);
+      const at = positions.current.get(n.id);
+      const node: GraphNode = { ...n, __deg: deg.get(n.id) ?? 0, __group: g.id, __shape: g.shape };
+      if (at && settled.current) {
+        // Hold known nodes still while newcomers find their place.
+        node.x = node.fx = at.x;
+        node.y = node.fy = at.y;
+        pinned.current.add(n.id);
+      } else if (at) {
+        node.x = at.x;
+        node.y = at.y;
+      }
+      return node;
     });
+    return { nodes, links };
+  }, [snapshot, filters]);
+
+  const adjacency = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const l of graphData.links) {
+      const s = endId(l.source);
+      const t = endId(l.target);
+      if (!m.has(s)) m.set(s, new Set());
+      if (!m.has(t)) m.set(t, new Set());
+      m.get(s)!.add(t);
+      m.get(t)!.add(s);
+    }
+    return m;
+  }, [graphData]);
+
+  // Label priority: hubs, then by degree. Computed once per data change.
+  const labelOrder = useMemo(
+    () =>
+      [...graphData.nodes].sort(
+        (a, b) =>
+          (b.is_hub ?? 0) - (a.is_hub ?? 0) ||
+          (b.hubness ?? 0) - (a.hubness ?? 0) ||
+          b.__deg - a.__deg,
+      ),
+    [graphData],
+  );
+
+  const ref = useRef<ForceGraphMethods<GraphNode, GraphLink>>(undefined);
+  const wrap = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ w: 800, h: 600 });
+  const [hover, setHover] = useState<{ node: GraphNode; x: number; y: number } | null>(null);
+  const mouse = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setSize({ w: el.clientWidth, h: el.clientHeight }));
+    ro.observe(el);
+    setSize({ w: el.clientWidth, h: el.clientHeight });
+    return () => ro.disconnect();
+  }, []);
+
+  // Spread the layout a little more than the defaults so labels fit.
+  useEffect(() => {
+    const fg = ref.current;
+    if (!fg) return;
+    const charge = fg.d3Force('charge') as unknown as
+      | { strength?: (n: number) => void }
+      | undefined;
+    charge?.strength?.(-38);
+    const link = fg.d3Force('link') as unknown as { distance?: (n: number) => void } | undefined;
+    link?.distance?.(34);
+    fg.d3Force('gravity', gravity(0.045) as never);
+  }, []);
+
+  useEffect(() => {
+    if (!focusToken) return;
+    const n = graphData.nodes.find((x) => x.id === focusToken.id);
+    if (!n || n.x === undefined || n.y === undefined) return;
+    ref.current?.centerAt(n.x, n.y, 600);
+    ref.current?.zoom(2.4, 600);
+  }, [focusToken, graphData.nodes]);
+
+  const pulsing = pulses.size > 0;
+  // A selection the canvas can't show: outside the loaded snapshot (search
+  // and deep links reach the whole graph), or hidden by the filters.
+  const offMap: 'missing' | 'filtered' | null =
+    selectedId === null || graphData.nodes.some((n) => n.id === selectedId)
+      ? null
+      : snapshot.nodes.some((n) => n.id === selectedId)
+        ? 'filtered'
+        : 'missing';
+  const neighbours = selectedId ? adjacency.get(selectedId) : undefined;
+  const dimOthers = selectedId !== null && graphData.nodes.some((n) => n.id === selectedId);
+
+  const nodeAlpha = (id: string): number => {
+    if (!dimOthers) return 1;
+    if (id === selectedId || neighbours?.has(id)) return 1;
+    return 0.16;
+  };
+
+  const linkInvolves = (l: GraphLink): boolean =>
+    selectedId !== null && (endId(l.source) === selectedId || endId(l.target) === selectedId);
+
+  // Label widths at 11px, measured once per name.
+  const widths = useRef(new Map<string, number>());
+
+  const drawLabels = (ctx: CanvasRenderingContext2D, scale: number): void => {
+    // Greedy placement in screen space: highest priority first, skip any
+    // label that would overlap one already drawn (checked against a coarse
+    // grid of placed boxes). The budget grows with zoom.
+    const budget = Math.round(Math.min(400, 22 * scale * scale + 18));
+    const fontPx = 11;
+    // The font is set in graph units (fontPx / scale), so measureText returns
+    // graph units; the cache holds screen pixels, which don't change with zoom.
+    ctx.font = `500 ${fontPx / scale}px ${palette.fontCanvas}`;
+    const width = (name: string): number => {
+      let w = widths.current.get(name);
+      if (w === undefined) {
+        w = ctx.measureText(name).width * scale;
+        widths.current.set(name, w);
+      }
+      return w / scale;
+    };
+    ctx.textBaseline = 'middle';
+    // `must`: always labelled. `near`: the selection's neighbours, labelled
+    // first and kept while the rest are dimmed, but they still give way to
+    // labels already placed, so a dense neighbourhood doesn't stack text.
+    const must = new Set<string>(highlight);
+    if (selectedId) must.add(selectedId);
+    const near = new Set<string>([...must, ...(neighbours ?? [])]);
+    const rank = (n: GraphNode): number => (must.has(n.id) ? 0 : near.has(n.id) ? 1 : 2);
+    const order = near.size ? [...labelOrder].sort((a, b) => rank(a) - rank(b)) : labelOrder;
+    const cell = 80 / scale;
+    const grid = new Map<string, { x0: number; y0: number; x1: number; y1: number }[]>();
+    const cellsOf = (b: { x0: number; y0: number; x1: number; y1: number }): string[] => {
+      const out: string[] = [];
+      for (let gx = Math.floor(b.x0 / cell); gx <= Math.floor(b.x1 / cell); gx++)
+        for (let gy = Math.floor(b.y0 / cell); gy <= Math.floor(b.y1 / cell); gy++)
+          out.push(`${gx},${gy}`);
+      return out;
+    };
+    let drawn = 0;
+    for (const n of order) {
+      if (n.x === undefined || n.y === undefined) continue;
+      const forced = must.has(n.id);
+      if (!near.has(n.id) && drawn >= budget) break;
+      if (dimOthers && !near.has(n.id)) continue;
+      const r = radiusFor(n);
+      const w = width(n.name);
+      const h = (fontPx + 3) / scale;
+      const x0 = n.x + r + (n.id === selectedId || n.is_hub ? 5 : 1) + 3 / scale;
+      const box = { x0: x0 - 2 / scale, y0: n.y - h / 2, x1: x0 + w + 2 / scale, y1: n.y + h / 2 };
+      const keys = cellsOf(box);
+      const hit = keys.some((k) =>
+        grid.get(k)?.some((p) => box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0),
+      );
+      if (!forced && hit) continue;
+      for (const k of keys) {
+        const list = grid.get(k);
+        if (list) list.push(box);
+        else grid.set(k, [box]);
+      }
+      drawn++;
+      // An opaque, round-joined halo in the canvas colour keeps labels
+      // legible over edges (mitred joins leave spikes on glyph corners).
+      ctx.lineWidth = 3.5 / scale;
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = palette.canvas;
+      ctx.strokeText(n.name, x0, n.y);
+      const strong = n.id === selectedId || n.is_hub || forced;
+      // Paths read as breadcrumbs: the directory recedes, the name leads.
+      const cut = n.__group === 'file' ? n.name.lastIndexOf('/') + 1 : 0;
+      if (cut > 0) {
+        const dir = n.name.slice(0, cut);
+        ctx.fillStyle = palette.text3;
+        ctx.fillText(dir, x0, n.y);
+        ctx.fillStyle = strong ? palette.text1 : palette.text2;
+        // Measured live, not from the cache: glyph advances at the scaled
+        // font size aren't exactly linear in zoom, and a cached width leaves
+        // the name overlapping its directory.
+        ctx.fillText(n.name.slice(cut), x0 + ctx.measureText(dir).width, n.y);
+      } else {
+        ctx.fillStyle = strong ? palette.text1 : palette.text2;
+        ctx.fillText(n.name, x0, n.y);
+      }
+    }
+  };
+
+  // A dot grid in graph space: it pans and zooms with the nodes, so the eye
+  // has a fixed frame while the layout moves. Faint enough to sit under edges.
+  const drawGrid = (ctx: CanvasRenderingContext2D, scale: number): void => {
+    const t = ctx.getTransform();
+    if (t.a === 0) return;
+    const dpr = t.a / scale;
+    const step = 2 ** Math.ceil(Math.log2((GRID_PX * dpr) / t.a));
+    const x0 = Math.floor(-t.e / t.a / step) * step;
+    const y0 = Math.floor(-t.f / t.d / step) * step;
+    const x1 = (ctx.canvas.width - t.e) / t.a;
+    const y1 = (ctx.canvas.height - t.f) / t.d;
+    const d = (1.6 * dpr) / t.a;
+    ctx.fillStyle = palette.text3;
+    ctx.globalAlpha = palette.scheme === 'light' ? 0.2 : 0.13;
+    for (let x = x0; x <= x1; x += step)
+      for (let y = y0; y <= y1; y += step) ctx.fillRect(x - d / 2, y - d / 2, d, d);
+    ctx.globalAlpha = 1;
+  };
+
+  const zoomBy = (f: number): void => {
+    const fg = ref.current;
+    if (!fg) return;
+    fg.zoom(fg.zoom() * f, 250);
   };
 
   return (
-    <>
-      <div
-        style={{
-          position: 'absolute',
-          top: 52,
-          left: 12,
-          zIndex: 10,
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 6,
-          maxWidth: 'calc(100vw - 24px)',
-        }}
-      >
-        <button
-          onClick={() => setHubsOnly((v) => !v)}
-          title="Show only hub nodes"
-          style={{
-            padding: '4px 10px',
-            fontSize: 11,
-            border: `1px solid ${hubsOnly ? theme.tokens.hub : 'var(--border)'}`,
-            borderRadius: 999,
-            background: hubsOnly ? theme.tokens.hub : 'var(--surface)',
-            color: hubsOnly ? theme.tokens.bg : theme.tokens.hub,
-            cursor: 'pointer',
-          }}
-        >
-          {hubsOnly ? '◉ hubs only' : '○ hubs only'}
-        </button>
-        <button
-          onClick={() => setColorMode((m) => (m === 'kind' ? 'community' : 'kind'))}
-          title="Toggle node coloring between anchor kind and community"
-          style={{
-            padding: '4px 10px',
-            fontSize: 11,
-            border: '1px solid var(--border)',
-            borderRadius: 999,
-            background: 'var(--surface)',
-            color: colorMode === 'community' ? 'var(--accent)' : 'var(--muted)',
-            cursor: 'pointer',
-          }}
-        >
-          color: {colorMode}
-        </button>
-        {allKinds.map((k) => {
-          const hidden = hiddenKinds.has(k);
-          return (
-            <button
-              key={k}
-              onClick={() => toggleKind(k)}
-              style={{
-                padding: '4px 10px',
-                fontSize: 11,
-                border: `1px solid ${hidden ? 'var(--border)' : colorFor(k)}`,
-                borderRadius: 999,
-                background: hidden ? 'var(--surface)' : withAlpha(colorFor(k), 0.13),
-                color: hidden ? 'var(--muted)' : colorFor(k),
-                cursor: 'pointer',
-                opacity: hidden ? 0.5 : 1,
-              }}
-            >
-              {k}
-            </button>
-          );
-        })}
-      </div>
+    <div
+      ref={wrap}
+      className="canvas-wrap"
+      tabIndex={0}
+      role="application"
+      aria-label={`Constellation of ${graphData.nodes.length} nodes. Use the search (Control K) or the List view to pick a node with the keyboard.`}
+      onMouseMove={(e) => {
+        const r = wrap.current!.getBoundingClientRect();
+        mouse.current = { x: e.clientX - r.left, y: e.clientY - r.top };
+      }}
+      onKeyDown={(e) => {
+        if (e.key === '+' || e.key === '=') zoomBy(1.3);
+        else if (e.key === '-') zoomBy(1 / 1.3);
+        else if (e.key === '0') ref.current?.zoomToFit(400, 40);
+      }}
+    >
       <ForceGraph2D
         ref={ref}
         width={size.w}
         height={size.h}
         graphData={graphData}
-        backgroundColor={theme.tokens.bg}
+        backgroundColor={palette.canvas}
         nodeId="id"
-        linkColor={(l) => {
-          const t = (l as GraphLink).table;
-          if (t === 'pending') return theme.tokens.pending;
-          if (t === 'semantic') return withAlpha(theme.tokens.semantic, 0.33);
-          return theme.tokens.structural;
+        autoPauseRedraw={!pulsing}
+        cooldownTicks={220}
+        d3VelocityDecay={0.32}
+        minZoom={0.15}
+        maxZoom={12}
+        onEngineStop={() => {
+          for (const n of graphData.nodes) {
+            if (n.x !== undefined && n.y !== undefined)
+              positions.current.set(n.id, { x: n.x, y: n.y });
+            if (pinned.current.has(n.id)) {
+              delete n.fx;
+              delete n.fy;
+            }
+          }
+          pinned.current.clear();
+          if (!settled.current) {
+            settled.current = true;
+            ref.current?.zoomToFit(500, 48);
+          }
         }}
-        linkWidth={(l) => ((l as GraphLink).table === 'pending' ? 2 : (l as GraphLink).table === 'semantic' ? 1.5 : 0.8)}
-        linkLineDash={(l) => ((l as GraphLink).table === 'pending' ? [4, 4] : null)}
-        nodeLabel={(n) => `${(n as GraphNode).type}: ${(n as GraphNode).name}`}
-        nodeCanvasObject={(rawNode, ctx, scale) => {
-          const n = rawNode as GraphNode;
-          const r = radiusFor(n);
+        linkColor={(raw) => {
+          const l = raw as GraphLink;
+          const on = linkInvolves(l);
+          if (l.table === 'pending') return palette.pending;
+          if (on) return withAlpha(palette.accent, 0.7);
+          if (dimOthers) return palette.edge;
+          if (l.table === 'semantic') return palette.edgeStrong;
+          return palette.edge;
+        }}
+        linkWidth={(raw) => {
+          const l = raw as GraphLink;
+          if (l.table === 'pending') return 1.8;
+          if (linkInvolves(l)) return 1.4;
+          return l.table === 'semantic' ? 1.3 : 0.7;
+        }}
+        linkLineDash={(raw) => ((raw as GraphLink).table === 'pending' ? [5, 4] : null)}
+        nodeVal={(raw) => radiusFor(raw as GraphNode) ** 2 / 4}
+        nodeLabel={() => ''}
+        nodeCanvasObjectMode={() => 'replace'}
+        nodeCanvasObject={(raw, ctx, scale) => {
+          const n = raw as GraphNode;
           const x = n.x ?? 0;
           const y = n.y ?? 0;
+          const r = radiusFor(n);
+          const alpha = nodeAlpha(n.id);
+          ctx.globalAlpha = alpha;
+          const ink = fillFor(palette, n.__group);
           if (n.is_hub) {
-            // Halo ring for hubs — wider when hubness is higher.
-            const haloR = r + 3 + (n.hubness ?? 0) * 4;
+            // Hubs carry a soft halo in their own colour, not a grey ring.
             ctx.beginPath();
-            ctx.arc(x, y, haloR, 0, 2 * Math.PI);
-            ctx.strokeStyle = withAlpha(theme.tokens.hub, 0.55);
-            ctx.lineWidth = 1.5;
+            ctx.arc(x, y, r + 4.5, 0, 2 * Math.PI);
+            ctx.fillStyle = withAlpha(ink, palette.scheme === 'light' ? 0.16 : 0.22);
+            ctx.fill();
+          }
+          if (hover?.node.id === n.id && n.id !== selectedId) {
+            ctx.beginPath();
+            ctx.arc(x, y, r + 3.5, 0, 2 * Math.PI);
+            ctx.lineWidth = 1.5 / scale;
+            ctx.strokeStyle = palette.text2;
             ctx.stroke();
           }
-          // Pulse halo — fades over PULSE_MS after the activation timestamp.
-          const PULSE_MS = 1500;
-          const pulseTs = pulses?.get(n.id);
-          if (pulseTs !== undefined) {
-            const age = Date.now() - pulseTs;
+          ctx.fillStyle = ink;
+          drawShape(ctx, n.__shape, x, y, r, scale, palette.canvas);
+          if (highlight.has(n.id)) {
+            ctx.beginPath();
+            ctx.arc(x, y, r + 5, 0, 2 * Math.PI);
+            ctx.setLineDash([3 / scale, 3 / scale]);
+            ctx.lineWidth = 1.5 / scale;
+            ctx.strokeStyle = palette.accent;
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+          if (n.id === selectedId) {
+            ctx.beginPath();
+            ctx.arc(x, y, r + 4, 0, 2 * Math.PI);
+            ctx.lineWidth = 2.2 / scale;
+            ctx.strokeStyle = palette.accent;
+            ctx.stroke();
+          }
+          const ts = pulses.get(n.id);
+          if (ts !== undefined) {
+            const age = Date.now() - ts;
             if (age < PULSE_MS) {
-              const t = 1 - age / PULSE_MS;
-              const pr = r + 6 + (1 - t) * 18;
+              const t = age / PULSE_MS;
               ctx.beginPath();
-              ctx.arc(x, y, pr, 0, 2 * Math.PI);
-              ctx.strokeStyle = withAlpha(theme.tokens.pulse, Number(t.toFixed(2)));
-              ctx.lineWidth = 2;
+              ctx.arc(x, y, r + 3 + t * 16, 0, 2 * Math.PI);
+              ctx.lineWidth = 1.6 / scale;
+              ctx.strokeStyle = palette.accent;
+              ctx.globalAlpha = (1 - t) * 0.9;
               ctx.stroke();
             }
           }
+          ctx.globalAlpha = 1;
+        }}
+        nodePointerAreaPaint={(raw, color, ctx) => {
+          const n = raw as GraphNode;
+          ctx.fillStyle = color;
           ctx.beginPath();
-          ctx.arc(x, y, r, 0, 2 * Math.PI);
-          ctx.fillStyle = colorMode === 'community' ? communityColor(n.community_id) : colorFor(n.type);
+          ctx.arc(n.x ?? 0, n.y ?? 0, radiusFor(n) + 3, 0, 2 * Math.PI);
           ctx.fill();
-          if (selectedId === n.id) {
-            ctx.beginPath();
-            ctx.arc(x, y, r + 4, 0, 2 * Math.PI);
-            ctx.strokeStyle = theme.tokens.accent;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-          }
-          if (scale > 1.2 || n.is_hub) {
-            ctx.fillStyle = n.is_hub ? theme.tokens.hub : theme.tokens.text;
-            ctx.font = `${(n.is_hub ? 11 : 10) / scale}px ui-sans-serif`;
-            ctx.fillText(n.name, x + r + 2, y + 3);
-          }
         }}
-        onNodeClick={(n, ev) => {
-          const clickEv = ev as MouseEvent | undefined;
-          onSelect(
-            (n as GraphNode).id,
-            clickEv ? { x: clickEv.clientX, y: clickEv.clientY } : undefined,
-          );
+        onRenderFramePre={drawGrid}
+        onRenderFramePost={drawLabels}
+        onNodeHover={(raw) => {
+          const n = raw as GraphNode | null;
+          if (wrap.current) wrap.current.style.cursor = n ? 'pointer' : 'grab';
+          setHover(n ? { node: n, x: mouse.current.x, y: mouse.current.y } : null);
         }}
-        onLinkHover={(l) => {
-          const link = l as GraphLink | null;
-          setHovered(link?.pending ?? null);
-        }}
-        onLinkClick={(_l, ev) => {
-          setTooltipPos({ x: ev.clientX, y: ev.clientY });
+        onNodeClick={(raw) => onSelect((raw as GraphNode).id)}
+        onBackgroundClick={() => onSelect(null)}
+        onNodeDragEnd={(raw) => {
+          const n = raw as GraphNode;
+          if (n.x !== undefined && n.y !== undefined)
+            positions.current.set(n.id, { x: n.x, y: n.y });
         }}
       />
-      {hovered && tooltipPos && (
-        <div
-          style={{
-            position: 'fixed',
-            left: tooltipPos.x + 12,
-            top: tooltipPos.y + 12,
-            background: 'var(--surface2)',
-            border: `1px solid ${theme.tokens.pending}`,
-            borderRadius: 10,
-            padding: 12,
-            maxWidth: 320,
-            zIndex: 20,
-            fontSize: 12,
-            color: 'var(--text)',
-            boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
-          }}
-        >
-          <div style={{ color: 'var(--pending)', marginBottom: 6, fontWeight: 600 }}>
-            pending edge
-          </div>
-          <div style={{ color: 'var(--muted)', marginBottom: 6 }}>
-            {hovered.provenance} · {hovered.kind} · weight {hovered.weight.toFixed(2)}
-          </div>
-          <div style={{ marginBottom: 8 }}>{hovered.rationale}</div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              onClick={() => {
-                onAccept(hovered.id);
-                setHovered(null);
-                setTooltipPos(null);
-              }}
-              style={{
-                background: 'var(--success)',
-                color: 'var(--bg)',
-                border: 'none',
-                borderRadius: 6,
-                padding: '5px 12px',
-                cursor: 'pointer',
-                fontSize: 11,
-                fontWeight: 600,
-              }}
-            >
-              accept
-            </button>
-            <button
-              onClick={() => {
-                onReject(hovered.id);
-                setHovered(null);
-                setTooltipPos(null);
-              }}
-              style={{
-                background: 'var(--surface)',
-                color: 'var(--text)',
-                border: '1px solid var(--border)',
-                borderRadius: 6,
-                padding: '5px 12px',
-                cursor: 'pointer',
-                fontSize: 11,
-              }}
-            >
-              reject
-            </button>
-          </div>
+      {offMap && (
+        <div className="map-note island" role="status">
+          <span>
+            {offMap === 'filtered'
+              ? 'The selected node is hidden by the filters.'
+              : `The selected node isn't among the ${snapshot.nodes.length.toLocaleString()} nodes on the map.`}
+          </span>
+          <button className="btn btn-sm" onClick={() => onOpenNeighbourhood(selectedId!)}>
+            Open its neighbourhood
+          </button>
         </div>
       )}
-    </>
+      {hover && (
+        <div
+          className="hovercard float"
+          style={{
+            left: Math.min(hover.x + 14, size.w - 330),
+            top: Math.min(hover.y + 14, size.h - 70),
+          }}
+        >
+          <div className="t">
+            <span
+              className="glyph"
+              data-shape={hover.node.__shape}
+              style={{
+                ['--g' as string]: `var(${GROUPS.find((g) => g.id === hover.node.__group)!.cssVar})`,
+              }}
+            />
+            <span className="truncate">{hover.node.name}</span>
+          </div>
+          <div className="s">
+            {kindLabel(hover.node.type)} · {hover.node.__deg} link
+            {hover.node.__deg === 1 ? '' : 's'}
+            {hover.node.is_hub ? ` · hub ${(hover.node.hubness ?? 0).toFixed(2)}` : ''}
+          </div>
+          {hover.node.file_path && hover.node.type !== 'file' && (
+            <div className="s truncate">{hover.node.file_path}</div>
+          )}
+        </div>
+      )}
+      <div className="zoom-ctl island">
+        <button
+          className="btn btn-sm btn-ghost icon-btn"
+          aria-label="Zoom in"
+          title="Zoom in (+)"
+          onClick={() => zoomBy(1.3)}
+        >
+          <Plus />
+        </button>
+        <button
+          className="btn btn-sm btn-ghost icon-btn"
+          aria-label="Zoom out"
+          title="Zoom out (−)"
+          onClick={() => zoomBy(1 / 1.3)}
+        >
+          <Minus />
+        </button>
+        <button
+          className="btn btn-sm btn-ghost icon-btn"
+          aria-label="Fit to screen"
+          title="Fit (0)"
+          onClick={() => ref.current?.zoomToFit(400, 40)}
+        >
+          <Maximize2 />
+        </button>
+      </div>
+    </div>
   );
 }
+
+export { Constellation as Map };
+
+export const Legend = ({ shown, total }: { shown: number; total: number }): JSX.Element => (
+  <div className="legend island" aria-label="Legend">
+    {GROUPS.map((g) => (
+      <span key={g.id}>
+        <i
+          className="glyph"
+          data-shape={g.shape}
+          style={{ ['--g' as string]: `var(${g.cssVar})` }}
+        />
+        {g.label}
+      </span>
+    ))}
+    <span>
+      <i className="line faint" /> Structural
+    </span>
+    <span>
+      <i className="line" /> Accepted link
+    </span>
+    <span>
+      <i className="line dash" /> Pending review
+    </span>
+    {shown < total && (
+      <span className="legend-count" title="Raise Map density in Settings to load more">
+        <span className="num">{shown.toLocaleString()}</span> of{' '}
+        <span className="num">{total.toLocaleString()}</span> nodes, by hubness
+      </span>
+    )}
+  </div>
+);

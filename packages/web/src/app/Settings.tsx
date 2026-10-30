@@ -1,116 +1,134 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect, useRef, useState, type JSX } from 'react';
+import { Check, Monitor, Settings as Gear } from 'lucide-react';
+import { useEffect, useRef, useState, type JSX, type KeyboardEvent } from 'react';
 import { useTheme } from './theme.tsx';
+import { SYSTEM_THEME_ID } from './themes.ts';
 
-// Gear button + theme picker popover, mounted in the header. Selecting a theme
-// recolors the whole UI + canvas map instantly and persists to .rig/config.json.
-export function Settings(): JSX.Element {
-  const { theme, themeId, setThemeId, themes } = useTheme();
+export const DENSITIES = [300, 500, 1000, 2000];
+
+// Gear menu in the top bar: theme (persisted to .rig/config.json) and how
+// many nodes the constellation draws.
+export function Settings({
+  density,
+  onDensity,
+}: {
+  density: number;
+  onDensity: (n: number) => void;
+}): JSX.Element {
+  const { themeId, setThemeId, themes } = useTheme();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent): void => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') setOpen(false);
-    };
     window.addEventListener('mousedown', onDown);
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('mousedown', onDown);
-      window.removeEventListener('keydown', onKey);
-    };
+    menu.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
+    return () => window.removeEventListener('mousedown', onDown);
   }, [open]);
+
+  const close = (): void => {
+    setOpen(false);
+    button.current?.focus();
+  };
+
+  // Roving focus through the items; Esc closes and returns focus.
+  const onKey = (e: KeyboardEvent<HTMLDivElement>): void => {
+    const items = [...(menu.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])];
+    const i = items.indexOf(document.activeElement as HTMLElement);
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      items[(i + 1) % items.length]?.focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      items[(i - 1 + items.length) % items.length]?.focus();
+    } else if (e.key === 'Tab') {
+      setOpen(false);
+    }
+  };
+
+  const options = [
+    { id: SYSTEM_THEME_ID, name: 'Match system', swatch: null },
+    ...themes.map((t) => ({ id: t.id, name: t.name, swatch: t.swatch })),
+  ];
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button
+        ref={button}
+        className="btn btn-ghost icon-btn"
         onClick={() => setOpen((o) => !o)}
-        title="Theme"
+        title="Settings"
         aria-label="Theme settings"
-        style={{
-          background: open ? 'var(--surface2)' : 'transparent',
-          color: 'var(--muted)',
-          border: '1px solid var(--border)',
-          borderRadius: 8,
-          width: 28,
-          height: 28,
-          display: 'grid',
-          placeItems: 'center',
-          cursor: 'pointer',
-          fontSize: 14,
-          lineHeight: 1,
-        }}
+        aria-haspopup="menu"
+        aria-expanded={open}
       >
-        ⚙
+        <Gear />
       </button>
       {open && (
         <div
-          style={{
-            position: 'absolute',
-            top: 36,
-            right: 0,
-            width: 200,
-            background: 'var(--surface2)',
-            border: '1px solid var(--border)',
-            borderRadius: 10,
-            boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
-            padding: 6,
-            zIndex: 40,
-          }}
+          ref={menu}
+          className="menu float"
+          role="menu"
+          aria-label="Settings"
+          style={{ top: 38, right: 0 }}
+          onKeyDown={onKey}
         >
-          <div
-            style={{
-              fontSize: 10,
-              textTransform: 'uppercase',
-              letterSpacing: 0.6,
-              color: 'var(--muted)',
-              padding: '4px 8px',
-            }}
-          >
-            Theme
-          </div>
-          {themes.map((t) => {
+          <div className="menu-label eyebrow">Theme</div>
+          {options.map((t) => {
             const active = t.id === themeId;
             return (
               <button
                 key={t.id}
+                className="menu-item"
+                role="menuitemradio"
+                aria-checked={active}
+                tabIndex={-1}
                 onClick={() => setThemeId(t.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  width: '100%',
-                  background: active ? 'var(--surface)' : 'transparent',
-                  border: 'none',
-                  borderRadius: 6,
-                  padding: '7px 8px',
-                  cursor: 'pointer',
-                  color: 'var(--text)',
-                  fontSize: 13,
-                  textAlign: 'left',
-                }}
               >
-                <span
-                  aria-hidden
-                  style={{
-                    width: 12,
-                    height: 12,
-                    borderRadius: '50%',
-                    flexShrink: 0,
-                    background: t.tokens.accent,
-                    border: `2px solid ${t.tokens.bg}`,
-                    boxShadow: `0 0 0 1px ${t.tokens.border}`,
-                  }}
-                />
-                <span style={{ flex: 1 }}>{t.name}</span>
-                {active && <span style={{ color: 'var(--accent)' }}>✓</span>}
+                {t.swatch ? (
+                  <span
+                    className="swatch"
+                    style={{
+                      background: `linear-gradient(135deg, ${t.swatch.canvas} 50%, ${t.swatch.accent} 50%)`,
+                    }}
+                  />
+                ) : (
+                  <Monitor size={14} aria-hidden />
+                )}
+                {t.name}
+                {active && <Check size={14} className="check" aria-hidden />}
               </button>
             );
           })}
+          <div className="menu-sep" />
+          <div className="menu-label eyebrow">Map density</div>
+          {DENSITIES.map((d) => (
+            <button
+              key={d}
+              className="menu-item"
+              role="menuitemradio"
+              aria-checked={d === density}
+              tabIndex={-1}
+              onClick={() => onDensity(d)}
+            >
+              <span className="num">{d.toLocaleString()} nodes</span>
+              {d === 500 && (
+                <span className="quiet" style={{ fontSize: 'var(--t-2xs)' }}>
+                  default
+                </span>
+              )}
+              {d === density && <Check size={14} className="check" aria-hidden />}
+            </button>
+          ))}
         </div>
       )}
     </div>

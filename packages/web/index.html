@@ -2,31 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Rig — Local-First Knowledge Graph</title>
-    <style>
-      /* Observatory defaults — overwritten at runtime by the theme provider
-         (see src/app/theme.tsx). Kept here so the first paint is styled. */
-      :root {
-        color-scheme: dark;
-        --bg: #0a0c10;
-        --surface: #12151c;
-        --surface2: #171b24;
-        --border: #232834;
-        --text: #e6e9ef;
-        --muted: #7d8694;
-        --accent: #38e1c6;
-        --accent-text: #04110e;
-        --hub: #f5b544;
-      }
-      html, body, #root { height: 100%; margin: 0; }
-      body {
-        background: var(--bg);
-        color: var(--text);
-        font: 14px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-        transition: background 200ms ease, color 200ms ease;
-      }
-    </style>
+    <script>
+      // Stamp the theme before first paint (also on the sign-in gate, which
+      // can't read .rig/config.json yet). theme.tsx keeps it in sync after.
+      (function () {
+        var id = 'system';
+        try { id = localStorage.getItem('rig.theme') || 'system'; } catch (e) {}
+        var known = { observatory: 1, warm: 1, nebula: 1, light: 1 };
+        if (!known[id]) id = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'observatory';
+        document.documentElement.dataset.theme = id;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
