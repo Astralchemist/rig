@@ -53,3 +53,36 @@ commit in the same working tree, `rig.sync()`, then `rig.verifyWaypoints`.
 
 **Verdict.** PASS if the three bars hold with at least 1,000 anchors; FAIL if
 any fails; else INCONCLUSIVE.
+
+## Result (2026-10-30): PASS, with caveats
+
+`results/2026-10-30-staleness.md`. 80 commits from `fd36ac5`, 1,075 anchors.
+
+| measure | result | bar |
+|---|---:|---:|
+| stale served (modified reported verified) | 0.0% (0/162) | ≤ 2% |
+| false invalidation (unchanged or cosmetic not verified) | 0.0% (0/893) | ≤ 5% |
+| deleted flagged | 100% (20/20) | ≥ 95% |
+| renames followed | no cases | none |
+
+What it shows: through real `rig sync` updates, anchors keep their identity
+and line ranges, and the fingerprints tell modified from unchanged code
+without error. What it doesn't:
+
+- **The cosmetic case is barely tested.** Only 2 anchors had a formatting-
+  or comment-only change; the claim "reformatting keeps a memory verified"
+  rests on the unit tests, not on this run.
+- **Renames weren't exercised.** No anchor's function was renamed or moved
+  within a qualifying commit's touched files, so the known gap (a rename
+  reads as missing) is neither measured nor fixed.
+- **Modified vs unchanged is close to definitional.** Both the fingerprint
+  and the ground truth react to token changes; the run mainly proves the
+  plumbing (sync, ids, line ranges, verification) on real history.
+- **25 of the 80 commits were skipped** after a tree-sitter `Aborted()` in
+  the harness (a WebAssembly abort while indexing; it repeats once it starts
+  in one process). They count toward the 80; the anchor floor (1,000) still
+  holds.
+
+A follow-up worth pre-registering: synthetic probes for the two missing
+cases (formatter runs and symbol renames replayed on real files), and a
+fresh process per commit to remove the skips.
