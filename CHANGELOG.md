@@ -7,6 +7,7 @@ All notable changes to Rig are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Agent identity.** Every MCP session records which agent it belongs to (migration v15, `session_clients`): the name the client sends in the `initialize` handshake, and the label `rig install <agent>` now writes into that agent's server args (`--client <agent>`, or `RIG_CLIENT`). The label wins when present, so two tools that introduce themselves the same way stay apart. Live `activation:fired` events carry `agents` (node id → agent) where the session's agent is known: the groundwork for one colour per agent on the map. Existing installs keep working and record the handshake name; re-run `rig install` to add the label.
 - **A rebuilt map.** A rail with four views (Map, Review, Waypoints, Overview), an inspector for the selected node, and light and dark themes that also follow the OS (`Match system` is the new default; saved themes keep working).
   - The constellation stays on canvas. Labels are placed without overlap and in priority order, node kinds are three validated colours plus neutral with shape as a second cue, the layout no longer re-runs on every database change, and a List view gives the same nodes as a sortable, keyboard-driven table.
   - Neighbourhood and Impact lenses draw the selected node's typed links, and what depends on it (or its critical path), as React Flow cards with kind, `file:line`, signature and badges for hubs, notes, waypoints and orphaned memory. They load on demand, so the first paint doesn't pay for them.

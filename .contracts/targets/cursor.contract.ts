@@ -17,7 +17,7 @@ const server = {
     rig: {
       type: 'stdio',
       command: '{{RIG_BIN}}',
-      args: ['serve', '--mcp', '--path', '${workspaceFolder}'],
+      args: ['serve', '--mcp', '--path', '${workspaceFolder}', '--client', 'cursor'],
     },
   },
 };

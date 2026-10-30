@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Rig } from '@rig/core';
-import { activationsSince } from '@rig/core/db/activation-queries.ts';
+import { activationsSince, activationAgentsSince } from '@rig/core/db/activation-queries.ts';
 import { unwatchFile, watch, watchFile, type FSWatcher } from 'node:fs';
 import { STATUS_CODES, type IncomingMessage, type Server as HttpServer } from 'node:http';
 import { join, resolve } from 'node:path';
@@ -110,10 +110,19 @@ export const attachWs = (httpServer: HttpServer, rig: Rig, gate: WsGate): WsHand
           // animate them together. Cap at 50 per tick so a runaway query
           // doesn't drown the WS.
           const ids = Array.from(new Set(acts.map((a) => a.node_id))).slice(0, 50);
+          // Which agent touched each node, where its session is known (C5).
+          let agents: Record<string, string> = {};
+          try {
+            agents = activationAgentsSince(rig.database.adapter, lastActivationTs);
+          } catch {
+            agents = {};
+          }
           broadcast({
             type: 'activation:fired',
             ts,
-            payload: { ids, count: acts.length },
+            payload: Object.keys(agents).length
+              ? { ids, count: acts.length, agents }
+              : { ids, count: acts.length },
           });
           lastActivationTs = Math.max(lastActivationTs, ...acts.map((a) => a.ts));
         }

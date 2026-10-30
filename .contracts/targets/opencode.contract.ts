@@ -26,7 +26,7 @@ export default defineTargetContract({
         mcp: {
           rig: {
             type: 'local',
-            command: ['{{RIG_BIN}}', 'serve', '--mcp'],
+            command: ['{{RIG_BIN}}', 'serve', '--mcp', '--client', 'opencode'],
             enabled: true,
           },
         },

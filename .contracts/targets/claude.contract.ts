@@ -23,7 +23,7 @@ export default defineTargetContract({
       // (Claude Code reads an entry without one as stdio).
       template: {
         mcpServers: {
-          rig: { command: '{{RIG_BIN}}', args: ['serve', '--mcp'] },
+          rig: { command: '{{RIG_BIN}}', args: ['serve', '--mcp', '--client', 'claude'] },
         },
       },
       note: 'Claude Code asks once before it starts a server from .mcp.json — approve `rig` the next time you run `claude` here.',
@@ -131,7 +131,11 @@ export default defineTargetContract({
       mode: 'merge-json',
       template: {
         mcpServers: {
-          rig: { type: 'stdio', command: '{{RIG_BIN}}', args: ['serve', '--mcp'] },
+          rig: {
+            type: 'stdio',
+            command: '{{RIG_BIN}}',
+            args: ['serve', '--mcp', '--client', 'claude'],
+          },
         },
       },
     },

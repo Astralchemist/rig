@@ -18,10 +18,41 @@ export const activationsSince = (
   limit = 50,
 ): ActivationRow[] => {
   return db
-    .prepare(
-      `SELECT node_id, ts, source FROM activations WHERE ts > ? ORDER BY ts ASC LIMIT ?`,
-    )
+    .prepare(`SELECT node_id, ts, source FROM activations WHERE ts > ? ORDER BY ts ASC LIMIT ?`)
     .all(sinceTs, limit) as ActivationRow[];
+};
+
+// The agent behind an MCP session: the install-time label when there is one,
+// else the name from the handshake. One row per session; a reconnect keeps it.
+export const recordSessionClient = (
+  db: SqliteAdapter,
+  sessionId: string,
+  client: string | null,
+  clientLabel: string | null,
+): void => {
+  db.prepare(
+    `INSERT INTO session_clients (session_id, client, client_label, started_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT(session_id) DO UPDATE SET client = excluded.client, client_label = excluded.client_label`,
+  ).run(sessionId, client, clientLabel, Date.now());
+};
+
+/** node id -> agent, for activations newer than `sinceTs` whose session has a known agent. */
+export const activationAgentsSince = (
+  db: SqliteAdapter,
+  sinceTs: number,
+  limit = 50,
+): Record<string, string> => {
+  const rows = db
+    .prepare(
+      `SELECT a.node_id AS node_id, COALESCE(c.client_label, c.client) AS agent
+       FROM activations a JOIN session_clients c ON c.session_id = a.session_id
+       WHERE a.ts > ? AND COALESCE(c.client_label, c.client) IS NOT NULL
+       ORDER BY a.ts ASC LIMIT ?`,
+    )
+    .all(sinceTs, limit) as { node_id: string; agent: string }[];
+  const out: Record<string, string> = {};
+  for (const r of rows) out[r.node_id] = r.agent;
+  return out;
 };
 
 export interface ActivationMeta {
@@ -148,9 +179,10 @@ export const decayedActivationScores = (
   halflifeMs: number = 3 * 24 * 60 * 60 * 1000,
 ): Map<string, number> => {
   const since = now - windowMs;
-  const rows = db
-    .prepare('SELECT node_id, ts FROM activations WHERE ts > ?')
-    .all(since) as { node_id: string; ts: number }[];
+  const rows = db.prepare('SELECT node_id, ts FROM activations WHERE ts > ?').all(since) as {
+    node_id: string;
+    ts: number;
+  }[];
   const lambda = Math.LN2 / halflifeMs;
   const sums = new Map<string, number>();
   for (const r of rows) {
