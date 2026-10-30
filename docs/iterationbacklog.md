@@ -53,7 +53,7 @@ Each backlog item follows the same structure:
 - Risk surface
 ```
 
-The codes are letter+number (A1, B2, C3, …) for cross-reference. Sections A–G group items by theme. Section 3 gives a recommended sequence across themes; Section 4 lists decisions that need locking before building.
+The codes are letter+number (A1, B2, C3, …) for cross-reference. A ★ on **Risk surface** means the risks are open enough that the item starts with a deep-research pass when its turn comes. Sections A–G group items by theme. Section 3 gives a recommended sequence across themes; Section 4 lists decisions that need locking before building.
 
 Items are sized so each can be promoted into a full implementation spec — like the Phase 1.5 contracts addendum — when its turn comes. The body of each item is enough to remember the design without re-deriving it from chat.
 
@@ -418,7 +418,7 @@ docs/
 
 **Dependencies.** `export-memory` (shipped 0.2.0); the append-only authored layer and verify-on-read (research report, step 1); trust tiers (shipped with capture).
 
-**Risk surface.** Memory from other people is injected into your agent, so poisoning matters more; private wording leaking through shared captures (hence opt-in for hook records); the file growing without the step-5 consolidation.
+**★ Risk surface.** Memory from other people is injected into your agent, so poisoning matters more; private wording leaking through shared captures (hence opt-in for hook records); the file growing without the step-5 consolidation. ★ **Deep research before building:** when this item's turn comes, we run a deep-research pass on these risks first and write its findings into the item before any code.
 
 ---
 
@@ -763,7 +763,7 @@ ALTER TABLE pending_edges ADD COLUMN source_urls TEXT;
 
 **Dependencies.** Orientation map (shipped 0.3.0); provenance and confidence on edges (research report, step 2) for honest dashed lines; B5 for committing it alongside memory.
 
-**Risk surface.** Hairball drawings (mitigated by levels and folding sibling packages, as the orientation map does); a confident-looking but wrong diagram (mitigated by dashed inferred elements and the commit stamp); overlap with the orientation map (it shares the model; only the renderer is new).
+**★ Risk surface.** Hairball drawings (mitigated by levels and folding sibling packages, as the orientation map does); a confident-looking but wrong diagram (mitigated by dashed inferred elements and the commit stamp); overlap with the orientation map (it shares the model; only the renderer is new). ★ **Deep research before building:** when this item's turn comes, we run a deep-research pass on these risks first and write its findings into the item before any code.
 
 ---
 
