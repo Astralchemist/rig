@@ -44,6 +44,9 @@
         "rig_focus": {
           "approval_mode": "approve"
         },
+        "rig_handoff": {
+          "approval_mode": "approve"
+        },
         "rig_hotspots": {
           "approval_mode": "approve"
         },

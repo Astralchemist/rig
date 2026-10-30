@@ -377,6 +377,23 @@ Emit a focus:requested event over WebSocket so the map UI pans and
 zooms to the given anchors. No graph mutation; logged in mutation_log
 for audit.
 
+### `rig_handoff`
+
+Write a handoff before you stop: near a usage limit, at the end of a work
+session, or when another agent will pick up the task. The next session in
+this worktree and branch (another account, Claude Code, Codex, Cursor) starts
+from it once, stamped with its age and commit and marked possibly stale when
+the code moved. It holds what is in progress, not what was settled (use
+rig_drop_waypoint for decisions): the goal, the current work, pending tasks,
+the next step and the files involved. Keep it short; it is clipped to about
+1,500 characters.
+
+action "write" replaces this workstream's handoff. It is refused with
+HANDOFF_LIVE while another session's handoff is unconsumed and less than two
+hours old, so parallel agents don't overwrite each other; pass force: true
+when replacing it is intended. action "read" returns the current handoff
+without consuming it.
+
 ### `rig_promote`
 
 Promote any node to hub status regardless of its fanout score. Used when the

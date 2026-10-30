@@ -1586,6 +1586,152 @@
       ]
     },
     {
+      "name": "rig_handoff",
+      "description": "Leave a handoff for the next session, or read it",
+      "tier": "write",
+      "stability": "experimental",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "write",
+              "read"
+            ],
+            "description": "write a new handoff, or read the current one"
+          },
+          "current_work": {
+            "type": "string",
+            "description": "What you were doing when you stopped (required to write)"
+          },
+          "goal": {
+            "type": "string",
+            "description": "The task as the user asked for it"
+          },
+          "pending": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What is left, most important first"
+          },
+          "next_step": {
+            "type": "string",
+            "description": "The very next thing to do"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Files involved, relative to the project"
+          },
+          "force": {
+            "type": "boolean",
+            "description": "Replace another session's live handoff"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "handoff": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "written_at": {
+                    "type": "number"
+                  },
+                  "branch": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "commit": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "client": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "agent",
+                      "compact"
+                    ]
+                  },
+                  "goal": {
+                    "type": "string"
+                  },
+                  "current_work": {
+                    "type": "string"
+                  },
+                  "pending": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "next_step": {
+                    "type": "string"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "consumed": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "written_at",
+                  "branch",
+                  "commit",
+                  "client",
+                  "source",
+                  "current_work",
+                  "pending",
+                  "files",
+                  "consumed"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "elapsed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "handoff",
+          "elapsed_ms"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "errors": [
+        "NOT_INITIALIZED",
+        "HANDOFF_LIVE",
+        "INVALID_ARGS"
+      ]
+    },
+    {
       "name": "rig_hotspots",
       "description": "Top nodes by recent activation count",
       "tier": "light",
