@@ -1,6 +1,11 @@
 # Rig Web UI — Workbench design spec
 
-Status: proposed. Direction approved (layout + aesthetic); implementation phased below.
+Status: phase 1 and the waypoints/review part of phase 5 shipped (see CHANGELOG, Unreleased):
+rail, view router, inspector, Review, Waypoints and Overview. Hubs, Deps, Doctor, the activity
+feed and the savings metric are still to do. Two departures from this spec: the UI uses the
+system font stack (no bundled Inter or JetBrains Mono, so nothing is fetched), and node kinds are
+coloured by three validated categorical hues plus neutral rather than by the accent. Tokens live
+in `packages/web/src/app/styles.css`.
 
 The web UI's job is two-fold: let a **developer** explore the graph, and make rig's
 real value — **an agent traversing the repo in fewer tokens** — *visible and provable*.

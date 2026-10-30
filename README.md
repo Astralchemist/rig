@@ -66,7 +66,7 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
 ## What it can do
 
 **Map and navigate code**
-- **A live map of your codebase.** Files, symbols, calls, imports, tests and dependencies as a graph you can fly through in the browser. The map updates live while agents work.
+- **A live map of your codebase.** Files, symbols, calls, imports, tests and dependencies as a graph you can fly through in the browser. The map updates live while agents work. Select a node for its neighbourhood (typed links, notes, waypoints) or its impact tree; review proposed links, browse waypoints and read the orientation map in their own views. Light and dark, keyboard-driven, and usable on a phone.
 - **Structural questions in one call.** Callers, callees, impact ("what breaks if I change X"), critical paths, neighbours and hubs, instead of grep-and-read.
 - **Search in plain language.** "Where do we refresh expired sessions?" finds the code. Exact names, keywords (including identifier words, so "handle login" matches `handleLogin`) and on-device embeddings are fused into one ranking. A symbol name still returns that symbol first.
 - **Orientation on demand.** `rig_overview` (also the MCP resource `rig://overview`, and `rig overview` on the command line) returns a compact markdown map of the repository, about 2,000 tokens long. It covers:
@@ -80,6 +80,14 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
   The map is cached and refreshed on every index, sync and file change.
 - **Magnetic pull.** "What's related to X", ranked by graph distance, semantic similarity and recent activity, with the score components broken out.
 - **Dependency intelligence.** Installed versions, declared-but-unused packages, imports with no declaration, and version conflicts across a monorepo. It covers npm and Python: PyPI names are matched to their import names (`PyYAML` → `yaml`), and the standard library is never flagged.
+
+<p align="center">
+  <img src="docs/map/constellation-before-after.png" alt="Before and after slider of the whole-repo map in the light theme. After: a faint dot grid behind the graph, file labels with the directory dimmed and the file name in front, outlined nodes, and a legend that says 500 of 956 nodes are shown, by hubness." width="820">
+  <br>
+  <img src="docs/map/selection-before-after.png" alt="Before and after slider of a selected node, buildOverviewMap. After: its links draw in the accent colour, hubs carry a soft halo, and its neighbours' labels no longer overlap." width="820">
+  <br>
+  <em>The map before and after the canvas pass: the divider sweeps from before (right) to after (left).</em>
+</p>
 
 **Remember across sessions and agents**
 - **Memory that survives re-indexing.** Index, sync, file edits and line moves keep everything agents attach to code:
@@ -252,7 +260,7 @@ Run `rig --help` for the full list.
 
 ## How it works
 
-`.contracts/` is the declarative source of truth (tools, anchors, migrations, events); `bun run gen` emits the matching code into `generated/`. The graph is plain SQLite. Search fuses exact names, SQLite FTS5 keyword matches and on-device embedding similarity by reciprocal rank; "what's related" is a single magnetic-pull scoring function over structural edges, on-device embeddings, and recency. The map UI is a force-graph over WebSocket.
+`.contracts/` is the declarative source of truth (tools, anchors, migrations, events); `bun run gen` emits the matching code into `generated/`. The graph is plain SQLite. Search fuses exact names, SQLite FTS5 keyword matches and on-device embedding similarity by reciprocal rank; "what's related" is a single magnetic-pull scoring function over structural edges, on-device embeddings, and recency. The map UI is a canvas force-graph for the whole repository, with React Flow for the focused views (neighbourhood, impact, review, waypoints), kept live over a WebSocket.
 
 - `packages/core` — the `Rig` class: DB, extraction, graph, embeddings, magnetic pull
 - `packages/mcp` — MCP stdio server + tool dispatch

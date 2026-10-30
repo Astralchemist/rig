@@ -7,6 +7,14 @@ All notable changes to Rig are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **A rebuilt map.** A rail with four views (Map, Review, Waypoints, Overview), an inspector for the selected node, and light and dark themes that also follow the OS (`Match system` is the new default; saved themes keep working).
+  - The constellation stays on canvas. Labels are placed without overlap and in priority order, node kinds are three validated colours plus neutral with shape as a second cue, the layout no longer re-runs on every database change, and a List view gives the same nodes as a sortable, keyboard-driven table.
+  - Neighbourhood and Impact lenses draw the selected node's typed links, and what depends on it (or its critical path), as React Flow cards with kind, `file:line`, signature and badges for hubs, notes, waypoints and orphaned memory. They load on demand, so the first paint doesn't pay for them.
+  - Review lists every pending proposal, not only those between the top nodes, with its rationale, source URLs and context; accept, reject and undo by button or with `A`, `R` and `U`.
+  - Waypoints can be filtered by kind, searched by meaning, and opened as a chain with the code each one is anchored to. New waypoints, notes, proposals and agent focus requests arrive live as notifications.
+  - Overview shows the orientation map, the graph's vital signs, orphaned memory and the recent write log with what Undo would revert.
+  - The search palette uses hybrid search and keeps the first keystroke; the sign-in gate uses the chosen theme.
+- REST endpoints for those views, all additive: `/api/overview`, `/api/waypoints` (`kind`, `session_id`, `q`), `/api/waypoints/:id`, `/api/orphans`, `/api/activity`, `/api/cards?ids=`, `/api/node/:id/neighborhood`, `/api/node/:id/impact`, `/api/node/:id/critical-path`. `/api/node/:id` adds `card`, `annotations` and `aliases`; `/api/graph` nodes add `file_path`.
 - **Automatic capture** (Claude Code). A multi-session benchmark showed memory helps when the decision gets recorded, and agents often didn't record it. Hooks now record it for them:
   - **What's captured:** the moments a conversation settles something, found by a deterministic extractor (no model). An approved proposal or a correction becomes a decision; "never / always / must / don't touch / only" becomes a constraint; a declined, reversed or ruled-out option, or an attempt that failed and was abandoned, becomes a dead end; what the user says was decided becomes a decision. Cue words in quotes, code or questions never count.
   - Each record keeps the user's words as its rationale, links the files and symbols it names into the graph, and carries a confidence and its source span. It's stored as a waypoint with `source: "hook"` and provenance `hook:claude`. Near-duplicates of stored waypoints are skipped.
@@ -18,6 +26,8 @@ All notable changes to Rig are documented here. The format follows
 - Target contracts have a `hooks` file role. Rig's hook handlers are the ones running `rig hook`, and the same install and uninstall rules apply to them as to rig's permission entries.
 
 ### Changed
+- `/api/search` ranks with the same hybrid search as `rig_search`. The body is still the `RigNode[]` it was, each hit with `score` and `matched_by` added; the `x-rig-search` header says `hybrid` or `keyword-only`, and `mode=keyword` asks for the old keyword search.
+- The map draws the top 500 nodes by default (it asked for 2,000); 300, 1,000 and 2,000 are a setting away.
 - CLI commands load on demand. Light commands such as `rig hook` start in about 20 ms instead of about 140 ms.
 
 ## [0.3.0] - 2026-10-29
