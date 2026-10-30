@@ -14,6 +14,7 @@ const COMMANDS: Record<string, () => Promise<Command>> = {
   index: async () => (await import('./index-cmd.ts')).runIndex,
   sync: async () => (await import('./sync-cmd.ts')).runSync,
   query: async () => (await import('./query-cmd.ts')).runQuery,
+  impact: async () => (await import('./impact-cmd.ts')).runImpact,
   files: async () => (await import('./files-cmd.ts')).runFiles,
   overview: async () => (await import('./overview-cmd.ts')).runOverview,
   install: async () => (await import('./install-cmd.ts')).runInstall,
@@ -41,6 +42,10 @@ commands:
               (--include / --exclude <glob>, repeatable; --force re-extracts all)
   sync        incremental update
   query       CLI search
+  impact      what a change can break, and which recorded decisions it may invalidate:
+              <symbol|id> or --diff [<base>[...<head>]] (default: working tree vs HEAD)
+              [--depth <n>, default 2] [--format text|json|mermaid] [--max-nodes <n>]
+              [--no-sync]
   files       list indexed files
   overview    print the orientation map your agent gets from rig_overview
               (--budget <tokens>, default 2000; --json)

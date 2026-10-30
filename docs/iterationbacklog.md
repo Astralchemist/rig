@@ -786,23 +786,35 @@ ALTER TABLE pending_edges ADD COLUMN source_urls TEXT;
 - Only explicit clicks become labels; silence is never a "still holds". The click rate is tracked and reported; if it's low, the comment gets shorter or better targeted before its data counts.
 - Verdicts are stored as records in the shared memory file (B5), not collected centrally.
 
-**Observed blast radius.**
-- Where CI produces a coverage report, the tests that execute changed code define the observed radius. Without coverage the action degrades cleanly: no score, still the comment.
-- Scoring compares predicted nodes with nodes that have executed lines, and both sides go through the same line-to-node mapping code path, so mapping isn't graded against a different mapping.
+**Observed blast radius (revised after research).** Not co-executed coverage lines: coverage-based impact sets were wrong about half the time in both directions (precision 38–50%, recall 50–56% against realised impacts; [Cai, SANER 2020](https://chapering.github.io/pubs/saner20-b.pdf)), so grading against them mostly measures the oracle's noise. The oracle is **dynamic call edges recorded per test** (caller → callee at runtime) at the merge base, and the observed radius is the reverse reachability of the changed symbols, mapped to nodes by the same line-to-node code path as the prediction. Dynamic graphs are a lower bound, not ground truth ([TotalRecall, ISSTA 2024](https://www.opal-project.de/articles/TotalRecall@ISSTA24.pdf)), so precision is reported without a bar. Whole-suite coverage can't say which tests touch the change; Python has per-test contexts (`pytest --cov-context=test`), JS/TS largely doesn't (Vitest and Jest report whole runs), so rig (TypeScript, `bun test`) needs its own per-test call-edge recorder. No oracle, no score: the comment still posts.
 
-**First number.** Replay rig's own merged PRs (each merge commit, with `bun test` coverage) before going public. The pass bar is written down first; the result goes in the README beside the memory chart, with its sample size.
+**First number (pre-registered before running).**
+- Population: at least 50 merged changes that touch an indexed function or method (docs, config and generated code excluded). Rig has about 40 merged PRs, so the unit is the merge commit or the individual commit, or a second repo is added; decided before the run.
+- Primary: micro-recall of the predicted set against the oracle, at least 0.80; structural-only recall reported separately.
+- Baseline: beat a file-level import graph by at least 10 points of precision at equal or better recall.
+- Secondary: share of changes with an unflagged miss (an oracle node neither predicted nor inside a declared blind spot) at most 20%; median expanded comment at most 25 lines.
+- Changes whose changed symbols the tests never execute are counted and reported, not scored; oracle coverage of the changed symbols is reported.
+
+**Comment design (from research).** One comment per PR, edited in place, never re-posted; silent when nothing is at risk; a summary line first, the drawing collapsed in `<details>`; direct plus 2-hop dependents, at most about 15 nodes; a **blind spots** line naming the dynamic-dispatch sites rig detects in the radius (dynamic property access, DI containers, decorators, event emitters), which are the main source of missed edges in JS and Python call graphs ([PyCG: 99% precision, 70% recall](https://arxiv.org/pdf/2103.00587); [dynamic property access in JS](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.ECOOP.2022.3)). Noise is the main complaint about PR bots, even at one or two comments ([Wessel et al.](https://arxiv.org/pdf/2103.13950)); findings at diff time get fixed far more than batch reports ([Infer: ~0% vs >70%](https://cacm.acm.org/research/scaling-static-analyses-at-facebook/)).
+
+**Collecting verdicts.** One checkbox row per memory at risk (holds / outdated / can't tell): ticking a box edits the comment and fires `issue_comment` (`edited`), with no GitHub App. Reactions don't trigger workflows; check-run buttons need an App and allow three per run. Log the denominator (every memory shown, to whom), the clicker's role (author, reviewer, code owner) and silence as unknown; report the click rate beside every label statistic. Kill switch: switch the section off when "not useful" passes 10%, as Google's Tricorder does ([Tricorder](https://cacm.acm.org/research/lessons-from-building-static-analysis-tools-at-google/)).
+
+**Forks and security.** A `pull_request` run from a fork has a read-only token and can't comment. Compute in the untrusted `pull_request` job, upload an artifact, post from a `workflow_run` job; never run PR code under `pull_request_target`. Write the verdict ledger from a trusted context, batched (after merge or on a schedule), not one commit per click.
+
+**v1 excludes.** Scores on live PRs; check-run buttons and a GitHub App; drawings beyond 2 hops.
 
 **New tools.** `rig impact` on the CLI (the MCP tool `rig_impact` exists; the CLI command doesn't), `rig impact --diff <base>...<head> --format mermaid|json`, and the Action wrapping it. CI indexes with the structural graph only (no embedding model).
 
 **Acceptance.**
-- [ ] On rig's past PRs, a predicted-vs-observed score against a pre-registered bar, with sample size
+- [x] `rig impact` on the CLI: `<symbol>` or `--diff <range>`, text, JSON or Mermaid; new files and doc sections reported apart from changed code (2026-10-30)
+- [ ] The replay evaluation above, against its pre-registered bar, with sample size
 - [ ] The edge-origin counts are correct (requires step 2's provenance: heuristic manifest edges are currently labelled `ast`)
 - [ ] A repo without coverage gets the comment and no score, with no error
 - [ ] Verdict records round-trip through B5's file and change the memory's status
 
 **Dependencies.** `rig_impact` (shipped); edge provenance (research report step 2, a small piece pulled forward); B5 for verdict storage; verify-on-read (step 1) for "what changed" on a memory; E4's Mermaid renderer.
 
-**★ Risk surface.** A confident blast radius that misses dynamic dispatch, in someone else's review; reviewer fatigue turning the comment into noise; labels that look like ground truth but reflect who bothered to click; coverage that measures tests run, not real dependency. ★ **Deep research before building:** when this item's turn comes, we run a deep-research pass on these risks first and write its findings into the item before any code.
+**★ Risk surface** (researched 2026-10-30; findings above). A confident blast radius that misses dynamic dispatch, in someone else's review; reviewer fatigue turning the comment into noise; labels that look like ground truth but reflect who bothered to click; coverage that measures tests run, not real dependency. ★ **Deep research before building:** when this item's turn comes, we run a deep-research pass on these risks first and write its findings into the item before any code.
 
 ---
 

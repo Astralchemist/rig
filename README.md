@@ -258,6 +258,7 @@ in `.rig/config.json`, to switch capture off without touching the hooks.
 | `rig sync` | Incremental update |
 | `rig query` | CLI search |
 | `rig overview` | Print the orientation map your agent gets from `rig_overview` (`--budget <tokens>`, default 2000; `--json`) |
+| `rig impact` | What a change can break, and which recorded decisions it may invalidate: `rig impact <symbol>`, or `rig impact --diff [<base>...<head>]` (default: working tree vs HEAD). `--depth` (default 2), `--format text\|json\|mermaid` (Mermaid renders in GitHub comments) |
 | `rig serve --all` | Start MCP and/or the web map (`--mcp` / `--web` / `--no-auth`; `--path <dir>` for another project); keeps the graph live by syncing on file changes (`--no-watch` or `RIG_NO_WATCH=1` to turn off) |
 | `rig status` | Index health |
 | `rig doctor` | Diagnose environment, db, model cache, agent configs |

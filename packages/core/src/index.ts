@@ -31,6 +31,15 @@ export type {
 } from './rig.ts';
 export { Database } from './db/database.ts';
 export {
+  parseUnifiedDiff,
+  addedFilesInDiff,
+  diffImpact,
+  impactToMermaid,
+  DEPENDENCY_EDGE_KINDS,
+  type DiffImpact,
+  type LineRange,
+} from './graph/diff-impact.ts';
+export {
   CHARS_PER_TOKEN,
   DEFAULT_OVERVIEW_BUDGET,
   MAX_OVERVIEW_BUDGET,
