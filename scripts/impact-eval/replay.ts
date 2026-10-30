@@ -134,6 +134,15 @@ const replayCommit = async (sha: string, wt: string): Promise<CommitResult> => {
     const retry = sh('bun', ['install'], wt);
     if (retry.status !== 0) return done({ reason: 'install failed' });
   }
+  // The embedded grammars are generated, not committed; without them every
+  // test that loads the extractor fails and the oracle quietly shrinks.
+  const pkg = JSON.parse(readFileSync(join(wt, 'package.json'), 'utf-8')) as {
+    scripts?: Record<string, string>;
+  };
+  if (pkg.scripts?.['gen:wasm']) {
+    const gen = sh('bun', ['run', 'gen:wasm'], wt);
+    if (gen.status !== 0) return done({ reason: 'gen:wasm failed' });
+  }
   rmSync(join(wt, '.rig'), { recursive: true, force: true });
   const rig = await Rig.init(wt, { embedder: new DeterministicEmbedder() });
   try {
