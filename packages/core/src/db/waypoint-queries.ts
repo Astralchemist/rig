@@ -48,6 +48,8 @@ export interface WaypointRow {
   source?: WaypointSource;
   provenance?: string;
   confidence?: number;
+  // Fingerprint of each code ref when the waypoint was written (verify-on-read).
+  anchor_fingerprints?: Record<string, string>;
 }
 
 interface RawNode {
@@ -71,6 +73,7 @@ interface RawData {
   source?: WaypointSource;
   provenance?: string;
   confidence?: number;
+  anchor_fingerprints?: Record<string, string>;
 }
 
 const parse = (r: RawNode): WaypointRow => {
@@ -92,6 +95,9 @@ const parse = (r: RawNode): WaypointRow => {
     ...(d.source === 'hook' || d.source === 'agent' ? { source: d.source } : {}),
     ...(typeof d.provenance === 'string' ? { provenance: d.provenance } : {}),
     ...(typeof d.confidence === 'number' ? { confidence: d.confidence } : {}),
+    ...(d.anchor_fingerprints && typeof d.anchor_fingerprints === 'object'
+      ? { anchor_fingerprints: d.anchor_fingerprints }
+      : {}),
   };
 };
 

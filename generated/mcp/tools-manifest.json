@@ -3104,6 +3104,41 @@
                 "confidence": {
                   "type": "number",
                   "description": "Extractor confidence (0..1) of a captured waypoint"
+                },
+                "verification": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "verified",
+                        "changed",
+                        "missing",
+                        "unverified",
+                        "unanchored"
+                      ],
+                      "description": "The waypoint's worst anchor: verified = the code it is about is unchanged since it was written; changed = that code has changed, re-check before relying on it; missing = the symbol is gone; unverified = written before fingerprints were kept; unanchored = no code refs"
+                    },
+                    "anchors": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string",
+                        "enum": [
+                          "verified",
+                          "changed",
+                          "missing",
+                          "unverified"
+                        ]
+                      },
+                      "description": "Status per constellation ref"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "anchors"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Verify-on-read: the code each anchor points at, compared with when the waypoint was written"
                 }
               },
               "required": [
