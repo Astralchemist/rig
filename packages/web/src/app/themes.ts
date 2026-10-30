@@ -59,6 +59,7 @@ export const resolveTheme = (id: string | undefined): Theme => {
 
 // Colours the canvas needs, resolved from the active theme's CSS tokens.
 export interface GraphPalette {
+  scheme: Scheme;
   canvas: string;
   text1: string;
   text2: string;
@@ -79,6 +80,7 @@ export const readGraphPalette = (): GraphPalette => {
   const v = (name: string, fallback: string): string =>
     cs.getPropertyValue(name).trim() || fallback;
   return {
+    scheme: cs.colorScheme.includes('light') ? 'light' : 'dark',
     canvas: v('--canvas', '#0a0d13'),
     text1: v('--text-1', '#e7eaf0'),
     text2: v('--text-2', '#aab2c0'),

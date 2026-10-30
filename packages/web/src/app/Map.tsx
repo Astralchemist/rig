@@ -48,9 +48,21 @@ export interface MapProps {
   pulses: Map<string, number>;
   // Nodes an agent asked the user to look at (focus:requested).
   highlight: Set<string>;
+  onOpenNeighbourhood: (id: string) => void;
 }
 
 const PULSE_MS = 1600;
+// Dot-grid pitch in CSS pixels, before snapping to a power of two in graph
+// units so the grid doesn't swim while zooming.
+const GRID_PX = 22;
+
+// `#rrggbb` (the theme tokens' form) at an alpha; anything else unchanged.
+const withAlpha = (color: string, a: number): string => {
+  const m = /^#([0-9a-f]{6})$/i.exec(color);
+  if (!m) return color;
+  const n = parseInt(m[1]!, 16);
+  return `rgb(${n >> 16} ${(n >> 8) & 255} ${n & 255} / ${a})`;
+};
 const endId = (e: string | GraphNode): string => (typeof e === 'string' ? e : e.id);
 
 const radiusFor = (n: GraphNode): number => {
@@ -86,6 +98,9 @@ const fillFor = (p: GraphPalette, g: GroupId): string =>
           ? p.memory
           : p.neutral;
 
+// Filled marks get a knockout: a thin outline in the canvas colour drawn
+// under the fill, so marks that touch stay separate and edges stop short of
+// them instead of running into the fill.
 const drawShape = (
   ctx: CanvasRenderingContext2D,
   shape: Shape,
@@ -93,13 +108,23 @@ const drawShape = (
   y: number,
   r: number,
   scale: number,
+  knockout: string,
 ): void => {
+  const fill = (): void => {
+    ctx.lineWidth = 2.4 / scale;
+    ctx.lineJoin = 'round';
+    const ink = ctx.fillStyle;
+    ctx.strokeStyle = knockout;
+    ctx.stroke();
+    ctx.fillStyle = ink;
+    ctx.fill();
+  };
   ctx.beginPath();
   switch (shape) {
     case 'square': {
       const s = r * 1.7;
       ctx.roundRect(x - s / 2, y - s / 2, s, s, Math.max(0.6, s * 0.18));
-      ctx.fill();
+      fill();
       return;
     }
     case 'diamond': {
@@ -109,7 +134,7 @@ const drawShape = (
       ctx.lineTo(x, y + s);
       ctx.lineTo(x - s, y);
       ctx.closePath();
-      ctx.fill();
+      fill();
       return;
     }
     case 'triangle': {
@@ -118,18 +143,21 @@ const drawShape = (
       ctx.lineTo(x + s * 0.95, y + s * 0.7);
       ctx.lineTo(x - s * 0.95, y + s * 0.7);
       ctx.closePath();
-      ctx.fill();
+      fill();
       return;
     }
     case 'ring':
       ctx.arc(x, y, r, 0, 2 * Math.PI);
+      ctx.lineWidth = Math.max(1.2 / scale, r * 0.32) + 2.4 / scale;
+      ctx.strokeStyle = knockout;
+      ctx.stroke();
       ctx.lineWidth = Math.max(1.2 / scale, r * 0.32);
       ctx.strokeStyle = ctx.fillStyle;
       ctx.stroke();
       return;
     default:
       ctx.arc(x, y, r, 0, 2 * Math.PI);
-      ctx.fill();
+      fill();
   }
 };
 
@@ -141,6 +169,7 @@ function Constellation({
   focusToken,
   pulses,
   highlight,
+  onOpenNeighbourhood,
 }: MapProps): JSX.Element {
   const { theme } = useTheme();
   const [palette, setPalette] = useState<GraphPalette>(() => readGraphPalette());
@@ -255,6 +284,14 @@ function Constellation({
   }, [focusToken, graphData.nodes]);
 
   const pulsing = pulses.size > 0;
+  // A selection the canvas can't show: outside the loaded snapshot (search
+  // and deep links reach the whole graph), or hidden by the filters.
+  const offMap: 'missing' | 'filtered' | null =
+    selectedId === null || graphData.nodes.some((n) => n.id === selectedId)
+      ? null
+      : snapshot.nodes.some((n) => n.id === selectedId)
+        ? 'filtered'
+        : 'missing';
   const neighbours = selectedId ? adjacency.get(selectedId) : undefined;
   const dimOthers = selectedId !== null && graphData.nodes.some((n) => n.id === selectedId);
 
@@ -276,26 +313,26 @@ function Constellation({
     // grid of placed boxes). The budget grows with zoom.
     const budget = Math.round(Math.min(400, 22 * scale * scale + 18));
     const fontPx = 11;
-    ctx.font = `500 ${fontPx}px ${palette.fontCanvas}`;
+    // The font is set in graph units (fontPx / scale), so measureText returns
+    // graph units; the cache holds screen pixels, which don't change with zoom.
+    ctx.font = `500 ${fontPx / scale}px ${palette.fontCanvas}`;
     const width = (name: string): number => {
       let w = widths.current.get(name);
       if (w === undefined) {
-        w = ctx.measureText(name).width;
+        w = ctx.measureText(name).width * scale;
         widths.current.set(name, w);
       }
       return w / scale;
     };
-    ctx.font = `500 ${fontPx / scale}px ${palette.fontCanvas}`;
     ctx.textBaseline = 'middle';
-    const must = new Set<string>();
-    if (selectedId) {
-      must.add(selectedId);
-      for (const id of neighbours ?? []) must.add(id);
-    }
-    for (const id of highlight) must.add(id);
-    const order = must.size
-      ? [...labelOrder.filter((n) => must.has(n.id)), ...labelOrder.filter((n) => !must.has(n.id))]
-      : labelOrder;
+    // `must`: always labelled. `near`: the selection's neighbours, labelled
+    // first and kept while the rest are dimmed, but they still give way to
+    // labels already placed, so a dense neighbourhood doesn't stack text.
+    const must = new Set<string>(highlight);
+    if (selectedId) must.add(selectedId);
+    const near = new Set<string>([...must, ...(neighbours ?? [])]);
+    const rank = (n: GraphNode): number => (must.has(n.id) ? 0 : near.has(n.id) ? 1 : 2);
+    const order = near.size ? [...labelOrder].sort((a, b) => rank(a) - rank(b)) : labelOrder;
     const cell = 80 / scale;
     const grid = new Map<string, { x0: number; y0: number; x1: number; y1: number }[]>();
     const cellsOf = (b: { x0: number; y0: number; x1: number; y1: number }): string[] => {
@@ -309,8 +346,8 @@ function Constellation({
     for (const n of order) {
       if (n.x === undefined || n.y === undefined) continue;
       const forced = must.has(n.id);
-      if (!forced && drawn >= budget) break;
-      if (dimOthers && !forced) continue;
+      if (!near.has(n.id) && drawn >= budget) break;
+      if (dimOthers && !near.has(n.id)) continue;
       const r = radiusFor(n);
       const w = width(n.name);
       const h = (fontPx + 3) / scale;
@@ -327,15 +364,48 @@ function Constellation({
         else grid.set(k, [box]);
       }
       drawn++;
-      // Halo in the canvas colour keeps labels legible over edges.
-      ctx.lineWidth = 3 / scale;
+      // An opaque, round-joined halo in the canvas colour keeps labels
+      // legible over edges (mitred joins leave spikes on glyph corners).
+      ctx.lineWidth = 3.5 / scale;
+      ctx.lineJoin = 'round';
       ctx.strokeStyle = palette.canvas;
-      ctx.globalAlpha = 0.85;
       ctx.strokeText(n.name, x0, n.y);
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = n.id === selectedId || n.is_hub || forced ? palette.text1 : palette.text2;
-      ctx.fillText(n.name, x0, n.y);
+      const strong = n.id === selectedId || n.is_hub || forced;
+      // Paths read as breadcrumbs: the directory recedes, the name leads.
+      const cut = n.__group === 'file' ? n.name.lastIndexOf('/') + 1 : 0;
+      if (cut > 0) {
+        const dir = n.name.slice(0, cut);
+        ctx.fillStyle = palette.text3;
+        ctx.fillText(dir, x0, n.y);
+        ctx.fillStyle = strong ? palette.text1 : palette.text2;
+        // Measured live, not from the cache: glyph advances at the scaled
+        // font size aren't exactly linear in zoom, and a cached width leaves
+        // the name overlapping its directory.
+        ctx.fillText(n.name.slice(cut), x0 + ctx.measureText(dir).width, n.y);
+      } else {
+        ctx.fillStyle = strong ? palette.text1 : palette.text2;
+        ctx.fillText(n.name, x0, n.y);
+      }
     }
+  };
+
+  // A dot grid in graph space: it pans and zooms with the nodes, so the eye
+  // has a fixed frame while the layout moves. Faint enough to sit under edges.
+  const drawGrid = (ctx: CanvasRenderingContext2D, scale: number): void => {
+    const t = ctx.getTransform();
+    if (t.a === 0) return;
+    const dpr = t.a / scale;
+    const step = 2 ** Math.ceil(Math.log2((GRID_PX * dpr) / t.a));
+    const x0 = Math.floor(-t.e / t.a / step) * step;
+    const y0 = Math.floor(-t.f / t.d / step) * step;
+    const x1 = (ctx.canvas.width - t.e) / t.a;
+    const y1 = (ctx.canvas.height - t.f) / t.d;
+    const d = (1.6 * dpr) / t.a;
+    ctx.fillStyle = palette.text3;
+    ctx.globalAlpha = palette.scheme === 'light' ? 0.2 : 0.13;
+    for (let x = x0; x <= x1; x += step)
+      for (let y = y0; y <= y1; y += step) ctx.fillRect(x - d / 2, y - d / 2, d, d);
+    ctx.globalAlpha = 1;
   };
 
   const zoomBy = (f: number): void => {
@@ -392,8 +462,9 @@ function Constellation({
           const l = raw as GraphLink;
           const on = linkInvolves(l);
           if (l.table === 'pending') return palette.pending;
-          if (dimOthers && !on) return palette.edge;
-          if (l.table === 'semantic' || on) return palette.edgeStrong;
+          if (on) return withAlpha(palette.accent, 0.7);
+          if (dimOthers) return palette.edge;
+          if (l.table === 'semantic') return palette.edgeStrong;
           return palette.edge;
         }}
         linkWidth={(raw) => {
@@ -413,15 +484,23 @@ function Constellation({
           const r = radiusFor(n);
           const alpha = nodeAlpha(n.id);
           ctx.globalAlpha = alpha;
+          const ink = fillFor(palette, n.__group);
           if (n.is_hub) {
+            // Hubs carry a soft halo in their own colour, not a grey ring.
             ctx.beginPath();
-            ctx.arc(x, y, r + 2.6, 0, 2 * Math.PI);
-            ctx.lineWidth = 1 / scale;
-            ctx.strokeStyle = palette.text3;
+            ctx.arc(x, y, r + 4.5, 0, 2 * Math.PI);
+            ctx.fillStyle = withAlpha(ink, palette.scheme === 'light' ? 0.16 : 0.22);
+            ctx.fill();
+          }
+          if (hover?.node.id === n.id && n.id !== selectedId) {
+            ctx.beginPath();
+            ctx.arc(x, y, r + 3.5, 0, 2 * Math.PI);
+            ctx.lineWidth = 1.5 / scale;
+            ctx.strokeStyle = palette.text2;
             ctx.stroke();
           }
-          ctx.fillStyle = fillFor(palette, n.__group);
-          drawShape(ctx, n.__shape, x, y, r, scale);
+          ctx.fillStyle = ink;
+          drawShape(ctx, n.__shape, x, y, r, scale, palette.canvas);
           if (highlight.has(n.id)) {
             ctx.beginPath();
             ctx.arc(x, y, r + 5, 0, 2 * Math.PI);
@@ -460,6 +539,7 @@ function Constellation({
           ctx.arc(n.x ?? 0, n.y ?? 0, radiusFor(n) + 3, 0, 2 * Math.PI);
           ctx.fill();
         }}
+        onRenderFramePre={drawGrid}
         onRenderFramePost={drawLabels}
         onNodeHover={(raw) => {
           const n = raw as GraphNode | null;
@@ -474,6 +554,18 @@ function Constellation({
             positions.current.set(n.id, { x: n.x, y: n.y });
         }}
       />
+      {offMap && (
+        <div className="map-note island" role="status">
+          <span>
+            {offMap === 'filtered'
+              ? 'The selected node is hidden by the filters.'
+              : `The selected node isn't among the ${snapshot.nodes.length.toLocaleString()} nodes on the map.`}
+          </span>
+          <button className="btn btn-sm" onClick={() => onOpenNeighbourhood(selectedId!)}>
+            Open its neighbourhood
+          </button>
+        </div>
+      )}
       {hover && (
         <div
           className="hovercard float"
@@ -534,7 +626,7 @@ function Constellation({
 
 export { Constellation as Map };
 
-export const Legend = (): JSX.Element => (
+export const Legend = ({ shown, total }: { shown: number; total: number }): JSX.Element => (
   <div className="legend island" aria-label="Legend">
     {GROUPS.map((g) => (
       <span key={g.id}>
@@ -555,5 +647,11 @@ export const Legend = (): JSX.Element => (
     <span>
       <i className="line dash" /> Pending review
     </span>
+    {shown < total && (
+      <span className="legend-count" title="Raise Map density in Settings to load more">
+        <span className="num">{shown.toLocaleString()}</span> of{' '}
+        <span className="num">{total.toLocaleString()}</span> nodes, by hubness
+      </span>
+    )}
   </div>
 );

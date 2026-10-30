@@ -1066,6 +1066,32 @@ p {
 .legend .line.faint {
   border-top-color: color-mix(in oklab, var(--text-3) 60%, transparent);
 }
+.legend .legend-count {
+  gap: 4px;
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+  color: var(--text-3);
+}
+.map-note {
+  position: absolute;
+  z-index: 11;
+  bottom: 60px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 24px);
+  padding: 6px 6px 6px 14px;
+  font-size: var(--t-xs);
+  color: var(--text-2);
+  transition:
+    opacity var(--dur-2) var(--ease-expo),
+    translate var(--dur-2) var(--ease-expo);
+  @starting-style {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
 .zoom-ctl {
   position: absolute;
   z-index: 11;

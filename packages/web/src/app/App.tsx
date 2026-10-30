@@ -479,8 +479,12 @@ export function App(): JSX.Element {
           focusToken={focusToken}
           pulses={pulses}
           highlight={highlight}
+          onOpenNeighbourhood={(id) => {
+            select(id);
+            openLens('focus');
+          }}
         />
-        <Legend />
+        <Legend shown={snap.nodes.length} total={status?.nodes ?? snap.nodes.length} />
       </>
     );
   };
