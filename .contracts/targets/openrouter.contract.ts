@@ -23,7 +23,7 @@ export default defineTargetContract({
           rig: {
             type: 'stdio',
             command: '{{RIG_BIN}}',
-            args: ['serve', '--mcp'],
+            args: ['serve', '--mcp', '--client', 'openrouter'],
           },
         },
       },

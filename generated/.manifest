@@ -2,8 +2,8 @@
   "version": 1,
   "files": {
     "core/anchors-registry.ts": "5d7ef87a0e8a67e2",
-    "core/migrations.ts": "54314873edfc358a",
-    "core/schema.sql": "2dfa669c08cb9f62",
+    "core/migrations.ts": "0296f67bd2c56e11",
+    "core/schema.sql": "2077dc281b4f9026",
     "installer/claude.instructions.md": "22919ebc27da4678",
     "installer/claude.permissions.json": "cc4cb8b14c1bd034",
     "installer/codex.instructions.md": "87cacf6429d631cb",

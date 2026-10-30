@@ -112,7 +112,7 @@ describe('v14 keyword index', () => {
     raw.close();
 
     const up = Database.open(join(dir, 'old.db'));
-    expect(up.appliedVersions().at(-1)).toBe(14);
+    expect(up.appliedVersions().at(-1)).toBe(15);
     expect(ftsIds(up.adapter, 'tokens : "refresh session"')).toEqual(['n1']);
     expect(ftsIds(up.adapter, 'docstring : expired')).toEqual(['n1']);
     expect(up.adapter.prepare(`SELECT seq FROM embeddings`).get()).toEqual({ seq: 0 });

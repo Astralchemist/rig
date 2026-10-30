@@ -53,7 +53,7 @@ describe('installer targets', () => {
 
     // The documented .mcp.json stdio entry: command + args, no `type`.
     expect(json(join(PROJECT, '.mcp.json'))).toEqual({
-      mcpServers: { rig: { command: 'rig', args: ['serve', '--mcp'] } },
+      mcpServers: { rig: { command: 'rig', args: ['serve', '--mcp', '--client', 'claude'] } },
     });
 
     const settings = json(join(PROJECT, '.claude/settings.json'));
@@ -91,7 +91,7 @@ describe('installer targets', () => {
       join(HOME, '.claude/CLAUDE.md'),
     ]);
     const claudeJson = json(join(HOME, '.claude.json'));
-    expect(claudeJson.mcpServers.rig).toEqual({ type: 'stdio', command: 'rig', args: ['serve', '--mcp'] });
+    expect(claudeJson.mcpServers.rig).toEqual({ type: 'stdio', command: 'rig', args: ['serve', '--mcp', '--client', 'claude'] });
     expect(json(join(HOME, '.claude/settings.json')).permissions.allow).toContain('mcp__rig__rig_status');
     expect(readFileSync(join(HOME, '.claude/CLAUDE.md'), 'utf-8')).toContain('<!-- rig:begin -->');
     expect(readdirSync(PROJECT)).toEqual([]);

@@ -81,7 +81,7 @@ describe('Cursor passes --path ${workspaceFolder}', () => {
       await installTarget(getTarget('cursor')!, { ...opts, scope: 'global' });
       for (const f of [join(base, 'p', '.cursor/mcp.json'), join(base, 'home', '.cursor/mcp.json')]) {
         const args = JSON.parse(readFileSync(f, 'utf-8')).mcpServers.rig.args;
-        expect(args).toEqual(['serve', '--mcp', '--path', '${workspaceFolder}']);
+        expect(args).toEqual(['serve', '--mcp', '--path', '${workspaceFolder}', '--client', 'cursor']);
       }
     } finally {
       rmSync(base, { recursive: true, force: true });

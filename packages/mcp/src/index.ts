@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Rig } from '@rig/core';
-import { ToolError, makeActivationRecorder, type ToolContext, type ToolHandler } from './dispatch.ts';
 import {
-  buildHandlersMap,
-  makeMessageHandler,
-  type ToolsManifest,
-} from './server-handlers.ts';
+  ToolError,
+  makeActivationRecorder,
+  type ToolContext,
+  type ToolHandler,
+} from './dispatch.ts';
+import { buildHandlersMap, makeMessageHandler, type ToolsManifest } from './server-handlers.ts';
 import { resolveProjectRoot } from './project-root.ts';
 import { StdioTransport } from './transport.ts';
 import { serveUninitialized } from './uninitialized.ts';
@@ -39,7 +40,15 @@ export interface ServeMcpOptions {
   // process per project watches at a time; RIG_NO_WATCH=1 (or the CLI's
   // --no-watch) turns it off. Default: true.
   watch?: boolean;
+  // Agent label for this server's sessions (`--client <agent>`, or RIG_CLIENT).
+  clientLabel?: string;
 }
+
+const clientLabelFromArgs = (argv: readonly string[]): string | undefined => {
+  const i = argv.indexOf('--client');
+  const v = i >= 0 ? argv[i + 1] : undefined;
+  return v && !v.startsWith('--') ? v : undefined;
+};
 
 export async function serveMcp(opts: ServeMcpOptions = {}): Promise<void> {
   const projectRoot = opts.projectRoot ?? resolveProjectRoot(process.argv.slice(2), process.cwd());
@@ -60,6 +69,8 @@ export async function serveMcp(opts: ServeMcpOptions = {}): Promise<void> {
     sessionId,
     // No writes in Phase 1, so provenance is always absent.
     provenance: null,
+    clientLabel:
+      opts.clientLabel ?? clientLabelFromArgs(process.argv) ?? process.env.RIG_CLIENT ?? null,
     recordActivation: makeActivationRecorder(rig, sessionId),
   };
 

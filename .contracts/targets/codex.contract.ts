@@ -22,7 +22,7 @@ export default defineTargetContract({
         mcp_servers: {
           rig: {
             command: '{{RIG_BIN}}',
-            args: ['serve', '--mcp'],
+            args: ['serve', '--mcp', '--client', 'codex'],
           },
         },
       },

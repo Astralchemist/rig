@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { recordSessionClient } from '@rig/core/db/activation-queries.ts';
 import pkg from '../../../package.json' with { type: 'json' };
 import type { ToolHandler, ToolContext } from './dispatch.ts';
 import { ToolError, dispatchToolCall } from './dispatch.ts';
@@ -23,9 +24,7 @@ export interface ToolsManifest {
   tools: ToolManifestEntry[];
 }
 
-export const buildHandlersMap = (
-  exports: Record<string, unknown>,
-): Map<string, ToolHandler> => {
+export const buildHandlersMap = (exports: Record<string, unknown>): Map<string, ToolHandler> => {
   const out = new Map<string, ToolHandler>();
   for (const value of Object.values(exports)) {
     if (!value || typeof value !== 'object') continue;
@@ -71,8 +70,7 @@ const SERVER_INFO = {
   serverInfo: { name: 'rig', version: (pkg as { version: string }).version },
 };
 
-const isParams = (v: unknown): v is Record<string, unknown> =>
-  typeof v === 'object' && v !== null;
+const isParams = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
 const handleToolsCall = async (
   params: unknown,
@@ -114,6 +112,16 @@ export const makeMessageHandler = (
           clientInfo && typeof clientInfo.name === 'string' ? clientInfo.name : 'unknown';
         // Stamp this MCP session as ai:<client> so write tools have provenance.
         ctx.provenance = `ai:${clientName}`;
+        try {
+          recordSessionClient(
+            ctx.rig.database.adapter,
+            ctx.sessionId,
+            clientName === 'unknown' ? null : clientName,
+            ctx.clientLabel ?? null,
+          );
+        } catch {
+          // Older database without session_clients: identity is optional.
+        }
         transport.sendResult(id as string | number, SERVER_INFO);
         return;
       }
@@ -157,23 +165,21 @@ export const makeMessageHandler = (
         return;
       }
       if (method === 'tools/call') {
-        const result = await handleToolsCall(
-          (message as JsonRpcRequest).params,
-          ctx,
-          handlers,
-        );
+        const result = await handleToolsCall((message as JsonRpcRequest).params, ctx, handlers);
         transport.sendResult(id as string | number, result);
         return;
       }
-      transport.sendError(id as string | number, ErrorCodes.MethodNotFound, `Method not found: ${method}`);
+      transport.sendError(
+        id as string | number,
+        ErrorCodes.MethodNotFound,
+        `Method not found: ${method}`,
+      );
     } catch (err) {
       if (err instanceof ToolError) {
-        transport.sendError(
-          id as string | number,
-          ErrorCodes.InternalError,
-          err.message,
-          { ...err.data, rigError: err.code },
-        );
+        transport.sendError(id as string | number, ErrorCodes.InternalError, err.message, {
+          ...err.data,
+          rigError: err.code,
+        });
         return;
       }
       transport.sendError(

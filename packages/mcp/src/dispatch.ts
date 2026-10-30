@@ -14,6 +14,9 @@ export interface ToolContext {
   rig: Rig;
   sessionId: string;
   provenance: string | null;
+  // The agent label `rig install` put in this server's args (`--client`), or
+  // RIG_CLIENT; recorded with the handshake's client name (session_clients).
+  clientLabel?: string | null;
   // Record that a tool call touched these anchors: the one it was asked
   // about, or the ones it returned. Feeds the recency term in magnetic pull
   // and hubness heat. Tools call it exactly when their contract says
