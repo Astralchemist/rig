@@ -18,6 +18,20 @@ RIG_CALLS_OUT=calls.jsonl bun test --preload ./scripts/impact-eval/record.ts
 On rig at `fbb570a` the whole suite still passes under the recorder (732
 tests, 32 s instead of 27 s) and records about 5,700 call edges.
 
+`replay.ts` runs the pre-registered evaluation below: per commit, it checks
+out the parent in a worktree, indexes it with today's rig, predicts with
+`diffImpact`, runs the parent's suite under the recorder, and compares.
+
+```sh
+bun run scripts/impact-eval/replay.ts            # writes results/<date>-impact-eval.{json,md}
+```
+
+Mechanics, checked on a commit outside the population (`2ba7f56`): about 38 s
+per commit; of the calls from product code to product code, 89% map to a
+symbol at both ends (2,033 of 2,276). Nearly all unmapped edges start in test
+files (anonymous `test()` callbacks are not symbols), which both sides
+exclude anyway.
+
 ## Why call edges and not coverage
 
 Coverage-based impact sets (code co-executed with the changed code) were
