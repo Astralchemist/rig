@@ -15,6 +15,7 @@ const KIND_DIR: Record<WaypointKind, string> = {
   constraint: 'constraints',
   'open-question': 'open-questions',
   principle: 'principles',
+  'dead-end': 'dead-ends',
 };
 
 const slug = (text: string): string =>
@@ -110,6 +111,7 @@ export const runExportDocs = async (cwd: string): Promise<void> => {
       ['constraint', []],
       ['open-question', []],
       ['observation', []],
+      ['dead-end', []],
     ]);
     for (const w of waypoints) byKind.get(w.kind)?.push(w);
 

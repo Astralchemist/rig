@@ -70,17 +70,26 @@ describe('uninstall', () => {
     for (const [f, c] of Object.entries(originals)) expect(read(join(project, f))).toBe(c);
     expect(result.removed.map((r) => [r.role, r.status])).toEqual([
       ['instructions', 'removed'],
+      ['hooks', 'removed'],
       ['permissions', 'removed'],
       ['mcp_config', 'removed'],
     ]);
-    expect(result.removed[2]!.detail).toBe('mcpServers.rig');
-    expect(result.removed[1]!.detail).toMatch(/^\d+ rig entries$/);
+    expect(result.removed[3]!.detail).toBe('mcpServers.rig');
+    expect(result.removed[2]!.detail).toMatch(/^\d+ rig entries$/);
+    expect(result.removed[1]!.detail).toBe('6 rig hooks');
   });
 
   test('claude, project: files rig created are deleted, with their emptied dirs', async () => {
     await install('claude', 'project');
     const result = await uninstall('claude', 'project');
-    expect(result.removed.every((r) => r.status === 'deleted')).toBe(true);
+    // .claude/settings.json holds hooks and permissions: the hooks go first,
+    // and the file with the permissions.
+    expect(result.removed.map((r) => [r.role, r.status])).toEqual([
+      ['instructions', 'deleted'],
+      ['hooks', 'removed'],
+      ['permissions', 'deleted'],
+      ['mcp_config', 'deleted'],
+    ]);
     expect(readdirSync(project)).toEqual([]);
   });
 
@@ -175,7 +184,14 @@ describe('uninstall', () => {
     await install('claude', 'project');
     const before = read(join(project, '.mcp.json'));
     const result = await uninstall('claude', 'project', true);
-    expect(result.removed.every((r) => r.status === 'deleted')).toBe(true);
+    // A dry run removes nothing, so .claude/settings.json still has the
+    // hooks when its permissions are looked at.
+    expect(result.removed.map((r) => [r.role, r.status])).toEqual([
+      ['instructions', 'deleted'],
+      ['hooks', 'removed'],
+      ['permissions', 'removed'],
+      ['mcp_config', 'deleted'],
+    ]);
     expect(read(join(project, '.mcp.json'))).toBe(before);
   });
 });

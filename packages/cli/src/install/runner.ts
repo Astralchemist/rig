@@ -10,6 +10,8 @@ export interface InstallOptions extends TokenContext {
   projectRoot?: string | undefined;
   // Which of the target's files to write; defaults to 'project'.
   scope?: Scope | undefined;
+  // File roles to leave out (`--no-hooks` skips 'hooks').
+  skipRoles?: readonly string[] | undefined;
 }
 
 export interface InstallResult {
@@ -41,6 +43,7 @@ export async function installTarget(
   const detected = await contract.detect();
   const applied: ApplyResult[] = [];
   for (const file of filesInScope(contract, scope)) {
+    if (opts.skipRoles?.includes(file.role)) continue;
     applied.push(
       await applyFile(file, opts, {
         dryRun: opts.dryRun,

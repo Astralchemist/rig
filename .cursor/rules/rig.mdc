@@ -278,7 +278,9 @@ Optional filters: session_id (pass
 other than your own — useful at session start to rehydrate the previous
 thread, and it keeps finding that thread after you drop waypoints of your
 own), kind (decision / observation / constraint / open-question /
-principle).
+principle / dead-end), source (agent: dropped with rig_drop_waypoint;
+hook: captured automatically from the conversation — agreed decisions,
+corrections, constraints and dead ends, each with a confidence).
 
 Call this on session start, before the first user turn, with
 session_id="last" limit=20 to pick up where the previous session ended.
@@ -355,7 +357,8 @@ group of related anchors that deserves a name.
 
 Record a discrete marker the AI considers worth preserving across context
 compaction or session boundaries — a decision, a constraint stated by the
-user, a recurring observation, an open question, or a principle. The
+user, a recurring observation, an open question, a principle, or a dead
+end (an approach tried or proposed and ruled out). The
 waypoint becomes a graph anchor with structured payload; predecessor ids
 form a `waypoint_succeeds` chain; constellation refs form
 `waypoint_references` edges to other anchors.

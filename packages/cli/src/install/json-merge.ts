@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { isRigListEntry } from './ownership.ts';
+import { isRigHookHandler, isRigListEntry } from './ownership.ts';
 
 type JsonObj = Record<string, unknown>;
 
@@ -71,6 +71,46 @@ export const mergePermissions = (base: unknown, policy: unknown): unknown => {
       : entries;
   }
   return { ...merged, permissions };
+};
+
+// Hook config (role 'hooks'): { hooks: { <Event>: [{ matcher?, hooks: [handler…] }] } }.
+// Rig's handlers (ownership.ts) are dropped from every event, stale ones
+// included, then the policy's groups are appended; the user's handlers and
+// groups stay where they are. Returns the hooks object without rig's when
+// `policy` is null (uninstall), and how many rig handlers it removed.
+export const stripRigHooks = (hooks: JsonObj): { hooks: JsonObj; removed: number } => {
+  const out: JsonObj = {};
+  let removed = 0;
+  for (const [event, groups] of Object.entries(hooks)) {
+    if (!Array.isArray(groups)) {
+      out[event] = groups;
+      continue;
+    }
+    const kept: unknown[] = [];
+    for (const g of groups) {
+      if (!isObj(g) || !Array.isArray(g.hooks)) {
+        kept.push(g);
+        continue;
+      }
+      const handlers = g.hooks.filter((h) => !isRigHookHandler(h));
+      removed += g.hooks.length - handlers.length;
+      if (handlers.length) kept.push({ ...g, hooks: handlers });
+    }
+    if (kept.length) out[event] = kept;
+  }
+  return { hooks: out, removed };
+};
+
+export const mergeHooks = (base: unknown, policy: unknown): unknown => {
+  const doc: JsonObj = isObj(base) ? { ...base } : {};
+  const { hooks } = stripRigHooks(isObj(doc.hooks) ? doc.hooks : {});
+  const add = isObj(policy) && isObj(policy.hooks) ? policy.hooks : {};
+  for (const [event, groups] of Object.entries(add)) {
+    if (!Array.isArray(groups)) continue;
+    hooks[event] = [...(Array.isArray(hooks[event]) ? hooks[event] : []), ...groups];
+  }
+  doc.hooks = hooks;
+  return doc;
 };
 
 export const jsonEqual = (a: unknown, b: unknown): boolean =>

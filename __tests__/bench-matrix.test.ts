@@ -205,6 +205,7 @@ describe('results manifest and by-model view', () => {
       'sessions-0.3.0',
       'sessions-confirmation-0.3.0',
       'sessions-deepseek-deepseek-v4.1-flash',
+      'sessions-memory-auto-0.3.0',
       'sessions-sanity',
     ]);
     const deepseek = a.runs.find((r) => r.model === 'deepseek/deepseek-v4.1-flash')!;

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "tier_threshold_usd_per_m_input": 1,
-  "prices_as_of": "2026-10-29",
+  "prices_as_of": "2026-10-30",
   "fairness": [
     "Every model gets the same system prompt, tools, tool descriptions, queries or task pairs, arms, trials and turn limit.",
     "No temperature, top_p or reasoning setting is sent: each model runs at its provider defaults. Reasoning is on by default for some models and is billed as completion tokens.",
@@ -381,6 +381,37 @@
         "fingerprint": "14b6ca5108774da6"
       },
       "cost_usd": 1.027798,
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
+    },
+    {
+      "file": "2026-10-29-sessions-memory-auto-0.3.0.json",
+      "label": "sessions-memory-auto-0.3.0",
+      "mode": "sessions",
+      "model": "anthropic/claude-haiku-5.5",
+      "vendor": "anthropic",
+      "tier": "low-cost",
+      "provider": "openrouter",
+      "started_at": "2026-10-29T08:34:06.080Z",
+      "finished_at": "2026-10-29T09:00:24.430Z",
+      "arms": [
+        "memory-auto"
+      ],
+      "trials": 3,
+      "max_turns": 12,
+      "items": 20,
+      "task_set": null,
+      "results": 60,
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "rig": {
+        "version": "0.3.0",
+        "commit": "cc3d007ed60ed714cd81ce626d78deb169e69c31",
+        "fingerprint": "0213bc39e21aceb3"
+      },
+      "cost_usd": 0.557848,
       "cost_unknown": 0,
       "aborted": null,
       "credit_error_trials": 0

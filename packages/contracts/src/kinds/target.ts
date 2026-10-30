@@ -12,7 +12,9 @@ export const FILE_MODES = [
 ] as const;
 export type FileMode = (typeof FILE_MODES)[number];
 
-export const FILE_ROLES = ['mcp_config', 'permissions', 'instructions'] as const;
+// `hooks`: the host's hook configuration (Claude Code settings.json `hooks`),
+// where rig registers `rig hook <event>` for automatic capture.
+export const FILE_ROLES = ['mcp_config', 'permissions', 'instructions', 'hooks'] as const;
 export type FileRole = (typeof FILE_ROLES)[number];
 
 // A file's path also sets its scope: `~/…` is user-level (written by

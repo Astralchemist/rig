@@ -12,6 +12,7 @@ export async function run(args: Args, ctx: ToolContext): Promise<Result> {
     ...(args.session_id ? { sessionId: args.session_id } : {}),
     callerSessionId: ctx.sessionId,
     ...(args.kind ? { kind: args.kind } : {}),
+    ...(args.source ? { source: args.source } : {}),
     ...(args.limit !== undefined ? { limit: args.limit } : {}),
   };
   if (args.query) {

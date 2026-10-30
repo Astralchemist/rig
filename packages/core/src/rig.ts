@@ -94,6 +94,7 @@ export type {
   WaypointRow,
   WaypointKind,
   WaypointPayload,
+  WaypointSource,
   ListWaypointsOpts,
 } from './db/waypoint-queries.ts';
 export type { SyncResult } from './sync.ts';
@@ -489,9 +490,11 @@ export class Rig {
   // Waypoints most relevant to `query` (hybrid search over their titles,
   // summaries, key terms and rationales), best first, within the same
   // session/kind filters as getWaypoints.
+  // `waitMs` bounds the wait for the embedding model (HybridSearchOptions).
   async searchWaypoints(
     query: string,
     opts: ListWaypointsOpts = {},
+    search: { waitMs?: number } = {},
   ): Promise<{ waypoints: WaypointRow[]; degraded?: 'keyword-only' }> {
     const limit = opts.limit ?? 50;
     // Every waypoint the filters allow, so relevance decides the cut.
@@ -505,6 +508,7 @@ export class Rig {
     const r = await this.searcher.search(query, {
       kinds: ['conversation-waypoint'],
       limit: Math.max(limit, allowed.size),
+      ...(search.waitMs !== undefined ? { waitMs: search.waitMs } : {}),
     });
     const waypoints: WaypointRow[] = [];
     for (const h of r.hits) {

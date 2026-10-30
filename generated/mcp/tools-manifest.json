@@ -410,7 +410,8 @@
                     "observation",
                     "constraint",
                     "open-question",
-                    "principle"
+                    "principle",
+                    "dead-end"
                   ]
                 },
                 "title": {
@@ -565,6 +566,22 @@
                 "rationale": {
                   "type": "string",
                   "description": "Why it was dropped (absent on older waypoints)"
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "agent",
+                    "hook"
+                  ],
+                  "description": "hook: captured automatically from the conversation (absent on agent-dropped waypoints)"
+                },
+                "provenance": {
+                  "type": "string",
+                  "description": "Who wrote a captured waypoint, e.g. hook:claude"
+                },
+                "confidence": {
+                  "type": "number",
+                  "description": "Extractor confidence (0..1) of a captured waypoint"
                 }
               },
               "required": [
@@ -1139,7 +1156,8 @@
               "observation",
               "constraint",
               "open-question",
-              "principle"
+              "principle",
+              "dead-end"
             ]
           },
           "title": {
@@ -2863,8 +2881,17 @@
               "observation",
               "constraint",
               "open-question",
-              "principle"
+              "principle",
+              "dead-end"
             ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "agent",
+              "hook"
+            ],
+            "description": "agent: dropped by an agent; hook: captured automatically from conversations"
           },
           "limit": {
             "type": "integer",
@@ -2905,7 +2932,8 @@
                     "observation",
                     "constraint",
                     "open-question",
-                    "principle"
+                    "principle",
+                    "dead-end"
                   ]
                 },
                 "title": {
@@ -3060,6 +3088,22 @@
                 "rationale": {
                   "type": "string",
                   "description": "Why it was dropped (absent on older waypoints)"
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "agent",
+                    "hook"
+                  ],
+                  "description": "hook: captured automatically from the conversation (absent on agent-dropped waypoints)"
+                },
+                "provenance": {
+                  "type": "string",
+                  "description": "Who wrote a captured waypoint, e.g. hook:claude"
+                },
+                "confidence": {
+                  "type": "number",
+                  "description": "Extractor confidence (0..1) of a captured waypoint"
                 }
               },
               "required": [

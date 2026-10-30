@@ -50,7 +50,9 @@ const USAGE = `usage: bun scripts/bench/run.ts [options]
 
 multi-session memory mode (see README.md "Multi-session memory"):
   --mode sessions          run the task pairs in sessions.json instead of the queries
-  --arms <list>            memory-off,memory-on,oracle,grep-only (default the first three)
+  --arms <list>            memory-off,memory-on,oracle,grep-only,memory-auto (default the
+                           first three); --arms memory-auto runs only the new arm, reported
+                           against stored runs with bench:report --baseline
   --tasks <ids>            comma-separated task ids (default all)
   --task-set <name>        only the tasks of one set: first (1-10) or confirmation (11-20)
   --trials, --max-turns    as above; --max-turns counts model calls per user message

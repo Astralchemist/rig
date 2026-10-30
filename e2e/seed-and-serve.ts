@@ -56,6 +56,34 @@ const pendingId2 = rig.writes.proposeEdge(
   },
   { sessionId: 'e2e-seed', actor: 'ai:e2e' },
 );
+// For map-ui.spec.ts: a third proposal (render → logout, accepted and undone from the UI),
+// a waypoint anchored to login, and an agent note on login.
+const pendingId3 = rig.writes.proposeEdge(
+  {
+    src: render.id,
+    dst: logout.id,
+    kind: 'depends_on',
+    weight: 0.5,
+    rationale: 'e2e seed — reviewed in the map UI',
+    sourceUrls: ['https://example.org/auth-notes'],
+  },
+  { sessionId: 'e2e-seed', actor: 'ai:e2e' },
+);
+const waypointId = rig.writes.dropWaypoint(
+  {
+    kind: 'decision',
+    title: 'Login stays synchronous',
+    summary: 'The view calls authStore.login directly; no queue in between.',
+    constellationRefs: [login.id],
+    keyTerms: ['login'],
+    rationale: 'e2e seed',
+  },
+  { sessionId: 'e2e-seed', actor: 'ai:e2e' },
+);
+rig.writes.annotateNode(
+  { nodeId: login.id, note: 'e2e seed note: called on every render', rationale: 'e2e seed' },
+  { sessionId: 'e2e-seed', actor: 'ai:e2e' },
+);
 rig.close();
 
 const handle = await serveWeb({ projectRoot, port: PORT });
@@ -73,6 +101,9 @@ writeFileSync(
       dstId: render.id,
       pendingId: pendingId1,
       pendingId2,
+      pendingId3,
+      waypointId,
+      logoutId: logout.id,
     },
     null,
     2,

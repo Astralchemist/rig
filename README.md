@@ -66,7 +66,7 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
 ## What it can do
 
 **Map and navigate code**
-- **A live map of your codebase.** Files, symbols, calls, imports, tests and dependencies as a graph you can fly through in the browser. The map updates live while agents work.
+- **A live map of your codebase.** Files, symbols, calls, imports, tests and dependencies as a graph you can fly through in the browser. The map updates live while agents work. Select a node for its neighbourhood (typed links, notes, waypoints) or its impact tree; review proposed links, browse waypoints and read the orientation map in their own views. Light and dark, keyboard-driven, and usable on a phone.
 - **Structural questions in one call.** Callers, callees, impact ("what breaks if I change X"), critical paths, neighbours and hubs, instead of grep-and-read.
 - **Search in plain language.** "Where do we refresh expired sessions?" finds the code. Exact names, keywords (including identifier words, so "handle login" matches `handleLogin`) and on-device embeddings are fused into one ranking. A symbol name still returns that symbol first.
 - **Orientation on demand.** `rig_overview` (also the MCP resource `rig://overview`, and `rig overview` on the command line) returns a compact markdown map of the repository, about 2,000 tokens long. It covers:
@@ -81,6 +81,14 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
 - **Magnetic pull.** "What's related to X", ranked by graph distance, semantic similarity and recent activity, with the score components broken out.
 - **Dependency intelligence.** Installed versions, declared-but-unused packages, imports with no declaration, and version conflicts across a monorepo. It covers npm and Python: PyPI names are matched to their import names (`PyYAML` → `yaml`), and the standard library is never flagged.
 
+<p align="center">
+  <img src="docs/map/constellation-before-after.png" alt="Before and after slider of the whole-repo map in the light theme. After: a faint dot grid behind the graph, file labels with the directory dimmed and the file name in front, outlined nodes, and a legend that says 500 of 956 nodes are shown, by hubness." width="820">
+  <br>
+  <img src="docs/map/selection-before-after.png" alt="Before and after slider of a selected node, buildOverviewMap. After: its links draw in the accent colour, hubs carry a soft halo, and its neighbours' labels no longer overlap." width="820">
+  <br>
+  <em>The map before and after the canvas pass: the divider sweeps from before (right) to after (left).</em>
+</p>
+
 **Remember across sessions and agents**
 - **Memory that survives re-indexing.** Index, sync, file edits and line moves keep everything agents attach to code:
   - waypoints (decisions, constraints, open questions)
@@ -89,6 +97,7 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
 
   If a symbol disappears, its memory is set aside rather than lost, and re-attached when the symbol comes back.
 - **Waypoints** live outside the context window. They are searchable by meaning (`rig_waypoints query="…"`), and the next session can load the previous one's.
+- **Automatic capture** (Claude Code). Hooks record what a conversation *settled*: agreed decisions, corrections, constraints and dead ends. The next session starts with a short brief of them. See [Automatic capture](#automatic-capture).
 - **Human review where it matters.** Links an agent proposes wait for your accept or reject on the map, and every change can be undone step by step.
 - **Portable memory.** `rig export-memory` and `rig import-memory` carry agent memory across fresh clones and machines.
 - **One graph, many agents.** Claude Code, Cursor, Codex and opencode can all work on the same project at the same time. Writes are concurrency-safe and record which agent made them.
@@ -106,7 +115,7 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
   <img src="https://raw.githubusercontent.com/Astralchemist/rig/main/docs/bench/memory.svg" alt="Session-2 success: memory-off 30%, memory-on 70%, oracle 82%. memory-on minus memory-off: +40 pp, 95% CI +20 to +60 pp, above the pre-registered +15 pp bar." width="760">
 </p>
 
-**Memory across sessions passed its pre-registered bar.** On 20 two-session tasks with Claude Haiku 5.5, session 2 succeeded 70% of the time with rig's waypoints and 30% without. That is +40 pp (95% CI +20 to +60 pp), at 94% of memory-off's tokens. The bar (the whole CI at or above +15 pp, tokens at or below 110%) was written before any run. The losses: the first 10 tasks alone were inconclusive, the 10 confirmation tasks alone went over the token cap (110.2%), and two trap tasks beat every arm, oracle included.
+**Memory across sessions passed its pre-registered bar.** On 20 two-session tasks with Claude Haiku 5.5, session 2 succeeded 70% of the time with rig's waypoints and 30% without. That is +40 pp (95% CI +20 to +60 pp), at 94% of memory-off's tokens. The bar (the whole CI at or above +15 pp, tokens at or below 110%) was written before any run. The losses: the first 10 tasks alone were inconclusive, the 10 confirmation tasks alone went over the token cap (110.2%), and two trap tasks beat every arm, oracle included. Automatic capture alone (hooks, without agent-dropped waypoints) reached 50% (+20 pp) but used 116% of the tokens, so it failed the same bar: it is a backstop to agent-dropped waypoints, not a replacement.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/Astralchemist/rig/main/docs/bench/qa-tokens.svg" alt="Single-shot tokens relative to grep-only, by rig build and arm. Every arm is above 100% overall; at rig 0.3.0 grep+rig is 134% overall, 175% on lookups and 99% on natural-language questions." width="760">
@@ -170,7 +179,7 @@ rig uninstall claude          # remove exactly what install added (--all · --gl
 
 | Agent | Project (default) | `--global` |
 |---|---|---|
-| Claude Code | `.mcp.json` · `.claude/settings.json` · `CLAUDE.md` | `~/.claude.json` · `~/.claude/settings.json` · `~/.claude/CLAUDE.md` |
+| Claude Code | `.mcp.json` · `.claude/settings.json` (permissions, capture hooks) · `CLAUDE.md` | `~/.claude.json` · `~/.claude/settings.json` · `~/.claude/CLAUDE.md` |
 | Cursor | `.cursor/mcp.json` · `.cursor/cli.json` · `.cursor/rules/rig.mdc` | `~/.cursor/mcp.json` |
 | Codex CLI | — user-level only | `~/.codex/config.toml` · `~/.codex/AGENTS.md` |
 | opencode | — user-level only | `~/.config/opencode/opencode.jsonc` · `~/.config/opencode/AGENTS.md` |
@@ -185,6 +194,57 @@ tool answers with how to fix it (`rig init` or `rig start`).
 OpenRouter is an API, not an MCP host: `rig install openrouter` only writes a reference
 config to copy into the MCP client you use with it.
 
+### Automatic capture
+
+For Claude Code, `rig install claude` (and `rig start`) also adds hooks to the project's
+`.claude/settings.json` that run `rig hook <event>`. They record the moments a
+conversation settles something, so the next session doesn't have to rediscover them.
+They don't record the conversation itself. Capture is deterministic pattern matching
+over the transcript: no model call, no API key, and nothing leaves the machine.
+
+**Measured.** On the pre-registered multi-session benchmark, capture alone (no waypoint
+guidance) did not pass the bar: +20 pp success over no memory, but 116% of its tokens
+([report](scripts/bench/results/2026-10-29-sessions-memory-auto-0.3.0.md)). The extractor
+found the needed fact in 9 of 57 runs.
+
+**What's captured.** Only what the user's own words settle:
+- **agreed:** the agent proposed something and the user approved it ("yes", "go ahead",
+  "merge it", picking option B). Stored as a decision.
+- **correction:** "no, use X instead". Stored as a decision.
+- **decision:** what the user states was decided ("we went with X"). Stored as a decision.
+- **constraint:** "never…", "always…", "must…", "don't touch…", "only…".
+- **dead end:** the user declined or reversed something, ruled it out ("X was rejected
+  because Y"), or denied a tool call; or an attempt failed and was given up.
+
+Quoted text, code and questions never count. Each record keeps the user's words as its
+rationale, the files and symbols it names (linked into the graph), a confidence and the
+place in the conversation. A record already stored, in any session, isn't stored again.
+
+**What's injected.** At session start (also after `/resume` and compaction), the agent
+gets at most 1,500 characters headed "Settled in previous sessions in this project". It
+lists agreed decisions, constraints and dead ends, newest and most relevant first, plus
+open questions agents recorded. Only decisions, constraints and dead ends with
+confidence ≥ 0.7 are included. Everything else stays searchable (`rig_waypoints
+source="hook"`, `rig_search`) but is never injected. The brief is fenced as data: a
+record of what was said, not instructions.
+
+**Privacy.** Everything stays in `.rig/` (`.rig/capture/` holds the hook spool, cursors
+and log). API keys, tokens, private keys, `.env`-style secrets and credentials in URLs
+are redacted before anything is written. Hooks never block or fail the agent: errors go
+to `.rig/capture/hook.log`.
+
+**Opting out.** `rig install claude --no-hooks` (or `rig start --no-hooks`) leaves the
+hooks out and removes ones already installed. `rig uninstall claude` removes them with
+the rest of the wiring. Set `RIG_CAPTURE=0`, or `{ "capture": { "enabled": false } }`
+in `.rig/config.json`, to switch capture off without touching the hooks.
+
+| Hook | What `rig hook` does |
+|---|---|
+| `UserPromptSubmit`, `PostToolUse` | Append the prompt or tool use to the session's spool (about 20 ms) |
+| `Stop` (async), `PreCompact` | Capture the transcript since the last run and store what it settled |
+| `SessionEnd` | Queue the session; the next `SessionStart` captures it |
+| `SessionStart` (startup, resume, compact) | Print the brief as `additionalContext` |
+
 ---
 
 ## Commands
@@ -192,7 +252,7 @@ config to copy into the MCP client you use with it.
 | Command | What it does |
 |---|---|
 | `rig start` | One-shot: init + index + wire agent + open the live map |
-| `rig install <agent>` | Wire an agent into this project (`--global` for your user-level config) |
+| `rig install <agent>` | Wire an agent into this project (`--global` for your user-level config; `--no-hooks` to skip automatic capture) |
 | `rig uninstall <agent>` | Remove exactly what install added (`--all`, `--global`, `--dry-run`) |
 | `rig index` | Extract + write nodes, skipping unchanged files (`--include` / `--exclude <glob>`, `--force`) |
 | `rig sync` | Incremental update |
@@ -204,6 +264,7 @@ config to copy into the MCP client you use with it.
 | `rig export-docs` | Render waypoints into a markdown doc tree |
 | `rig export-memory` | Save agent memory (aliases, notes, links, promotions, waypoints) as JSONL that survives losing `.rig/` (`--out <file>`). It can contain conversation-derived text: review it before committing it |
 | `rig import-memory <file>` | Merge an export back in, e.g. after a fresh clone + `rig index`. Only adds; never overwrites |
+| `rig hook <event>` | Run by Claude Code's hooks: automatic capture and the session-start brief ([details](#automatic-capture)) |
 
 Run `rig --help` for the full list.
 
@@ -211,7 +272,7 @@ Run `rig --help` for the full list.
 
 ## How it works
 
-`.contracts/` is the declarative source of truth (tools, anchors, migrations, events); `bun run gen` emits the matching code into `generated/`. The graph is plain SQLite. Search fuses exact names, SQLite FTS5 keyword matches and on-device embedding similarity by reciprocal rank; "what's related" is a single magnetic-pull scoring function over structural edges, on-device embeddings, and recency. The map UI is a force-graph over WebSocket.
+`.contracts/` is the declarative source of truth (tools, anchors, migrations, events); `bun run gen` emits the matching code into `generated/`. The graph is plain SQLite. Search fuses exact names, SQLite FTS5 keyword matches and on-device embedding similarity by reciprocal rank; "what's related" is a single magnetic-pull scoring function over structural edges, on-device embeddings, and recency. The map UI is a canvas force-graph for the whole repository, with React Flow for the focused views (neighbourhood, impact, review, waypoints), kept live over a WebSocket.
 
 - `packages/core` — the `Rig` class: DB, extraction, graph, embeddings, magnetic pull
 - `packages/mcp` — MCP stdio server + tool dispatch

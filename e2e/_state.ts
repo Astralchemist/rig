@@ -13,6 +13,9 @@ export interface State {
   dstId: string;
   pendingId: number;
   pendingId2: number;
+  pendingId3: number;
+  waypointId: string;
+  logoutId: string;
 }
 
 export const readState = (): State => {

@@ -2,7 +2,7 @@
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { atomicWrite } from './atomic.ts';
-import { deepMerge, mergePermissions } from './json-merge.ts';
+import { deepMerge, mergeHooks, mergePermissions } from './json-merge.ts';
 import { dropStaleKeys, expandScalarShorthands, mergeJsonc } from './jsonc-merge.ts';
 import { isRigMapKey, isRigToolTable } from './ownership.ts';
 import { expandRelativeTo } from './paths.ts';
@@ -125,9 +125,15 @@ const applyMode = async (
 ): Promise<ApplyResult> => {
   // Permission files: rig's policy decides rig's own entries, the user's
   // entries are kept (#8; see mergePermissions and ownership.ts).
+  // Hook config: the same for rig's hook handlers (mergeHooks).
   const perms = file.role === 'permissions';
   if (file.mode === 'merge-json') {
-    const merge = perms ? mergePermissions : (b: unknown, t: unknown) => deepMerge(b, t);
+    const merge =
+      file.role === 'hooks'
+        ? mergeHooks
+        : perms
+          ? mergePermissions
+          : (b: unknown, t: unknown) => deepMerge(b, t);
     return applyMergeJson(resolvedPath, template, dryRun, merge);
   }
   if (file.mode === 'append-section') return applyAppendSection(resolvedPath, template, dryRun);

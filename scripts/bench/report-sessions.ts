@@ -4,7 +4,7 @@
 // memory-on minus memory-off delta with a bootstrap CI, and the verdict
 // against the pre-registered bar. `aggregateSessions` is pure so the tests
 // can drive it with synthetic results.
-import { checkSessionAnswer } from './criteria.ts';
+import { checkSessionAnswer, toMatcher } from './criteria.ts';
 import { median } from './report.ts';
 import { BAR_DELTA, BAR_TOKEN_RATIO } from './sessions.ts';
 import type {
@@ -70,6 +70,32 @@ export interface PairedDelta {
   seed: number;
 }
 
+// memory-auto (pre-registered): its verdict against memory-off on the same
+// bar, its comparison with memory-on, and what capture did. Capture recall is
+// computed here, after the run, from the stored results; nothing of it
+// reached the arm.
+export interface CaptureStats {
+  runs: number;
+  // Records per trial (extracted; stored; injectable), median / mean.
+  records: Summary | null;
+  stored: Summary | null;
+  injectable: Summary | null;
+  by_kind: Record<string, number>;
+  brief_chars: Summary | null;
+  errors: number;
+  // Runs of tasks with a usable fact check whose captured records (summary +
+  // rationale) match it, and whose brief does.
+  recall: { runs: number; captured: number; briefed: number };
+  per_task: { id: string; facts: string[]; runs: number; captured: number; briefed: number }[];
+}
+
+export interface MemoryAutoReport {
+  preregistration: string | null;
+  vs_off: { paired: PairedDelta; verdict: VerdictResult } | null;
+  vs_on: PairedDelta | null;
+  capture: CaptureStats | null;
+}
+
 export type Verdict = 'PASS' | 'FAIL' | 'INCONCLUSIVE';
 
 export interface VerdictResult {
@@ -117,6 +143,10 @@ export interface SessionsReport {
   sanity: SanityRow[];
   tasks: TaskRow[];
   total_cost: number | null;
+  // Present when the memory-auto arm ran.
+  memory_auto: MemoryAutoReport | null;
+  // A new arm judged against stored baseline runs (addArmsToBaseline).
+  added_arms: SessionsBenchFile['added_arms'] | null;
 }
 
 // mulberry32: a small seeded PRNG, so a report's CI is reproducible.
@@ -295,13 +325,16 @@ const pc = (v: number): string => `${(v * 100).toFixed(1)}%`;
  * of it is below, INCONCLUSIVE when it straddles the threshold. Failing the
  * token clause fails the bar whatever the CI.
  */
-export const verdictFor = (d: PairedDelta): VerdictResult => {
+export const verdictFor = (
+  d: PairedDelta,
+  names: { on: MemoryArmName; off: MemoryArmName } = { on: 'memory-on', off: 'memory-off' },
+): VerdictResult => {
   const [lo, hi] = d.ci;
   const ci = `95% CI ${pp(lo)} to ${pp(hi)}`;
   if (d.token_ratio === null) {
-    return { verdict: 'INCONCLUSIVE', reason: 'memory-off used no tokens; no token ratio' };
+    return { verdict: 'INCONCLUSIVE', reason: `${names.off} used no tokens; no token ratio` };
   }
-  const tokens = `memory-on used ${pc(d.token_ratio)} of memory-off's median total tokens`;
+  const tokens = `${names.on} used ${pc(d.token_ratio)} of ${names.off}'s median total tokens`;
   if (d.token_ratio > BAR_TOKEN_RATIO) {
     return {
       verdict: 'FAIL',
@@ -397,11 +430,12 @@ export const aggregateSessions = (
     };
   });
 
-  let paired: PairedDelta | null = null;
-  if (file.arms.includes('memory-on') && file.arms.includes('memory-off')) {
+  // `on` minus `off` over the (task, trial) pairs both ran.
+  const pairedFor = (onArm: MemoryArmName, offArm: MemoryArmName): PairedDelta | null => {
+    if (!file.arms.includes(onArm) || !file.arms.includes(offArm)) return null;
     const key = (r: SessionRunResult) => `${r.task_id}\u0000${r.trial}`;
-    const off = new Map(runsOf('memory-off').map((r) => [key(r), r]));
-    const pairs: Pair[] = runsOf('memory-on').flatMap((on) => {
+    const off = new Map(runsOf(offArm).map((r) => [key(r), r]));
+    const pairs: Pair[] = runsOf(onArm).flatMap((on) => {
       const o = off.get(key(on));
       return o
         ? [
@@ -416,10 +450,24 @@ export const aggregateSessions = (
           ]
         : [];
     });
-    paired = bootstrapPaired(pairs, {
+    return bootstrapPaired(pairs, {
       ...(opts.iterations !== undefined ? { iterations: opts.iterations } : {}),
       ...(opts.seed !== undefined ? { seed: opts.seed } : {}),
     });
+  };
+  const paired = pairedFor('memory-on', 'memory-off');
+
+  let memoryAuto: MemoryAutoReport | null = null;
+  if (file.arms.includes('memory-auto')) {
+    const vsOff = pairedFor('memory-auto', 'memory-off');
+    memoryAuto = {
+      preregistration: file.memory_auto_preregistration ?? null,
+      vs_off: vsOff
+        ? { paired: vsOff, verdict: verdictFor(vsOff, { on: 'memory-auto', off: 'memory-off' }) }
+        : null,
+      vs_on: pairedFor('memory-auto', 'memory-on'),
+      capture: captureStats(runsOf('memory-auto'), taskById),
+    };
   }
 
   // Code-only answers should walk into most traps; if they don't, the traps
@@ -489,6 +537,88 @@ export const aggregateSessions = (
     sanity,
     tasks,
     total_cost: costs.some((c) => c === null) ? null : costs.reduce<number>((s, c) => s + c!, 0),
+    memory_auto: memoryAuto,
+    added_arms: file.added_arms ?? null,
+  };
+};
+
+// The facts capture recall looks for in a task: its secret when it has one;
+// otherwise the literal strings of its `all` criteria (or `any`, without
+// `all`) and the value side of its `key = value` patterns, when that value
+// has at least three letters or digits. A coarse proxy: the criteria are
+// written against the ANSWER line, not against what session 1 said.
+export const captureFacts = (t: SessionTask): string[] => {
+  if (t.secret) return [t.secret];
+  const pats = t.expected.all?.length ? t.expected.all : (t.expected.any ?? []);
+  return pats.flatMap((p) => {
+    const re = /^\/(.*)\/([a-z]*)$/.exec(p);
+    if (!re) return [p];
+    const value = re[1]!
+      .split(/\\s\*=\\s\*|\\s\*=/)
+      .slice(1)
+      .join('');
+    const body = value.replace(/^\[[^\]]*\]\?/, '');
+    const letters = body.replace(/\\[a-z]|[^A-Za-z0-9]/g, '');
+    return letters.length >= 3 ? [`/${body}/${re[2]}`] : [];
+  });
+};
+
+const factFound = (facts: readonly string[], text: string): boolean =>
+  facts.some((f) => {
+    try {
+      return toMatcher(f)(text);
+    } catch {
+      return false;
+    }
+  });
+
+const captureStats = (
+  rs: readonly SessionRunResult[],
+  taskById: ReadonlyMap<string, SessionTask>,
+): CaptureStats | null => {
+  const withCapture = rs.filter((r) => r.capture);
+  if (!withCapture.length) return null;
+  const by_kind: Record<string, number> = {};
+  for (const r of withCapture) {
+    for (const c of r.capture!.records) by_kind[c.kind] = (by_kind[c.kind] ?? 0) + 1;
+  }
+  const per_task = new Map<string, CaptureStats['per_task'][number]>();
+  for (const r of withCapture) {
+    const t = taskById.get(r.task_id);
+    const facts = t ? captureFacts(t) : [];
+    const row = per_task.get(r.task_id) ?? {
+      id: r.task_id,
+      facts,
+      runs: 0,
+      captured: 0,
+      briefed: 0,
+    };
+    row.runs++;
+    if (facts.length) {
+      const text = r.capture!.records.map((c) => `${c.summary}\n${c.rationale}`).join('\n');
+      if (factFound(facts, text)) row.captured++;
+      if (factFound(facts, r.capture!.brief)) row.briefed++;
+    }
+    per_task.set(r.task_id, row);
+  }
+  const rows = [...per_task.values()];
+  const checked = rows.filter((t) => t.facts.length);
+  return {
+    runs: withCapture.length,
+    records: summarize(withCapture.map((r) => r.capture!.records.length)),
+    stored: summarize(withCapture.map((r) => r.capture!.records.filter((c) => c.stored).length)),
+    injectable: summarize(
+      withCapture.map((r) => r.capture!.records.filter((c) => c.injectable).length),
+    ),
+    by_kind,
+    brief_chars: summarize(withCapture.map((r) => r.capture!.brief.length)),
+    errors: withCapture.filter((r) => r.capture!.error).length,
+    recall: {
+      runs: checked.reduce((s, t) => s + t.runs, 0),
+      captured: checked.reduce((s, t) => s + t.captured, 0),
+      briefed: checked.reduce((s, t) => s + t.briefed, 0),
+    },
+    per_task: rows,
   };
 };
 
@@ -508,11 +638,36 @@ export const renderSessionsMarkdown = (r: SessionsReport): string => {
   if (r.confirmation_rule) {
     L.push('**Confirmation rule** (pre-registered):', '', `> ${r.confirmation_rule}`, '');
   }
+  const ma = r.memory_auto;
+  if (ma?.preregistration) {
+    L.push('**memory-auto** (pre-registered):', '', `> ${ma.preregistration}`, '');
+  }
   const scope = r.combined ? `, combined (${r.combined.length} runs)` : '';
   if (r.verdict) {
     L.push(`**Verdict${scope}: ${r.verdict.verdict}** — ${r.verdict.reason}.`, '');
-  } else {
+  } else if (!ma) {
     L.push('**Verdict: not computed** — needs both memory-on and memory-off runs.', '');
+  }
+  if (ma) {
+    L.push(
+      ma.vs_off
+        ? `**Verdict, memory-auto vs memory-off${scope}: ${ma.vs_off.verdict.verdict}** — ${ma.vs_off.verdict.reason}.`
+        : '**Verdict, memory-auto vs memory-off: not computed** — needs memory-off runs of the same tasks and trials.',
+      '',
+    );
+    if (ma.vs_on) {
+      const d = ma.vs_on;
+      L.push(
+        `**memory-auto vs memory-on** (descriptive, no bar): success ${pct(d.on_rate)} vs ${pct(d.off_rate)}, delta ${pp(d.delta)} (95% CI ${pp(d.ci[0])} to ${pp(d.ci[1])}); memory-auto used ${d.token_ratio === null ? '–' : pc(d.token_ratio)} of memory-on's median total tokens.`,
+        '',
+      );
+    }
+  }
+  if (r.added_arms) {
+    L.push(
+      `**New arm against stored baseline arms**: ${r.added_arms.arms.join(', ')} from \`${r.added_arms.run}\`, paired with the stored trials of the other arms from ${r.added_arms.baseline_runs.map((b) => `\`${b}\``).join(', ')}. Same model, trials, bar, target and turn limit; the baseline ran on an earlier rig build (see the runs below).`,
+      '',
+    );
   }
   L.push(`- **Provider / model**: ${r.provider} / \`${r.model}\``);
   if (r.resolved_models.length)
@@ -601,6 +756,59 @@ export const renderSessionsMarkdown = (r: SessionsReport): string => {
       `| median total tokens | ${int(p.off_median_tokens)} | ${int(p.on_median_tokens)} | ${p.token_ratio === null ? '–' : pc(p.token_ratio)} | ${p.token_ratio_ci ? `${pc(p.token_ratio_ci[0])} to ${pc(p.token_ratio_ci[1])}` : '–'} | ≤ ${pc(BAR_TOKEN_RATIO)} |`,
     );
     L.push('');
+  }
+
+  if (ma) {
+    const pairedTable = (title: string, d: PairedDelta, on: string, off: string): void => {
+      L.push(`## Paired: ${on} minus ${off}`, '');
+      L.push(
+        `${title} Over ${d.pairs} (task, trial) pairs from ${d.tasks} tasks; same bootstrap as above.`,
+        '',
+      );
+      L.push(`| measure | ${off} | ${on} | delta / ratio | 95% CI | bar |`);
+      L.push('|---|---:|---:|---:|---:|---:|');
+      L.push(
+        `| session-2 success | ${pct(d.off_rate)} | ${pct(d.on_rate)} | ${pp(d.delta)} | ${pp(d.ci[0])} to ${pp(d.ci[1])} | ${off === 'memory-off' ? `≥ ${pp(BAR_DELTA)}` : '–'} |`,
+      );
+      L.push(
+        `| median total tokens | ${int(d.off_median_tokens)} | ${int(d.on_median_tokens)} | ${d.token_ratio === null ? '–' : pc(d.token_ratio)} | ${d.token_ratio_ci ? `${pc(d.token_ratio_ci[0])} to ${pc(d.token_ratio_ci[1])}` : '–'} | ${off === 'memory-off' ? `≤ ${pc(BAR_TOKEN_RATIO)}` : '–'} |`,
+      );
+      L.push('');
+    };
+    if (ma.vs_off)
+      pairedTable('The pre-registered comparison.', ma.vs_off.paired, 'memory-auto', 'memory-off');
+    if (ma.vs_on) pairedTable('Descriptive.', ma.vs_on, 'memory-auto', 'memory-on');
+    const c = ma.capture;
+    if (c) {
+      L.push('## Automatic capture (memory-auto)', '');
+      L.push(
+        'Records the capture pipeline extracted from session 1, per trial (median / mean); stored excludes duplicates; injectable records are the ones the SessionStart brief may show.',
+        '',
+      );
+      L.push('| runs | records | stored | injectable | brief chars | capture errors |');
+      L.push('|---:|---:|---:|---:|---:|---:|');
+      L.push(
+        `| ${c.runs} | ${both(c.records, (v) => v.toFixed(1))} | ${both(c.stored, (v) => v.toFixed(1))} | ${both(c.injectable, (v) => v.toFixed(1))} | ${both(c.brief_chars, int)} | ${c.errors} |`,
+        '',
+      );
+      const kinds = Object.entries(c.by_kind).sort((a, b) => b[1] - a[1]);
+      L.push(
+        `By kind (all runs): ${kinds.length ? kinds.map(([k, n]) => `${k} ${n}`).join(', ') : 'none'}.`,
+        '',
+      );
+      L.push(
+        `**Capture recall** (computed after the run; it did not feed the arm): the needed fact was in the captured records in ${c.recall.captured}/${c.recall.runs} runs and in the brief in ${c.recall.briefed}/${c.recall.runs}. The fact is the task's secret, or else the literal strings and \`key = value\` values of its answer criteria — a coarse proxy, since those are written against the ANSWER line. Tasks with no usable fact are marked n/a.`,
+        '',
+      );
+      L.push('| task | fact checked | runs | captured | in brief |');
+      L.push('|---|---|---:|---:|---:|');
+      for (const t of c.per_task) {
+        L.push(
+          `| \`${t.id}\` | ${t.facts.length ? t.facts.map((f) => `\`${f.replace(/\|/g, '\\|')}\``).join(', ') : 'n/a'} | ${t.runs} | ${t.facts.length ? t.captured : '–'} | ${t.facts.length ? t.briefed : '–'} |`,
+        );
+      }
+      L.push('');
+    }
   }
 
   if (r.sanity.length || r.trap_evidence.length || r.secret_check.length) {
@@ -698,6 +906,7 @@ export const mergeSessionsFiles = (files: readonly SessionsBenchFile[]): Session
     }
   }
   const rule = files.find((f) => f.confirmation_rule)?.confirmation_rule;
+  const prereg = files.find((f) => f.memory_auto_preregistration)?.memory_auto_preregistration;
   const finished = files.map((f) => f.finished_at);
   return {
     ...first,
@@ -705,6 +914,7 @@ export const mergeSessionsFiles = (files: readonly SessionsBenchFile[]): Session
     started_at: files.map((f) => f.started_at).sort()[0]!,
     finished_at: finished.some((t) => t === null) ? null : (finished as string[]).sort().at(-1)!,
     ...(rule !== undefined ? { confirmation_rule: rule } : {}),
+    ...(prereg !== undefined ? { memory_auto_preregistration: prereg } : {}),
     trap_evidence: files.flatMap((f) => f.trap_evidence),
     secret_check: files.flatMap((f) => f.secret_check ?? []),
     tasks: files.flatMap((f) => f.tasks),
@@ -717,5 +927,69 @@ export const mergeSessionsFiles = (files: readonly SessionsBenchFile[]): Session
       tasks: f.tasks.map((t) => t.id),
       trials: f.results.length,
     })),
+  };
+};
+
+const runOf = (f: SessionsBenchFile): CombinedRun => ({
+  label: f.label,
+  started_at: f.started_at,
+  rig: f.rig,
+  snapshot_sha256: f.target.snapshot.sha256,
+  tasks: f.tasks.map((t) => t.id),
+  trials: f.results.length,
+});
+
+/**
+ * A new arm against stored baseline arms: `added` ran only arms the baseline
+ * did not (`--arms memory-auto`), on tasks the baseline covers, with the same
+ * model, trials, bar, target, turn limit and marker. Its results join the
+ * baseline's, so each new trial pairs with the stored trial of the same task
+ * and index. The baseline (one file, or several merged with
+ * mergeSessionsFiles first) keeps its own runs; this is the only way runs
+ * with different arms are judged together, and the report says so.
+ */
+export const addArmsToBaseline = (
+  baseline: SessionsBenchFile,
+  added: SessionsBenchFile,
+): SessionsBenchFile => {
+  for (const [what, key] of MERGE_KEYS.filter(([w]) => w !== 'arms')) {
+    const want = JSON.stringify(key(baseline));
+    const got = JSON.stringify(key(added));
+    if (got !== want) {
+      throw new Error(
+        `refusing to add arms: ${what} differs (baseline: ${want}; ${added.label}: ${got})`,
+      );
+    }
+  }
+  const shared = added.arms.filter((a) => baseline.arms.includes(a));
+  if (shared.length) {
+    throw new Error(
+      `refusing to add arms: ${shared.join(', ')} already in the baseline; run only the new arm`,
+    );
+  }
+  const base = new Map(baseline.tasks.map((t) => [t.id, t]));
+  for (const t of added.tasks) {
+    const b = base.get(t.id);
+    if (!b) throw new Error(`refusing to add arms: task ${t.id} is not in the baseline`);
+    if (JSON.stringify(b) !== JSON.stringify(t)) {
+      throw new Error(`refusing to add arms: task ${t.id} differs from the baseline's`);
+    }
+  }
+  const baselineRuns = baseline.combined ?? [runOf(baseline)];
+  return {
+    ...baseline,
+    label: `${baseline.label} + ${added.label}`,
+    finished_at: added.finished_at,
+    ...(added.memory_auto_preregistration !== undefined
+      ? { memory_auto_preregistration: added.memory_auto_preregistration }
+      : {}),
+    arms: [...baseline.arms, ...added.arms],
+    results: [...baseline.results, ...added.results],
+    combined: [...baselineRuns, runOf(added)],
+    added_arms: {
+      arms: added.arms,
+      run: added.label,
+      baseline_runs: baselineRuns.map((r) => r.label),
+    },
   };
 };

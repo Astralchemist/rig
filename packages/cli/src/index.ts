@@ -1,43 +1,31 @@
 #!/usr/bin/env bun
 // SPDX-License-Identifier: Apache-2.0
-import { Rig } from '@rig/core';
 import pkg from '../../../package.json' with { type: 'json' };
-import { runBenchCmd } from './bench-cmd.ts';
-import { runDoctor } from './doctor.ts';
-import { runExportDocs } from './export-docs-cmd.ts';
-import { runFiles } from './files-cmd.ts';
-import { runIndex } from './index-cmd.ts';
-import { runInit } from './init.ts';
-import { runInstall } from './install-cmd.ts';
-import { runExportMemory, runImportMemory } from './memory-cmd.ts';
-import { runOverview } from './overview-cmd.ts';
-import { runQuery } from './query-cmd.ts';
-import { runServe } from './serve-cmd.ts';
-import { runStart } from './start.ts';
-import { runStatus } from './status.ts';
-import { runSync } from './sync-cmd.ts';
-import { runUninstall } from './uninstall-cmd.ts';
-import { runUpdate } from './update-cmd.ts';
 import { suggestCommand } from './suggest.ts';
 
-const COMMANDS: Record<string, (cwd: string) => void | Promise<void>> = {
-  start: runStart,
-  init: runInit,
-  status: runStatus,
-  index: runIndex,
-  sync: runSync,
-  query: runQuery,
-  files: runFiles,
-  overview: runOverview,
-  install: runInstall,
-  uninstall: runUninstall,
-  serve: runServe,
-  doctor: runDoctor,
-  bench: runBenchCmd,
-  'export-docs': runExportDocs,
-  'export-memory': runExportMemory,
-  'import-memory': runImportMemory,
-  update: runUpdate,
+type Command = (cwd: string) => void | Promise<void>;
+
+// Commands load on use: `rig hook` runs on every prompt and tool call, and
+// must not pay for the graph, the parsers and the servers on each start.
+const COMMANDS: Record<string, () => Promise<Command>> = {
+  start: async () => (await import('./start.ts')).runStart,
+  init: async () => (await import('./init.ts')).runInit,
+  status: async () => (await import('./status.ts')).runStatus,
+  index: async () => (await import('./index-cmd.ts')).runIndex,
+  sync: async () => (await import('./sync-cmd.ts')).runSync,
+  query: async () => (await import('./query-cmd.ts')).runQuery,
+  files: async () => (await import('./files-cmd.ts')).runFiles,
+  overview: async () => (await import('./overview-cmd.ts')).runOverview,
+  install: async () => (await import('./install-cmd.ts')).runInstall,
+  uninstall: async () => (await import('./uninstall-cmd.ts')).runUninstall,
+  serve: async () => (await import('./serve-cmd.ts')).runServe,
+  doctor: async () => (await import('./doctor.ts')).runDoctor,
+  bench: async () => (await import('./bench-cmd.ts')).runBenchCmd,
+  'export-docs': async () => (await import('./export-docs-cmd.ts')).runExportDocs,
+  'export-memory': async () => (await import('./memory-cmd.ts')).runExportMemory,
+  'import-memory': async () => (await import('./memory-cmd.ts')).runImportMemory,
+  update: async () => (await import('./update-cmd.ts')).runUpdate,
+  hook: async () => (await import('./hook-cmd.ts')).runHook,
 };
 
 const HELP = `rig — local-first semantic knowledge graph
@@ -45,7 +33,8 @@ const HELP = `rig — local-first semantic knowledge graph
 usage: rig <command>
 
 commands:
-  start       one-shot: init + index + wire your agent + open the live map (--no-watch)
+  start       one-shot: init + index + wire your agent + open the live map (--no-watch,
+              --no-hooks)
   init        create .rig/ in the current directory
   status      report index health
   index       extract + write nodes to .rig/rig.db; skips unchanged files
@@ -56,7 +45,8 @@ commands:
   overview    print the orientation map your agent gets from rig_overview
               (--budget <tokens>, default 2000; --json)
   install     wire Rig into Claude Code / Cursor / Codex / opencode — writes into this
-              project by default; --global writes your user-level config
+              project by default; --global writes your user-level config; for Claude
+              Code also the automatic-capture hooks (--no-hooks to leave them out)
               (openrouter: writes a reference config only — it isn't an MCP host)
   uninstall   remove exactly what install added: <target…> | --all  [--global] [--dry-run]
   serve       start MCP and/or web server (--mcp / --web / --all [--no-auth] [--no-watch])
@@ -74,6 +64,9 @@ commands:
               missing, never overwrites what is there; memory of symbols not found waits in
               orphans until they are indexed
   update      update rig to the latest npm release (--check to only report)
+  hook        <event> [--client claude] — run by your agent's hooks: captures what a
+              conversation settled (decisions, constraints, dead ends) into .rig/ and
+              briefs the next session. Installed by \`rig install claude\` (--no-hooks to skip)
 `;
 
 // `--no-watch` on any long-running command (serve, start) disables the live
@@ -92,11 +85,14 @@ if (cmd === '-h' || cmd === '--help') {
 // Bare `rig` / `bunx rig`: on a fresh project, run the one-shot onboarding;
 // on an already-set-up project, show help rather than silently re-indexing.
 if (!cmd) {
+  const { Rig } = await import('@rig/core');
   if (Rig.isInitialized(process.cwd())) {
     console.log(HELP);
     process.exit(0);
   }
-  await runStart(process.cwd());
+  await (
+    await COMMANDS.start!()
+  )(process.cwd());
   process.exit(0);
 }
 
@@ -108,4 +104,6 @@ if (!handler) {
   );
   process.exit(2);
 }
-await handler(process.cwd());
+await (
+  await handler()
+)(process.cwd());
