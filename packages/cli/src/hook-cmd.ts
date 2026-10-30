@@ -211,12 +211,44 @@ const runSessionStart = async (
       }
     }
     out.drained = drained;
+    // B6 handoff. After a compaction, keep its summary's current work,
+    // pending tasks and next step for whichever session comes next; on any
+    // other start, deliver another session's handoff once, ahead of the brief.
+    const handoff = await import('@rig/core/handoff/handoff.ts');
+    let handoffText = '';
+    const sid = input.session_id;
+    if (input.source === 'compact' && input.transcript_path && sid) {
+      let summary = handoff.latestCompactSummary(input.transcript_path);
+      if (!summary) {
+        // The transcript is written asynchronously; give it a moment.
+        await new Promise((r) => setTimeout(r, 400));
+        summary = handoff.latestCompactSummary(input.transcript_path);
+      }
+      const parts = summary ? handoff.handoffFromSummary(summary) : null;
+      if (parts) {
+        const files = changedFiles(root);
+        out.handoff_written = !!handoff.writeHandoff(root, {
+          ...parts,
+          session_id: sid,
+          client,
+          source: 'compact',
+          files,
+        });
+      }
+    } else if (sid) {
+      const h = handoff.takeHandoff(root, sid);
+      if (h) {
+        handoffText = handoff.renderHandoff(h, root);
+        out.handoff_delivered = h.session_id;
+      }
+    }
     const brief = buildBrief(rig, { focusFiles: changedFiles(root) });
     out.brief_chars = brief.length;
-    if (brief) {
+    const context = [handoffText, brief].filter(Boolean).join('\n\n');
+    if (context) {
       process.stdout.write(
         JSON.stringify({
-          hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: brief },
+          hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: context },
         }) + '\n',
       );
     }

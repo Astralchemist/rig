@@ -53,6 +53,7 @@ const argsFor = (f: Fixture): Record<string, Record<string, unknown>> => ({
   rig_explore: { question: 'helper' },
   rig_files: {},
   rig_focus: { node_ids: [f.helper] },
+  rig_handoff: { action: 'write', current_work: 'audit handoff' },
   rig_hotspots: {},
   rig_hub_of: { id: f.helper },
   rig_hubs: {},
@@ -135,7 +136,7 @@ describe('records_activation matches what each tool does', () => {
 
   test('every tool has an audit call', () => {
     expect(Object.keys(argsFor(fixture)).sort()).toEqual(contracts.map((c) => c.name));
-    expect(contracts).toHaveLength(37);
+    expect(contracts).toHaveLength(38);
   });
 
   for (const c of contracts) {

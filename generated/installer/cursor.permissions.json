@@ -15,6 +15,7 @@
       "Mcp(rig:rig_drop_waypoint)",
       "Mcp(rig:rig_files)",
       "Mcp(rig:rig_focus)",
+      "Mcp(rig:rig_handoff)",
       "Mcp(rig:rig_hotspots)",
       "Mcp(rig:rig_hub_of)",
       "Mcp(rig:rig_hubs)",
