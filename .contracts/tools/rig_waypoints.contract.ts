@@ -33,6 +33,21 @@ const waypoint = z.object({
     ),
   provenance: z.string().optional().describe('Who wrote a captured waypoint, e.g. hook:claude'),
   confidence: z.number().optional().describe('Extractor confidence (0..1) of a captured waypoint'),
+  verification: z
+    .object({
+      status: z
+        .enum(['verified', 'changed', 'missing', 'unverified', 'unanchored'])
+        .describe(
+          "The waypoint's worst anchor: verified = the code it is about is unchanged since it was written; changed = that code has changed, re-check before relying on it; missing = the symbol is gone; unverified = written before fingerprints were kept; unanchored = no code refs",
+        ),
+      anchors: z
+        .record(z.string(), z.enum(['verified', 'changed', 'missing', 'unverified']))
+        .describe('Status per constellation ref'),
+    })
+    .optional()
+    .describe(
+      'Verify-on-read: the code each anchor points at, compared with when the waypoint was written',
+    ),
 });
 
 export default defineToolContract({

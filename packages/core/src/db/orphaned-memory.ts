@@ -441,7 +441,16 @@ export const reattachOrphans = (db: SqliteAdapter, nodes: readonly AnchoredNode[
       if (e.kind === 'waypoint_references' && ends.dst === newId && newId !== oldId) {
         const w = ins.waypoint.get(ends.src) as { data: string } | null;
         if (w) {
-          const data = JSON.parse(w.data) as { constellation_refs?: string[] };
+          const data = JSON.parse(w.data) as {
+            constellation_refs?: string[];
+            anchor_fingerprints?: Record<string, string>;
+          };
+          // The fingerprint follows its anchor to the new id, so verify-on-read
+          // compares the re-attached symbol with what the memory was about.
+          if (data.anchor_fingerprints && oldId in data.anchor_fingerprints) {
+            data.anchor_fingerprints[newId] = data.anchor_fingerprints[oldId]!;
+            delete data.anchor_fingerprints[oldId];
+          }
           if (Array.isArray(data.constellation_refs)) {
             data.constellation_refs = data.constellation_refs.map((r) => (r === oldId ? newId : r));
             ins.waypointData.run(JSON.stringify(data), ends.src);

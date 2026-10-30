@@ -58,6 +58,11 @@ interface Item {
   score: number;
 }
 
+const STALE_NOTE: Partial<Record<string, string>> = {
+  changed: ' (its code has changed since: re-check)',
+  missing: ' (its code is gone)',
+};
+
 export const buildBrief = (rig: Rig, opts: BriefOptions = {}): string => {
   const max = opts.maxChars ?? BRIEF_MAX;
   const now = opts.now ?? Date.now();
@@ -66,6 +71,10 @@ export const buildBrief = (rig: Rig, opts: BriefOptions = {}): string => {
 
   const captured = listWaypoints(db, { source: 'hook', limit: 400 }).filter(isInjectable);
   const open = listWaypoints(db, { kind: 'open-question', source: 'agent', limit: 5 });
+
+  // Verify-on-read: a record about code that has since changed or gone is
+  // marked so, and ranked lower; it is never presented as current.
+  const status = new Map(rig.verifyWaypoints(captured).map((w) => [w.id, w.verification.status]));
 
   const items: Item[] = [];
   const seen: string[] = [];
@@ -82,8 +91,12 @@ export const buildBrief = (rig: Rig, opts: BriefOptions = {}): string => {
     const where = files.length ? ` [${files.slice(0, 2).join(', ')}]` : '';
     items.push({
       section: w.kind,
-      line: `- ${clip(neutralize(w.summary), ITEM_MAX)} (${date})${neutralize(where)}`,
-      score: conf * (0.5 + 0.5 * recency) * (relevant ? 1.5 : 1),
+      line: `- ${clip(neutralize(w.summary), ITEM_MAX)} (${date})${neutralize(where)}${STALE_NOTE[status.get(w.id) ?? 'verified'] ?? ''}`,
+      score:
+        conf *
+        (0.5 + 0.5 * recency) *
+        (relevant ? 1.5 : 1) *
+        (STALE_NOTE[status.get(w.id) ?? 'verified'] ? 0.5 : 1),
     });
   }
   for (const w of open) {

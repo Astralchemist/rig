@@ -113,9 +113,12 @@ export class RigWrites {
   // `onEmbeddable` hears of each committed node that search embeds (waypoints,
   // skills); Rig embeds them in the background so a write never waits on the
   // model.
+  // `fingerprints` returns the current fingerprint of each code ref (see
+  // memory/anchor-fingerprint.ts); a waypoint stores them for verify-on-read.
   constructor(
     private readonly db: Database,
     private readonly onEmbeddable?: (nodeIds: readonly string[]) => void,
+    private readonly fingerprints?: (nodeIds: readonly string[]) => Record<string, string>,
   ) {}
 
   proposeEdge(args: ProposeArgs, ctx: WriteCtx): number {
@@ -267,11 +270,13 @@ export class RigWrites {
       .get(nodeId) as { hub_explicit: number; is_hub: number; hubness: number } | null;
     if (!prev) return false;
     adapter
-      .prepare(`UPDATE nodes SET hub_explicit = 1, is_hub = 1, hubness = MAX(hubness, 0.3) WHERE id = ?`)
+      .prepare(
+        `UPDATE nodes SET hub_explicit = 1, is_hub = 1, hubness = MAX(hubness, 0.3) WHERE id = ?`,
+      )
       .run(nodeId);
-    const hubness = (adapter
-      .prepare(`SELECT hubness FROM nodes WHERE id = ?`)
-      .get(nodeId) as { hubness: number }).hubness;
+    const hubness = (
+      adapter.prepare(`SELECT hubness FROM nodes WHERE id = ?`).get(nodeId) as { hubness: number }
+    ).hubness;
     recordMutation(adapter, {
       sessionId: ctx.sessionId,
       kind: 'promote_hub',
@@ -307,6 +312,8 @@ export class RigWrites {
       ...(args.confidence !== undefined ? { confidence: args.confidence } : {}),
       ...(args.capture ? { capture: args.capture } : {}),
     };
+    const fps = this.fingerprints?.(args.constellationRefs ?? []) ?? {};
+    if (Object.keys(fps).length) (data as Record<string, unknown>).anchor_fingerprints = fps;
     adapter.transaction(() => {
       const exists = adapter.prepare(`SELECT 1 AS x FROM nodes WHERE id = ?`);
       const unknown = (ids: readonly string[] = []): string[] =>
@@ -346,7 +353,13 @@ export class RigWrites {
   // Deterministic id `skill:<name>` so re-seeding on every startup is a no-op
   // after the first run; data stays in sync with the contract if descriptions
   // change. C4 — closes the loop so rig_pull can rank skills alongside code.
-  upsertSkill(args: { name: string; description: string; tier: string; summary?: string | undefined; recordsActivation?: boolean }): string {
+  upsertSkill(args: {
+    name: string;
+    description: string;
+    tier: string;
+    summary?: string | undefined;
+    recordsActivation?: boolean;
+  }): string {
     const adapter = this.db.adapter;
     const id = `skill:${args.name}`;
     const now = Date.now();

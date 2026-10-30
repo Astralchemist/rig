@@ -1,4 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
+import {
+  Fingerprinter,
+  type AnchorStatus,
+  type MemoryStatus,
+} from './memory/anchor-fingerprint.ts';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Database } from './db/database.ts';
@@ -33,10 +38,7 @@ import {
   type WaypointRow,
 } from './db/waypoint-queries.ts';
 import { getFiles as fqGetFiles, type FileRow } from './db/file-queries.ts';
-import {
-  getGraphSnapshot as gsGetGraphSnapshot,
-  type GraphSnapshot,
-} from './db/graph-snapshot.ts';
+import { getGraphSnapshot as gsGetGraphSnapshot, type GraphSnapshot } from './db/graph-snapshot.ts';
 import { searchNodes as sqSearchNodes, type SearchOptions } from './db/search-queries.ts';
 import { embedAndStore } from './embed/index-embeddings.ts';
 import { selectEmbedder } from './embed/select.ts';
@@ -83,12 +85,7 @@ export type { DrillResult } from './graph/hub-drill.ts';
 export type { CriticalStep } from './graph/critical-path.ts';
 export type { AliasRow } from './db/alias-queries.ts';
 export type { AnnotationRow } from './db/annotation-queries.ts';
-export type {
-  DepRow,
-  DepConflictRow,
-  UnusedDepRow,
-  PhantomImportRow,
-} from './db/dep-queries.ts';
+export type { DepRow, DepConflictRow, UnusedDepRow, PhantomImportRow } from './db/dep-queries.ts';
 export type { HotspotRow, ColdRow } from './db/activation-queries.ts';
 export type {
   WaypointRow,
@@ -167,14 +164,15 @@ export class Rig {
     this.projectRoot = opts.projectRoot;
     this.database = opts.database;
     this.embedder = opts.embedder;
-    this.writes = new RigWrites(this.database, (ids) => this.scheduleEmbed(ids));
+    this.writes = new RigWrites(
+      this.database,
+      (ids) => this.scheduleEmbed(ids),
+      (ids) => new Fingerprinter(this.database.adapter, this.projectRoot).ofAll(ids),
+    );
     this.searcher = new HybridSearcher(this.database.adapter, this.embedder);
   }
 
-  static async init(
-    projectRoot: string,
-    opts: { embedder?: Embedder } = {},
-  ): Promise<Rig> {
+  static async init(projectRoot: string, opts: { embedder?: Embedder } = {}): Promise<Rig> {
     const root = resolve(projectRoot);
     mkdirSync(rigDirOf(root), { recursive: true });
     return new Rig({
@@ -184,10 +182,7 @@ export class Rig {
     });
   }
 
-  static async open(
-    projectRoot: string,
-    opts: { embedder?: Embedder } = {},
-  ): Promise<Rig> {
+  static async open(projectRoot: string, opts: { embedder?: Embedder } = {}): Promise<Rig> {
     const root = resolve(projectRoot);
     if (!existsSync(rigDirOf(root))) {
       throw new Error(`rig: not initialized at ${root}. Run \`rig init\` first.`);
@@ -220,13 +215,15 @@ export class Rig {
     };
   }
 
-  indexAll(opts: {
-    onProgress?: (p: import('./index-all.ts').IndexProgress) => void;
-    include?: readonly string[];
-    exclude?: readonly string[];
-    // Re-extract every walked file, even unchanged ones (still in place).
-    force?: boolean;
-  } = {}): Promise<IndexResult> {
+  indexAll(
+    opts: {
+      onProgress?: (p: import('./index-all.ts').IndexProgress) => void;
+      include?: readonly string[];
+      exclude?: readonly string[];
+      // Re-extract every walked file, even unchanged ones (still in place).
+      force?: boolean;
+    } = {},
+  ): Promise<IndexResult> {
     return this.serialized(() =>
       runIndexAll(
         this.projectRoot,
@@ -459,7 +456,13 @@ export class Rig {
   }
 
   seedSkills(
-    tools: ReadonlyArray<{ name: string; description: string; tier: string; summary?: string; records_activation?: boolean }>,
+    tools: ReadonlyArray<{
+      name: string;
+      description: string;
+      tier: string;
+      summary?: string;
+      records_activation?: boolean;
+    }>,
   ): number {
     let n = 0;
     for (const t of tools) {
@@ -519,6 +522,20 @@ export class Rig {
     return r.degraded ? { waypoints, degraded: r.degraded } : { waypoints };
   }
 
+  /**
+   * Verify-on-read: each waypoint with how its anchors compare with the code
+   * now (verified / changed / missing / unverified), and the worst of them.
+   */
+  verifyWaypoints<T extends WaypointRow>(
+    rows: readonly T[],
+  ): (T & { verification: { status: MemoryStatus; anchors: Record<string, AnchorStatus> } })[] {
+    const fp = new Fingerprinter(this.database.adapter, this.projectRoot);
+    return rows.map((w) => ({
+      ...w,
+      verification: fp.verify(w.constellation_refs, w.anchor_fingerprints),
+    }));
+  }
+
   getWaypoint(id: string): WaypointRow | null {
     return wqGet(this.database.adapter, id);
   }
@@ -543,9 +560,9 @@ export class Rig {
 
   getMagneticPull(id: NodeId, k = 10, opts: { hubBias?: number } = {}): PullResult[] {
     const candidates = (
-      this.database.adapter
-        .prepare('SELECT id FROM nodes WHERE id != ?')
-        .all(id) as { id: string }[]
+      this.database.adapter.prepare('SELECT id FROM nodes WHERE id != ?').all(id) as {
+        id: string;
+      }[]
     ).map((r) => r.id);
     // Default hubBias=0.3 so light-tier callers (rig_pull) surface hubs first.
     // Callers wanting unbiased ranking pass hubBias=0 (e.g. hub-drill).
