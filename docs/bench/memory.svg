@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="403" viewBox="0 0 760 403" role="img" aria-labelledby="memory-title memory-desc">
+<title id="memory-title">Multi-session memory: session-2 success, anthropic/claude-haiku-5.5</title>
+<desc id="memory-desc">Session-2 success over 20 task pairs × 3 trials (runs sessions-0.3.0 + sessions-confirmation-0.3.0), with 95% CIs from a 10,000-draw two-level bootstrap. memory-off 30% (95% CI 12–50%); memory-on 70% (95% CI 52–87%); oracle 82% (95% CI 65–95%). memory-on minus memory-off: +40.0 pp (95% CI +20.0 to +60.0 pp), at 94% of memory-off's median total tokens. Pre-registered bar: memory-on at least +15.0 pp over memory-off across the whole CI, at no more than 110% of its median tokens. Verdict: PASS.</desc>
+<style>
+svg{--bg:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,0.10);--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a}
+@media (prefers-color-scheme: dark){svg{--bg:#1a1a19;--ink:#ffffff;--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,0.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70}}
+text{font-family:system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:12px;fill:var(--ink2)}
+.bg{fill:var(--bg);stroke:var(--border)}
+.title{font-size:15px;font-weight:600;fill:var(--ink)}
+.sub{fill:var(--ink2)}
+.head{font-weight:600;fill:var(--ink)}
+.lab{fill:var(--ink)}
+.val{fill:var(--ink2);font-variant-numeric:tabular-nums}
+.tick{font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums}
+.note{font-size:11px;fill:var(--muted)}
+.empty{font-size:11px;fill:var(--muted);font-style:italic}
+.grid{stroke:var(--grid);stroke-width:1}
+.axis{stroke:var(--axis);stroke-width:1}
+.ref{stroke:var(--ink2);stroke-width:1.5}
+.hit{fill:transparent}
+.ring{stroke:var(--bg);stroke-width:2}
+.f-s1{fill:var(--s1)}
+.w-s1{stroke:var(--s1);stroke-width:2;stroke-linecap:round;fill:none}
+.f-s2{fill:var(--s2)}
+.w-s2{stroke:var(--s2);stroke-width:2;stroke-linecap:round;fill:none}
+.f-s3{fill:var(--s3)}
+.w-s3{stroke:var(--s3);stroke-width:2;stroke-linecap:round;fill:none}
+.f-muted{fill:var(--muted)}
+.w-muted{stroke:var(--muted);stroke-width:2;stroke-linecap:round;fill:none}
+</style>
+<rect x="0.5" y="0.5" width="759" height="402" rx="8" class="bg"/>
+<text x="24" y="32" class="title">Multi-session memory: session-2 success, anthropic/claude-haiku-5.5</text>
+<text x="24" y="52" class="sub">20 task pairs × 3 trials · 95% CI: two-level bootstrap (tasks, then trials), 10,000 draws</text>
+<text x="24" y="82" class="head">Session 2 passed its check</text>
+<text x="616" y="82" class="note">rate (95% CI)</text>
+<line x1="210" y1="92" x2="210" y2="182" class="grid"/><text x="210" y="197" class="tick" text-anchor="middle">0%</text><line x1="288" y1="92" x2="288" y2="182" class="grid"/><text x="288" y="197" class="tick" text-anchor="middle">20%</text><line x1="366" y1="92" x2="366" y2="182" class="grid"/><text x="366" y="197" class="tick" text-anchor="middle">40%</text><line x1="444" y1="92" x2="444" y2="182" class="grid"/><text x="444" y="197" class="tick" text-anchor="middle">60%</text><line x1="522" y1="92" x2="522" y2="182" class="grid"/><text x="522" y="197" class="tick" text-anchor="middle">80%</text><line x1="600" y1="92" x2="600" y2="182" class="grid"/><text x="600" y="197" class="tick" text-anchor="middle">100%</text>
+<text x="24" y="107" class="lab" dominant-baseline="middle">memory-off</text>
+<path d="M255.5 107H405M255.5 103V111M405 103V111" class="w-s1"/>
+<circle cx="327" cy="107" r="5" class="f-s1 ring"/>
+<text x="616" y="107" class="val" dominant-baseline="middle">30% (12–50%)</text>
+<g><title>memory-off: 18/60 passed, 30%, 95% CI 12–50%</title><rect x="24" y="92" width="712" height="30" class="hit"/></g>
+<text x="24" y="137" class="lab" dominant-baseline="middle">memory-on</text>
+<path d="M411.5 137H548M411.5 133V141M548 133V141" class="w-s1"/>
+<circle cx="483" cy="137" r="5" class="f-s1 ring"/>
+<text x="616" y="137" class="val" dominant-baseline="middle">70% (52–87%)</text>
+<g><title>memory-on: 42/60 passed, 70%, 95% CI 52–87%</title><rect x="24" y="122" width="712" height="30" class="hit"/></g>
+<text x="24" y="167" class="lab" dominant-baseline="middle">oracle (upper bound)</text>
+<path d="M463.5 167H580.5M463.5 163V171M580.5 163V171" class="w-muted"/>
+<circle cx="528.5" cy="167" r="5" class="f-muted ring"/>
+<text x="616" y="167" class="val" dominant-baseline="middle">82% (65–95%)</text>
+<g><title>oracle: 49/60 passed, 82%, 95% CI 65–95%</title><rect x="24" y="152" width="712" height="30" class="hit"/></g>
+<text x="24" y="231" class="head">Gain over memory-off, same (task, trial) pairs</text>
+<text x="616" y="231" class="note">gain (95% CI)</text>
+<line x1="210" y1="257" x2="210" y2="287" class="grid"/><text x="210" y="302" class="tick" text-anchor="middle">−20</text><line x1="288" y1="257" x2="288" y2="287" class="grid"/><text x="288" y="302" class="tick" text-anchor="middle">0</text><line x1="366" y1="257" x2="366" y2="287" class="grid"/><text x="366" y="302" class="tick" text-anchor="middle">+20</text><line x1="444" y1="257" x2="444" y2="287" class="grid"/><text x="444" y="302" class="tick" text-anchor="middle">+40</text><line x1="522" y1="257" x2="522" y2="287" class="grid"/><text x="522" y="302" class="tick" text-anchor="middle">+60</text><line x1="600" y1="257" x2="600" y2="287" class="grid"/><text x="600" y="302" class="tick" text-anchor="middle">+80</text>
+<line x1="288" y1="257" x2="288" y2="287" class="axis"/>
+<line x1="346.5" y1="251" x2="346.5" y2="287" class="ref"/>
+<text x="350.5" y="249" class="note">pre-registered bar +15.0 pp</text>
+<text x="24" y="272" class="lab" dominant-baseline="middle">memory-on − memory-off</text>
+<path d="M366 272H522M366 268V276M522 268V276" class="w-s1"/>
+<circle cx="444" cy="272" r="5" class="f-s1 ring"/>
+<text x="616" y="272" class="val" dominant-baseline="middle">+40.0 (+20.0 to +60.0)</text>
+<g><title>memory-on − memory-off: +40.0 pp, 95% CI +20.0 to +60.0 pp, 60 pairs</title><rect x="24" y="257" width="712" height="30" class="hit"/></g>
+<text x="24" y="332" class="sub">Pre-registered verdict (memory-on vs memory-off): PASS. The whole CI must clear +15.0 pp and tokens stay within</text>
+<text x="24" y="349" class="sub">110% of memory-off's median; memory-on used 94%.</text>
+<text x="24" y="369" class="note">Grey: reference arms, outside the verdict. oracle is told session 1’s facts; it bounds what memory could recover.</text>
+<text x="24" y="385" class="note">Runs: sessions-0.3.0 + sessions-confirmation-0.3.0</text>
+</svg>

@@ -4,7 +4,7 @@
 // tool or the turn budget runs out. Usage is summed over every model call.
 // runConversation does the same over several scripted user messages.
 import type { Arm } from './arms.ts';
-import type { Provider } from './providers.ts';
+import { isInsufficientCredits, type Provider } from './providers.ts';
 import type { StopReason } from './types.ts';
 
 export const SYSTEM_PROMPT = `You are a senior engineer answering a question about an unfamiliar codebase. Use the tools you have. Be concise. When you have the answer, stop calling tools and respond in plain text.`;
@@ -36,6 +36,10 @@ export interface AgentOutcome {
   error?: string;
   resolved_models: string[];
   upstreams: string[];
+  // How each model call ended, normalised across upstreams (calls whose reply
+  // named no reason are not counted). A "length" means max_tokens cut the
+  // reply, which reasoning models hit first.
+  finish_reasons: Record<string, number>;
 }
 
 // A scripted conversation: each message in `messages` is one user turn, and
@@ -75,6 +79,7 @@ export const runConversation = async (
     final_text: '',
     resolved_models: [],
     upstreams: [],
+    finish_reasons: {},
     replies: [],
     stops: [],
     tool_calls: {},
@@ -99,6 +104,8 @@ export const runConversation = async (
             : out.cost_usd + turn.usage.cost_usd;
         if (turn.resolvedModel) resolved.add(turn.resolvedModel);
         if (turn.upstream) upstreams.add(turn.upstream);
+        if (turn.finishReason)
+          out.finish_reasons[turn.finishReason] = (out.finish_reasons[turn.finishReason] ?? 0) + 1;
         if (turn.text.trim()) emit({ type: 'assistant', text: turn.text });
         if (turn.toolCalls.length === 0) {
           out.final_text = turn.text;
@@ -134,6 +141,8 @@ export const runConversation = async (
       if (stop !== 'answer') out.final_text = '';
     }
   } catch (err) {
+    // An account that can't pay isn't the model failing: stop the whole run.
+    if (isInsufficientCredits(err)) throw err;
     out.stop = 'error';
     out.stops.push('error');
     out.error = err instanceof Error ? err.message : String(err);

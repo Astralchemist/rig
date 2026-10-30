@@ -12,9 +12,12 @@ import { checkAnswer, validateExpected } from './criteria.ts';
 import { judgeAnswer } from './judge.ts';
 import { estimatePlan, profilesFrom } from './plan.ts';
 import { fetchCatalogue, lookupPricing, perMillion, type ModelPricing } from './pricing.ts';
+import { stopForCredits } from './models.ts';
 import {
   DEFAULT_MODELS,
+  EXIT_INSUFFICIENT_CREDITS,
   apiKeyFor,
+  isInsufficientCredits,
   makeProvider,
   resolveProviderName,
   type HttpOpts,
@@ -39,6 +42,7 @@ const USAGE = `usage: bun scripts/bench/run.ts [options]
   --out <path>             results file (default scripts/bench/results/<UTC date>-<label>.json)
   --dry-run                print the plan and cost estimate, call no model
   --estimate-from <file>   dry-run token profile from an earlier results file
+  --max-spend-usd <x>      stop (exit 1) once the run has spent this much; bench:matrix sets it
   --fresh-index            rebuild the target's .rig index even if current
   --index-only             build (or check) the index and exit, call no model
   --allow-commit-mismatch  run against a target not at the pinned commit
@@ -73,6 +77,13 @@ const intArg = (n: string, fallback: number): number => {
   return v;
 };
 const log = (line: string): void => void process.stderr.write(line + '\n');
+const usdArg = (n: string): number | null => {
+  const raw = argValue(n);
+  if (raw === undefined) return null;
+  const v = Number(raw);
+  if (!Number.isFinite(v) || v <= 0) throw new Error(`${n} must be a positive number`);
+  return v;
+};
 const usd = (v: number | null): string => (v === null ? 'unknown' : `$${v.toFixed(v < 1 ? 4 : 2)}`);
 
 if (flag('--help') || flag('-h')) {
@@ -291,32 +302,47 @@ const main = async (): Promise<void> => {
   // Written after every run, so an interrupted bench keeps what it paid for.
   const save = (): void => writeFileSync(outPath, JSON.stringify(file, null, 2) + '\n');
 
+  const maxSpend = usdArg('--max-spend-usd');
   let spent = 0;
-  for (const q of queries) {
-    for (let t = 0; t < trials; t++) {
-      for (const arm of armImpls) {
-        process.stderr.write(`  ${q.id} / ${arm.name} / trial ${t + 1}... `);
-        const t0 = Date.now();
-        const o = await runAgent(provider, arm, q.ask, { maxTurns, maxTokens: 2048 });
-        const r: RunResult = {
-          query_id: q.id,
-          arm: arm.name,
-          trial: t,
-          ...o,
-          elapsed_ms: Date.now() - t0,
-          check: checkAnswer(o.final_text, q.expected),
-        };
-        if (judge && o.stop === 'answer') r.judge = await judgeAnswer(judge, q, o.final_text);
-        file.results.push(r);
-        save();
-        spent += (r.cost_usd ?? 0) + (r.judge?.cost_usd ?? 0);
-        process.stderr.write(
-          `${(r.prompt_tokens + r.completion_tokens).toLocaleString()} toks, ${usd(r.cost_usd)}, ` +
-            `${r.check.pass ? 'pass' : 'FAIL'}${r.judge ? ` (judge: ${r.judge.verdict})` : ''}` +
-            `${r.error ? ` (err: ${r.error.slice(0, 120)})` : r.stop === 'turn_limit' ? ' (turn limit)' : ''}\n`,
-        );
+  try {
+    for (const q of queries) {
+      for (let t = 0; t < trials; t++) {
+        for (const arm of armImpls) {
+          process.stderr.write(`  ${q.id} / ${arm.name} / trial ${t + 1}... `);
+          const t0 = Date.now();
+          const o = await runAgent(provider, arm, q.ask, { maxTurns, maxTokens: 2048 });
+          const r: RunResult = {
+            query_id: q.id,
+            arm: arm.name,
+            trial: t,
+            ...o,
+            elapsed_ms: Date.now() - t0,
+            check: checkAnswer(o.final_text, q.expected),
+          };
+          if (judge && o.stop === 'answer') r.judge = await judgeAnswer(judge, q, o.final_text);
+          file.results.push(r);
+          save();
+          spent += (r.cost_usd ?? 0) + (r.judge?.cost_usd ?? 0);
+          process.stderr.write(
+            `${(r.prompt_tokens + r.completion_tokens).toLocaleString()} toks, ${usd(r.cost_usd)}, ` +
+              `${r.check.pass ? 'pass' : 'FAIL'}${r.judge ? ` (judge: ${r.judge.verdict})` : ''}` +
+              `${r.error ? ` (err: ${r.error.slice(0, 120)})` : r.stop === 'turn_limit' ? ' (turn limit)' : ''}\n`,
+          );
+          if (maxSpend !== null && spent >= maxSpend) {
+            index?.rig.close();
+            throw new Error(
+              `spend cap reached: ${usd(spent)} ≥ ${usd(maxSpend)} after ${file.results.length} runs; ` +
+                `partial results in ${outPath}`,
+            );
+          }
+        }
       }
     }
+  } catch (err) {
+    // Out of credits: stop here, keep what completed, marked aborted.
+    if (!isInsufficientCredits(err)) throw err;
+    index?.rig.close();
+    throw stopForCredits(file, err, outPath);
   }
   index?.rig.close();
   file.finished_at = new Date().toISOString();
@@ -366,6 +392,7 @@ const sessionsMode = async (repo: string, qf: QueriesFile): Promise<void> => {
     workDir: argValue('--work-dir') ?? null,
     dryRun: flag('--dry-run'),
     estimateFrom: argValue('--estimate-from') ?? null,
+    maxSpendUsd: usdArg('--max-spend-usd'),
     allowCommitMismatch: flag('--allow-commit-mismatch'),
     makeProvider: () =>
       makeProvider(providerName, model, apiKey!, pricing, { log: (l) => log(`  ${l}`) }),
@@ -375,5 +402,5 @@ const sessionsMode = async (repo: string, qf: QueriesFile): Promise<void> => {
 
 main().catch((err: unknown) => {
   console.error(`bench: ${err instanceof Error ? err.message : String(err)}`);
-  process.exit(1);
+  process.exit(isInsufficientCredits(err) ? EXIT_INSUFFICIENT_CREDITS : 1);
 });

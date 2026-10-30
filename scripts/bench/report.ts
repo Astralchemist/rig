@@ -399,11 +399,35 @@ export const renderMarkdown = (r: Report): string => {
 
 if (import.meta.main) {
   const args = process.argv.slice(2);
-  const valued = new Set(['--in', '--baseline', '--out', '--queries-file', '--sessions-file']);
+  const valued = new Set(['--in', '--baseline', '--out', '--queries-file', '--sessions-file', '--index']);
   const value = (n: string): string | undefined => {
     const i = args.indexOf(n);
     return i >= 0 ? args[i + 1] : undefined;
   };
+  // --by-model: one row per model in results/index.json (bench:matrix writes it).
+  if (args.includes('--by-model')) {
+    const { modelRows, renderByModelMarkdown } = await import('./report-models.ts');
+    const { RESULTS_DIR, loadIndex } = await import('./models.ts');
+    const indexPath = value('--index') ?? resolve(RESULTS_DIR, 'index.json');
+    const index = loadIndex(indexPath);
+    if (!index) {
+      console.error(`bench:report: no ${indexPath}; run bun run bench:matrix --reindex`);
+      process.exit(1);
+    }
+    const dir = resolve(indexPath, '..');
+    const md = renderByModelMarkdown(
+      index,
+      modelRows(index, (run) => JSON.parse(readFileSync(resolve(dir, run.file), 'utf-8'))),
+    );
+    const outPath = value('--out');
+    if (outPath) {
+      writeFileSync(resolve(outPath), md);
+      console.log(`wrote ${resolve(outPath)}`);
+    } else {
+      process.stdout.write(md);
+    }
+    process.exit(0);
+  }
   const positional = args.filter((a, i) => !a.startsWith('--') && !valued.has(args[i - 1] ?? ''));
   // Every --in, then positionals; several sessions files make one combined report.
   const inPaths = [...args.flatMap((a, i) => (a === '--in' ? [args[i + 1]!] : [])), ...positional];
@@ -412,13 +436,36 @@ if (import.meta.main) {
   const baselinePaths = args.flatMap((a, i) => (a === '--baseline' ? [args[i + 1]!] : []));
   if (inPaths.length === 0) {
     console.error(
-      'usage: bun scripts/bench/report.ts <results.json> [--in more.json ...] [--baseline stored.json ...] [--out report.md] [--recheck [--queries-file queries.json | --sessions-file sessions.json]]',
+      'usage: bun scripts/bench/report.ts <results.json> [--in more.json ...] [--baseline stored.json ...] [--out report.md] [--recheck [--queries-file queries.json | --sessions-file sessions.json]]\n' +
+        '       bun scripts/bench/report.ts --by-model [--index results/index.json] [--out report.md]',
     );
     process.exit(2);
   }
   const inputs = inPaths.map(
     (p) => JSON.parse(readFileSync(p, 'utf-8')) as BenchFile | SessionsBenchFile,
   );
+  // A run stopped for credits (or one that recorded 402s as model errors) is
+  // not a measurement: refuse it rather than print its partial numbers.
+  {
+    const { abortReason, creditErrorTrials } = await import('./models.ts');
+    const void_ = inputs.flatMap((f, i) => {
+      const why = abortReason(f);
+      return why ? [`${inPaths[i]} (${f.label}): aborted, ${why}`] : [];
+    });
+    if (void_.length) {
+      console.error(
+        `bench:report: refusing aborted runs; their results are partial and not a measurement:\n  ${void_.join('\n  ')}`,
+      );
+      process.exit(1);
+    }
+    inputs.forEach((f, i) => {
+      const n = creditErrorTrials(f);
+      if (n > 0)
+        console.error(
+          `bench:report: warning: ${inPaths[i]} (${f.label}) has ${n} trials that recorded a credits error (HTTP 402) as a model failure; they count as failed.`,
+        );
+    });
+  }
   const isSessions = (f: BenchFile | SessionsBenchFile): f is SessionsBenchFile =>
     'mode' in f && f.mode === 'sessions';
   if (inputs.length > 1 && !inputs.every(isSessions)) {

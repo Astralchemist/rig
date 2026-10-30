@@ -1,0 +1,451 @@
+{
+  "schema": 1,
+  "tier_threshold_usd_per_m_input": 1,
+  "prices_as_of": "2026-10-30",
+  "fairness": [
+    "Every model gets the same system prompt, tools, tool descriptions, queries or task pairs, arms, trials and turn limit.",
+    "No temperature, top_p or reasoning setting is sent: each model runs at its provider defaults. Reasoning is on by default for some models and is billed as completion tokens.",
+    "max_tokens is 2048 per call for every model; a reasoning model that spends it thinking ends that call with finish_reason \"length\".",
+    "All calls go through OpenRouter with usage accounting on; the cost is the one OpenRouter reports, or the list price when a reply omits it."
+  ],
+  "models": [
+    {
+      "id": "anthropic/claude-haiku-5.5",
+      "vendor": "anthropic",
+      "input_usd_per_m": 0.1,
+      "output_usd_per_m": 0.5,
+      "tier": "low-cost",
+      "canonical_slug": "anthropic/claude-haiku-5.5-20261007",
+      "tools": true,
+      "reasoning": {
+        "default_enabled": false,
+        "mandatory": false
+      },
+      "in_lineup": true
+    },
+    {
+      "id": "openai/gpt-6-luna",
+      "vendor": "openai",
+      "input_usd_per_m": 0.1,
+      "output_usd_per_m": 0.5,
+      "tier": "low-cost",
+      "canonical_slug": "openai/gpt-6-luna-20260922",
+      "tools": true,
+      "reasoning": {
+        "default_enabled": true,
+        "mandatory": false
+      },
+      "in_lineup": true
+    },
+    {
+      "id": "deepseek/deepseek-v4.1-flash",
+      "vendor": "deepseek",
+      "input_usd_per_m": 0.045,
+      "output_usd_per_m": 0.5,
+      "tier": "low-cost",
+      "canonical_slug": "deepseek/deepseek-v4.1-flash-20260910",
+      "tools": true,
+      "reasoning": {
+        "default_enabled": true,
+        "mandatory": false
+      },
+      "in_lineup": true
+    },
+    {
+      "id": "qwen/qwen3.8-flash",
+      "vendor": "qwen",
+      "input_usd_per_m": 0.15,
+      "output_usd_per_m": 0.47,
+      "tier": "low-cost",
+      "canonical_slug": "qwen/qwen3.8-flash-20260826",
+      "tools": true,
+      "reasoning": {
+        "default_enabled": true,
+        "mandatory": false
+      },
+      "in_lineup": true
+    },
+    {
+      "id": "google/gemini-3.8-flash",
+      "vendor": "google",
+      "input_usd_per_m": 0.825,
+      "output_usd_per_m": 4.125,
+      "tier": "low-cost",
+      "canonical_slug": "google/gemini-3.8-flash-20260902",
+      "tools": true,
+      "reasoning": {
+        "default_enabled": true,
+        "mandatory": true
+      },
+      "in_lineup": true
+    },
+    {
+      "id": "anthropic/claude-sonnet-5.5",
+      "vendor": "anthropic",
+      "input_usd_per_m": 2,
+      "output_usd_per_m": 10,
+      "tier": "frontier",
+      "canonical_slug": "anthropic/claude-sonnet-5.5-20260928",
+      "tools": true,
+      "reasoning": {
+        "default_enabled": false,
+        "mandatory": true
+      },
+      "in_lineup": true
+    },
+    {
+      "id": "openai/gpt-6.1-sol",
+      "vendor": "openai",
+      "input_usd_per_m": 2,
+      "output_usd_per_m": 10,
+      "tier": "frontier",
+      "canonical_slug": "openai/gpt-6.1-sol-20260929",
+      "tools": true,
+      "reasoning": {
+        "default_enabled": true,
+        "mandatory": true
+      },
+      "in_lineup": true
+    },
+    {
+      "id": "google/gemini-4-argon",
+      "vendor": "google",
+      "input_usd_per_m": 2,
+      "output_usd_per_m": 10,
+      "tier": "frontier",
+      "canonical_slug": "google/gemini-4-argon-20261013",
+      "tools": true,
+      "reasoning": {
+        "default_enabled": false,
+        "mandatory": true
+      },
+      "in_lineup": true
+    }
+  ],
+  "runs": [
+    {
+      "file": "2026-10-28-0.2.0-baseline.json",
+      "label": "0.2.0-baseline",
+      "mode": "qa",
+      "model": "anthropic/claude-haiku-5.5",
+      "vendor": "anthropic",
+      "tier": "low-cost",
+      "provider": "openrouter",
+      "started_at": "2026-10-28T21:23:38.382Z",
+      "finished_at": "2026-10-28T21:49:30.112Z",
+      "arms": [
+        "baseline",
+        "rig",
+        "rig-search"
+      ],
+      "trials": 3,
+      "max_turns": 12,
+      "items": 16,
+      "task_set": null,
+      "results": 144,
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "rig": {
+        "version": "0.2.0",
+        "commit": "22a59d2d323807a779684bfc1893fbfd163aefbe",
+        "fingerprint": "5dd01413ae17d174"
+      },
+      "cost_usd": 0.630605,
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
+    },
+    {
+      "file": "2026-10-28-0.2.0-grep-rig.json",
+      "label": "0.2.0-grep-rig",
+      "mode": "qa",
+      "model": "anthropic/claude-haiku-5.5",
+      "vendor": "anthropic",
+      "tier": "low-cost",
+      "provider": "openrouter",
+      "started_at": "2026-10-28T22:49:07.344Z",
+      "finished_at": "2026-10-28T23:01:50.618Z",
+      "arms": [
+        "baseline",
+        "grep+rig"
+      ],
+      "trials": 3,
+      "max_turns": 12,
+      "items": 16,
+      "task_set": null,
+      "results": 96,
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "rig": {
+        "version": "0.2.0",
+        "commit": "aa4b062f5f0b8d4672d28746600291e1f55b673b",
+        "fingerprint": "5dd01413ae17d174"
+      },
+      "cost_usd": 0.236597,
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
+    },
+    {
+      "file": "2026-10-28-hybrid-grep-rig.json",
+      "label": "hybrid-grep-rig",
+      "mode": "qa",
+      "model": "anthropic/claude-haiku-5.5",
+      "vendor": "anthropic",
+      "tier": "low-cost",
+      "provider": "openrouter",
+      "started_at": "2026-10-28T23:03:22.082Z",
+      "finished_at": "2026-10-28T23:15:38.606Z",
+      "arms": [
+        "baseline",
+        "grep+rig"
+      ],
+      "trials": 3,
+      "max_turns": 12,
+      "items": 16,
+      "task_set": null,
+      "results": 96,
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "rig": {
+        "version": "0.2.0",
+        "commit": "ab8634a92362edfa52e6aeecc5ad8fb868e4f823",
+        "fingerprint": "f0e6da8652a16429"
+      },
+      "cost_usd": 0.219936,
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
+    },
+    {
+      "file": "2026-10-28-hybrid-search.json",
+      "label": "hybrid-search",
+      "mode": "qa",
+      "model": "anthropic/claude-haiku-5.5",
+      "vendor": "anthropic",
+      "tier": "low-cost",
+      "provider": "openrouter",
+      "started_at": "2026-10-28T21:51:27.543Z",
+      "finished_at": "2026-10-28T22:47:06.363Z",
+      "arms": [
+        "baseline",
+        "rig",
+        "rig-search"
+      ],
+      "trials": 3,
+      "max_turns": 12,
+      "items": 16,
+      "task_set": null,
+      "results": 144,
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "rig": {
+        "version": "0.2.0",
+        "commit": "a0a5dba3c6945fcad33dbf1a12ca657aa1acfa69",
+        "fingerprint": "f0e6da8652a16429"
+      },
+      "cost_usd": 0.507669,
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
+    },
+    {
+      "file": "2026-10-29-orientation-map.json",
+      "label": "orientation-map",
+      "mode": "qa",
+      "model": "anthropic/claude-haiku-5.5",
+      "vendor": "anthropic",
+      "tier": "low-cost",
+      "provider": "openrouter",
+      "started_at": "2026-10-29T00:01:40.538Z",
+      "finished_at": "2026-10-29T00:19:22.214Z",
+      "arms": [
+        "baseline",
+        "grep+rig",
+        "grep+rig+map"
+      ],
+      "trials": 3,
+      "max_turns": 12,
+      "items": 16,
+      "task_set": null,
+      "results": 144,
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "rig": {
+        "version": "0.3.0",
+        "commit": "640c2a16c8f60849330c3c2d0c44a839c005fb86",
+        "fingerprint": "14b6ca5108774da6"
+      },
+      "cost_usd": 0.391095,
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
+    },
+    {
+      "file": "2026-10-29-sessions-0.3.0.json",
+      "label": "sessions-0.3.0",
+      "mode": "sessions",
+      "model": "anthropic/claude-haiku-5.5",
+      "vendor": "anthropic",
+      "tier": "low-cost",
+      "provider": "openrouter",
+      "started_at": "2026-10-29T01:00:35.231Z",
+      "finished_at": "2026-10-29T06:06:32.270Z",
+      "arms": [
+        "memory-off",
+        "memory-on",
+        "oracle"
+      ],
+      "trials": 3,
+      "max_turns": 12,
+      "items": 10,
+      "task_set": null,
+      "results": 90,
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "rig": {
+        "version": "0.3.0",
+        "commit": "91e9561b883b1b4190de00906a48b422149361c6",
+        "fingerprint": "14b6ca5108774da6"
+      },
+      "cost_usd": 0.632529,
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
+    },
+    {
+      "file": "2026-10-29-sessions-confirmation-0.3.0.json",
+      "label": "sessions-confirmation-0.3.0",
+      "mode": "sessions",
+      "model": "anthropic/claude-haiku-5.5",
+      "vendor": "anthropic",
+      "tier": "low-cost",
+      "provider": "openrouter",
+      "started_at": "2026-10-29T06:51:35.807Z",
+      "finished_at": "2026-10-29T07:22:20.420Z",
+      "arms": [
+        "memory-off",
+        "memory-on",
+        "oracle"
+      ],
+      "trials": 3,
+      "max_turns": 12,
+      "items": 10,
+      "task_set": "confirmation",
+      "results": 90,
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "rig": {
+        "version": "0.3.0",
+        "commit": "6df21ae28aedf9753ada9509d52cff1df8733be1",
+        "fingerprint": "14b6ca5108774da6"
+      },
+      "cost_usd": 0.576492,
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 12
+    },
+    {
+      "file": "2026-10-29-sessions-deepseek-deepseek-v4.1-flash.json",
+      "label": "sessions-deepseek-deepseek-v4.1-flash",
+      "mode": "sessions",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "vendor": "deepseek",
+      "tier": "low-cost",
+      "provider": "openrouter",
+      "started_at": "2026-10-29T09:02:26.737Z",
+      "finished_at": "2026-10-29T10:45:43.575Z",
+      "arms": [
+        "memory-off",
+        "memory-on",
+        "oracle"
+      ],
+      "trials": 3,
+      "max_turns": 12,
+      "items": 20,
+      "task_set": null,
+      "results": 180,
+      "resolved_models": [
+        "deepseek/deepseek-v4.1-flash"
+      ],
+      "rig": {
+        "version": "0.3.0",
+        "commit": "08c328e4f641b724000baaa84480eb7a4eddda5e",
+        "fingerprint": "14b6ca5108774da6"
+      },
+      "cost_usd": 1.027798,
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
+    },
+    {
+      "file": "2026-10-29-sessions-memory-auto-0.3.0.json",
+      "label": "sessions-memory-auto-0.3.0",
+      "mode": "sessions",
+      "model": "anthropic/claude-haiku-5.5",
+      "vendor": "anthropic",
+      "tier": "low-cost",
+      "provider": "openrouter",
+      "started_at": "2026-10-29T08:34:06.080Z",
+      "finished_at": "2026-10-29T09:00:24.430Z",
+      "arms": [
+        "memory-auto"
+      ],
+      "trials": 3,
+      "max_turns": 12,
+      "items": 20,
+      "task_set": null,
+      "results": 60,
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "rig": {
+        "version": "0.3.0",
+        "commit": "cc3d007ed60ed714cd81ce626d78deb169e69c31",
+        "fingerprint": "0213bc39e21aceb3"
+      },
+      "cost_usd": 0.557848,
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
+    },
+    {
+      "file": "2026-10-29-sessions-sanity.json",
+      "label": "sessions-sanity",
+      "mode": "sessions",
+      "model": "anthropic/claude-haiku-5.5",
+      "vendor": "anthropic",
+      "tier": "low-cost",
+      "provider": "openrouter",
+      "started_at": "2026-10-29T00:58:22.774Z",
+      "finished_at": "2026-10-29T01:00:34.849Z",
+      "arms": [
+        "grep-only"
+      ],
+      "trials": 1,
+      "max_turns": 12,
+      "items": 10,
+      "task_set": null,
+      "results": 10,
+      "resolved_models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "rig": {
+        "version": "0.3.0",
+        "commit": "91e9561b883b1b4190de00906a48b422149361c6",
+        "fingerprint": "14b6ca5108774da6"
+      },
+      "cost_usd": 0.037758,
+      "cost_unknown": 0,
+      "aborted": null,
+      "credit_error_trials": 0
+    }
+  ]
+}

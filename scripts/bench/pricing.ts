@@ -18,11 +18,18 @@ export interface ModelPricing {
   canonical: string | null;
   // Ascending by min_prompt_tokens; the first tier starts at 0.
   tiers: PriceTier[];
+  // Whether the catalogue lists `tools` among the model's supported
+  // parameters; undefined when the entry doesn't say.
+  tools?: boolean;
+  // The catalogue's reasoning defaults: on unless asked otherwise, or always on.
+  reasoning?: { default_enabled: boolean; mandatory: boolean };
 }
 
 interface CatalogueEntry {
   id: string;
   canonical_slug?: string;
+  supported_parameters?: string[];
+  reasoning?: { default_enabled?: boolean; mandatory?: boolean } | null;
   pricing?: {
     prompt?: string;
     completion?: string;
@@ -50,7 +57,22 @@ export const parsePricing = (entry: CatalogueEntry): ModelPricing | null => {
     });
   }
   tiers.sort((a, b) => a.min_prompt_tokens - b.min_prompt_tokens);
-  return { id: entry.id, canonical: entry.canonical_slug ?? null, tiers };
+  return {
+    id: entry.id,
+    canonical: entry.canonical_slug ?? null,
+    tiers,
+    ...(Array.isArray(entry.supported_parameters)
+      ? { tools: entry.supported_parameters.includes('tools') }
+      : {}),
+    ...(entry.reasoning
+      ? {
+          reasoning: {
+            default_enabled: entry.reasoning.default_enabled === true,
+            mandatory: entry.reasoning.mandatory === true,
+          },
+        }
+      : {}),
+  };
 };
 
 // The catalogue, or null when it can't be fetched (offline, outage).

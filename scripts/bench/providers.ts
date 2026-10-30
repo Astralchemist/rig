@@ -37,6 +37,8 @@ export interface Turn {
   resolvedModel: string | null;
   // OpenRouter only: the upstream provider that served the call.
   upstream: string | null;
+  // Why the model stopped, normalised across upstreams; null when unreported.
+  finishReason?: FinishReason | null;
 }
 
 export interface Conversation {
@@ -81,6 +83,31 @@ export class ProviderError extends Error {
     this.name = 'ProviderError';
   }
 }
+
+/**
+ * The account can't pay for the call: HTTP 402, or an error whose message
+ * says so (OpenRouter's "requires more credits", Anthropic's "credit balance
+ * is too low"). Never retried, never recorded as a model's failure: the run
+ * stops, because every later call would fail the same way and score 0%.
+ */
+export class InsufficientCreditsError extends ProviderError {
+  constructor(message: string, status: number | null) {
+    super(message, status, false);
+    this.name = 'InsufficientCreditsError';
+  }
+}
+
+// bench:run's exit code when it stopped for credits; bench:matrix keys on it.
+export const EXIT_INSUFFICIENT_CREDITS = 3;
+
+const CREDITS_TEXT =
+  /\bcredits?\b|insufficient[\s_-]+(?:balance|funds|quota)|payment[\s_-]+required|billing/i;
+
+export const isCreditsFailure = (status: number | null, message: string): boolean =>
+  status === 402 || CREDITS_TEXT.test(message);
+
+export const isInsufficientCredits = (err: unknown): err is InsufficientCreditsError =>
+  err instanceof InsufficientCreditsError;
 
 // Rate limits, timeouts, upstream outages and Anthropic's 529 "overloaded".
 const RETRYABLE = new Set([408, 409, 425, 429, 500, 502, 503, 504, 520, 522, 524, 529]);
@@ -135,6 +162,8 @@ export const postJson = async (
         const embedded = bodyError(json);
         if (!embedded) return json;
         failure = embedded;
+      } else if (isCreditsFailure(res.status, text)) {
+        throw new InsufficientCreditsError(`HTTP ${res.status}: ${text.slice(0, 500)}`, res.status);
       } else {
         failure = new ProviderError(
           `HTTP ${res.status}: ${text.slice(0, 500)}`,
@@ -174,12 +203,20 @@ interface OaMessage {
   content: string | null;
   tool_calls?: OaToolCall[];
   tool_call_id?: string;
+  // Reasoning state some upstreams (Gemini's thought signatures) need back on
+  // the next request; kept on the assistant message unchanged.
+  reasoning_details?: unknown[];
 }
 
 interface OaResponse {
   model?: string;
   provider?: string;
-  choices?: { message?: OaMessage; finish_reason?: string | null; error?: unknown }[];
+  choices?: {
+    message?: Record<string, unknown>;
+    finish_reason?: string | null;
+    native_finish_reason?: string | null;
+    error?: unknown;
+  }[];
   usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number };
 }
 
@@ -198,6 +235,74 @@ const parseArguments = (raw: string): { input: unknown; inputError?: string } =>
   }
 };
 
+// Upstreams name the same few outcomes differently: OpenAI "tool_calls",
+// legacy "function_call", Anthropic "tool_use" / "end_turn" / "max_tokens",
+// Gemini "STOP" / "MAX_TOKENS" / "SAFETY".
+export type FinishReason = 'stop' | 'tool_calls' | 'length' | 'content_filter' | 'other';
+
+export const normalizeFinishReason = (raw: unknown): FinishReason | null => {
+  if (typeof raw !== 'string' || raw === '') return null;
+  const r = raw.toLowerCase();
+  if (r === 'tool_calls' || r === 'function_call' || r === 'tool_use') return 'tool_calls';
+  if (r === 'stop' || r === 'end_turn' || r === 'stop_sequence' || r === 'eos') return 'stop';
+  if (r === 'length' || r === 'max_tokens' || r === 'max_output_tokens') return 'length';
+  if (r === 'content_filter' || r === 'safety' || r === 'recitation' || r === 'blocklist')
+    return 'content_filter';
+  return 'other';
+};
+
+// Message content as text: a string, or (some upstreams) an array of parts.
+const contentText = (c: unknown): string => {
+  if (typeof c === 'string') return c;
+  if (!Array.isArray(c)) return '';
+  return c
+    .flatMap((part) =>
+      isRecord(part) &&
+      (part.type === undefined || part.type === 'text') &&
+      typeof part.text === 'string'
+        ? [part.text]
+        : [],
+    )
+    .join('');
+};
+
+/**
+ * The tool calls of one reply in the canonical OpenAI shape, whatever the
+ * upstream sent. Arguments arrive as a JSON string, an already-parsed object,
+ * or nothing; a legacy `function_call` becomes one call. Ids that are
+ * missing, empty or already used earlier in the conversation (Gemini and
+ * Qwen reuse "call_0"-style ids across turns) are replaced with fresh ones,
+ * so every tool result answers exactly one call.
+ */
+export const normalizeToolCalls = (
+  message: Record<string, unknown>,
+  used: Set<string>,
+  nextId: () => string,
+): OaToolCall[] => {
+  const raw: unknown[] = Array.isArray(message.tool_calls)
+    ? message.tool_calls
+    : isRecord(message.function_call)
+      ? [{ function: message.function_call }]
+      : [];
+  const out: OaToolCall[] = [];
+  for (const c of raw) {
+    if (!isRecord(c) || !isRecord(c.function)) continue;
+    const name = typeof c.function.name === 'string' ? c.function.name : '';
+    const args = c.function.arguments;
+    const argText =
+      typeof args === 'string'
+        ? args
+        : args === undefined || args === null
+          ? ''
+          : JSON.stringify(args);
+    let id = typeof c.id === 'string' ? c.id : '';
+    if (id === '' || used.has(id)) id = nextId();
+    used.add(id);
+    out.push({ id, type: 'function', function: { name, arguments: argText } });
+  }
+  return out;
+};
+
 // OpenRouter reports upstream failures as {error: {code, message}}, sometimes
 // with HTTP 200, and a mid-generation failure as finish_reason "error".
 export const openRouterBodyError = (json: unknown): ProviderError | null => {
@@ -205,6 +310,9 @@ export const openRouterBodyError = (json: unknown): ProviderError | null => {
   if (isRecord(json.error)) {
     const code = typeof json.error.code === 'number' ? json.error.code : null;
     const msg = typeof json.error.message === 'string' ? json.error.message : 'unknown error';
+    if (isCreditsFailure(code, msg)) {
+      return new InsufficientCreditsError(`openrouter ${code ?? '?'}: ${msg}`, code);
+    }
     return new ProviderError(
       `openrouter ${code ?? '?'}: ${msg}`,
       code,
@@ -225,10 +333,13 @@ export const openRouterBodyError = (json: unknown): ProviderError | null => {
 
 export class OpenRouterProvider implements Provider {
   readonly name = 'openrouter' as const;
+  // `pricing` costs a call whose reply carries token counts but no `cost`
+  // (some upstreams omit it); OpenRouter's reported cost wins when present.
   constructor(
     readonly model: string,
     private readonly apiKey: string,
     private readonly http: HttpOpts = {},
+    private readonly pricing: ModelPricing | null = null,
   ) {}
 
   start(opts: ConversationOpts): Conversation {
@@ -242,6 +353,9 @@ export class OpenRouterProvider implements Provider {
       'HTTP-Referer': REPO_URL,
       'X-Title': 'rig bench',
     };
+    const usedIds = new Set<string>();
+    let minted = 0;
+    const nextId = (): string => `call_rig_${++minted}`;
     return {
       send: async (): Promise<Turn> => {
         const body = {
@@ -258,27 +372,43 @@ export class OpenRouterProvider implements Provider {
           this.http,
           openRouterBodyError,
         )) as OaResponse;
-        const msg = json.choices?.[0]?.message ?? { role: 'assistant', content: null };
-        const calls = msg.tool_calls ?? [];
+        const choice = json.choices?.[0];
+        const msg = isRecord(choice?.message) ? choice.message : {};
+        const calls = normalizeToolCalls(msg, usedIds, nextId);
+        const text = contentText(msg.content);
         messages.push({
           role: 'assistant',
-          content: msg.content ?? null,
+          // Empty text goes back as null: Anthropic upstreams reject an empty
+          // text block.
+          content: text === '' ? null : text,
           ...(calls.length ? { tool_calls: calls } : {}),
+          ...(Array.isArray(msg.reasoning_details)
+            ? { reasoning_details: msg.reasoning_details }
+            : {}),
         });
+        const u = json.usage;
+        const prompt = u?.prompt_tokens ?? 0;
+        const completion = u?.completion_tokens ?? 0;
+        // No usage block at all: the call's cost is unknown, not zero.
+        const cost =
+          typeof u?.cost === 'number'
+            ? u.cost
+            : u && this.pricing
+              ? priceCall(this.pricing, prompt, completion)
+              : null;
         return {
-          text: (msg.content ?? '').trim(),
+          text: text.trim(),
           toolCalls: calls.map((c) => ({
             id: c.id,
             name: c.function.name,
-            ...parseArguments(c.function.arguments ?? ''),
+            ...parseArguments(c.function.arguments),
           })),
-          usage: {
-            prompt_tokens: json.usage?.prompt_tokens ?? 0,
-            completion_tokens: json.usage?.completion_tokens ?? 0,
-            cost_usd: typeof json.usage?.cost === 'number' ? json.usage.cost : null,
-          },
+          usage: { prompt_tokens: prompt, completion_tokens: completion, cost_usd: cost },
           resolvedModel: json.model ?? null,
           upstream: json.provider ?? null,
+          finishReason: normalizeFinishReason(
+            choice?.finish_reason ?? choice?.native_finish_reason,
+          ),
         };
       },
       addToolResults: (results) => {
@@ -306,6 +436,7 @@ interface AnMessage {
 
 interface AnResponse {
   model?: string;
+  stop_reason?: string | null;
   content?: AnBlock[];
   usage?: {
     input_tokens?: number;
@@ -366,6 +497,7 @@ export class AnthropicProvider implements Provider {
           },
           resolvedModel: json.model ?? null,
           upstream: null,
+          finishReason: normalizeFinishReason(json.stop_reason),
         };
       },
       addToolResults: (results) => {
@@ -422,5 +554,5 @@ export const makeProvider = (
   http: HttpOpts = {},
 ): Provider =>
   name === 'openrouter'
-    ? new OpenRouterProvider(model, apiKey, http)
+    ? new OpenRouterProvider(model, apiKey, http, pricing)
     : new AnthropicProvider(model, apiKey, pricing, http);

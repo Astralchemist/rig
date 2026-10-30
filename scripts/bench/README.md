@@ -66,6 +66,28 @@ definition, executes the `tool_calls` that come back, and returns the results as
 messages. Each request sends `usage: {include: true}`. The harness records OpenRouter's reported
 `cost`, along with prompt and completion tokens, for every call.
 
+Non-Anthropic upstreams bend the OpenAI shape in a few ways, and the provider normalises each
+before the agent loop sees it:
+
+- **Tool call ids.** A missing or empty id, or one already used earlier in the conversation
+  (Gemini and Qwen reuse `tool_0`- or `call_0`-style ids across turns), is replaced with a fresh
+  `call_rig_<n>`. The history keeps the new id, so each tool result answers exactly one call.
+- **Arguments.** A JSON string, an already-parsed object or nothing are all accepted; an empty
+  string means no arguments. JSON that `max_tokens` cut off goes back to the model as an
+  error, and no tool runs.
+- **Parallel calls.** Every call in a reply runs, in order, and each gets its own `tool`
+  message. A legacy `function_call` becomes one tool call.
+- **Finish reasons.** `tool_calls`, `function_call` and `tool_use` count as tool calls;
+  `stop`, `STOP` and `end_turn` as a stop; `length` and `MAX_TOKENS` as a cut-off;
+  `content_filter` and `SAFETY` as a filter. The loop keys on whether calls are present, not on
+  the reason, because Gemini reports `STOP` on replies that do call tools. Each run records
+  its calls per reason under `finish_reasons`, so a reasoning model that spends `max_tokens`
+  thinking shows up as `length`.
+- **Reasoning state.** `reasoning_details` on an assistant reply goes back unchanged on the
+  next request, which Gemini's thought signatures need for multi-turn tool use.
+- **Cost.** A reply with token counts but no `cost` is priced from the catalogue's list price. A
+  reply with no `usage` block leaves the run's cost unknown.
+
 **Anthropic** uses the Messages API with `tool_use` and `tool_result` blocks. That API doesn't
 report a price, so the harness computes cost from list prices. It takes them from OpenRouter's
 public model catalogue, mapping for example `claude-haiku-4-5-20251001` to
@@ -75,6 +97,16 @@ Both providers retry network errors, 408, 429, 5xx and 529, and also errors Open
 inside a 200 reply. Retries use exponential backoff with jitter: 5 attempts, starting at 1 s and
 capped at 60 s. A server `Retry-After` header takes precedence. Other 4xx errors fail the run
 immediately.
+
+A credits or billing error stops the whole bench at once: HTTP 402, or any error whose
+message talks about credits, an insufficient balance or payment. It is never retried and
+never recorded as the model failing, because every later call would fail the same way and
+score 0%. The trials that completed are kept in the results file, marked
+`"aborted": "insufficient_credits"` (with the error under `aborted_reason`); a run that
+completed none leaves no file. `bench:run` then exits with code 3. `bench:report` refuses a
+file marked aborted, and the charts and the by-model view leave it out and show "aborted".
+Runs from before this rule could record a 402 as a failed trial; the manifest counts those
+under `credit_error_trials`, and `bench:report` warns about them.
 
 Each results file records the provider, the requested model, every resolved model id the API
 reported (such as `anthropic/claude-haiku-5.5-20261007`), and for OpenRouter the upstream
@@ -172,17 +204,18 @@ bun run bench:report scripts/bench/results/<date>-baseline-0.2.0.json
 
 Useful flags:
 
-| Flag                                 | Effect                                                         |
-| ------------------------------------ | -------------------------------------------------------------- |
-| `--queries nl-csrf,routes`           | Run a subset of query ids.                                     |
-| `--trials N`                         | Trials per (query, arm). Default 3.                            |
-| `--arms grep+rig,baseline`           | Run a subset of arms.                                          |
-| `--map-budget N`                     | Token budget of `grep+rig+map`'s overview. Default 2000.       |
-| `--max-turns N`                      | Model calls per run before giving up. Default 12.              |
-| `--judge anthropic/claude-haiku-5.5` | Add the LLM judge.                                             |
-| `--label NAME` / `--out PATH`        | Results go to `scripts/bench/results/<UTC date>-<label>.json`. |
-| `--estimate-from FILE`               | Base the dry-run estimate on an earlier run's per-arm means.   |
-| `--index-only` / `--fresh-index`     | Build the index and stop / force a rebuild.                    |
+| Flag                                 | Effect                                                          |
+| ------------------------------------ | --------------------------------------------------------------- |
+| `--queries nl-csrf,routes`           | Run a subset of query ids.                                      |
+| `--trials N`                         | Trials per (query, arm). Default 3.                             |
+| `--arms grep+rig,baseline`           | Run a subset of arms.                                           |
+| `--map-budget N`                     | Token budget of `grep+rig+map`'s overview. Default 2000.        |
+| `--max-turns N`                      | Model calls per run before giving up. Default 12.               |
+| `--judge anthropic/claude-haiku-5.5` | Add the LLM judge.                                              |
+| `--label NAME` / `--out PATH`        | Results go to `scripts/bench/results/<UTC date>-<label>.json`.  |
+| `--estimate-from FILE`               | Base the dry-run estimate on an earlier run's per-arm means.    |
+| `--max-spend-usd X`                  | Stop (exit 1) once the run has spent X; `bench:matrix` sets it. |
+| `--index-only` / `--fresh-index`     | Build the index and stop / force a rebuild.                     |
 
 The harness writes the results file after every run, so an interrupted bench keeps every run it
 paid for. `bench:report` prints markdown. Add `--out report.md` to write it to a file instead.
@@ -544,6 +577,98 @@ the fingerprints.
 - **Longer gaps.** There is one hop from session 1 to session 2, with no intervening sessions
   whose waypoints compete with it.
 
+## Charts
+
+`bun run bench:chart` writes three SVGs to `docs/bench/` from the results files. It makes no
+network call and reads no clock, so the same results give the same bytes, and a test fails when
+a committed chart is out of date (`bun run bench:chart --check` does the same). Never edit the
+SVGs by hand.
+
+| File              | What it shows                                                                                                                                                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `memory.svg`      | Session-2 success per arm with 95% CIs, then each memory arm's paired gain over memory-off against the pre-registered +15 pp bar, and the verdict. Default model only; its sessions runs are combined as in the report.       |
+| `qa-tokens.svg`   | Single-shot tokens relative to grep-only (the report's paired median ratio), per rig build and arm, for all questions and for lookup and natural-language questions apart, with each arm's correct count next to grep-only's. |
+| `cross-model.svg` | Per model in `lineup.json` and the results: the memory gain with its CI, and `grep+rig` tokens relative to grep-only, grouped by price tier. A model without results shows "not run yet".                                     |
+
+The memory CIs come from the report's two-level bootstrap (tasks, then trials; 10,000 draws,
+seed 20261029); the per-arm intervals use the same procedure on one arm's pass rate. Arms and
+models are read from the data, so an arm added to sessions mode gets its own rows without a
+chart change, and an arm that didn't run has none. Builds in `qa-tokens.svg` are named by source
+fingerprint in `charts.ts`; an unnamed build shows its version and fingerprint. Each SVG carries
+a `<title>` and a `<desc>` that state every plotted number, and a
+`prefers-color-scheme: dark` palette for README rendering in both themes.
+
+## Across models
+
+`bun run bench:matrix` runs the bench once per model, with the same flags for every model, and
+labels each run `<mode>-<model-slug>`. The results file is then
+`results/<date>-<mode>-<model-slug>.json`, for example
+`2026-10-30-sessions-openai-gpt-6-luna.json`.
+
+```sh
+set -a; . ~/.config/rig-bench/openrouter.env; set +a
+bun run bench:matrix --models lineup --mode sessions --dry-run \
+  --estimate-from scripts/bench/results/2026-10-29-sessions-0.3.0.json,scripts/bench/results/2026-10-29-sessions-confirmation-0.3.0.json
+bun run bench:matrix --models lineup --mode qa --arms baseline,grep+rig --budget-usd 25
+bun run bench:report --by-model
+bun run bench:chart
+```
+
+| Flag                                                                                | Effect                                                                                                 |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `--models a,b` / `--models lineup`                                                  | OpenRouter ids, or the eight in `lineup.json`.                                                         |
+| `--mode qa\|sessions`                                                               | Single-shot queries (`bench:run`'s default mode) or the multi-session task pairs.                      |
+| `--arms`, `--trials`, `--max-turns`, `--task-set`, `--tasks`, `--queries`, `--repo` | Passed to every `bench:run` unchanged. qa defaults to `baseline,grep+rig`.                             |
+| `--budget-usd X`                                                                    | Required for a real run. See below.                                                                    |
+| `--estimate-from FILES`                                                             | Comma-separated, or repeat the flag: earlier results whose per-arm means replace the assumed profiles. |
+| `--dry-run`                                                                         | Print the per-model and total estimate, and how many models fit the budget. Runs nothing.              |
+| `--reindex`                                                                         | Rebuild `results/index.json` from the results files and stop.                                          |
+
+**Budget.** Before each model, the runner prices that model's run from OpenRouter's public
+catalogue. It doesn't start the model if the actual spend so far plus that estimate would exceed
+`--budget-usd`. Each child run also gets the budget that remains as `--max-spend-usd`, so a
+model that costs more than its estimate stops mid-run. The runner also stops once the budget is
+spent. The dry run prints a second figure, the ceiling: the same plan with every call's
+completion at `max_tokens` (2,048). Reasoning models bill their thinking as completion tokens,
+so the measured Haiku profiles understate them, and the truth for those models lies between the
+two figures.
+
+**Credits.** Before a real run starts, the runner reads the key's balance from
+`GET https://openrouter.ai/api/v1/credits` (`total_credits` minus `total_usage`). It refuses to
+start when the balance is negative or below what the run needs: the plan's total estimate, or
+the budget when that is lower. The message says how much to add. The dry run prints the same
+check when `OPENROUTER_API_KEY` is set. Before each model the runner reads the balance again
+and stops if it no longer covers that model's estimate. If a model's run still hits a credits
+error, the runner stops there, and its summary lists the models that finished, the one that
+stopped and those that never ran.
+
+**Compatibility.** A model that isn't in the catalogue, or whose catalogue entry doesn't list
+`tools` among its supported parameters, stops a real run before it starts. The dry run lists
+each model's tool support and reasoning default.
+
+**Fairness.** Every model gets the same system prompt, tools, tool descriptions, arms,
+queries or tasks, trials, turn limit and `max_tokens`. The harness sends no temperature,
+`top_p` or reasoning setting, so each model runs at its provider's defaults. Some upstreams
+don't accept a temperature at all, and reasoning is always on for some models. The manifest
+writes these terms out under `fairness`. Each run records the snapshots the API resolved the
+model to (`resolved_models`), and the manifest records the catalogue's dated snapshot
+(`canonical_slug`).
+
+**Manifest.** `results/index.json` lists every results file, with its mode, model, vendor,
+price tier, arms, trials, resolved snapshots, rig build and spend. Its `models` list holds each
+model's list prices, tier, catalogue snapshot, tool support and reasoning default. The tier
+depends on the input list price: below $1.00 per million tokens is low-cost, $1.00 or more is
+frontier. The runner rewrites the manifest after every model. Offline, a rebuild keeps the
+prices it had.
+
+**By model.** `bun run bench:report --by-model` prints one row per model: memory-off and
+memory-on success, the delta with its CI, the token ratio, the reading against the bar, and the
+single-shot `grep+rig` ratio and correctness. A model's sessions runs combine as `bench:report`
+combines them: newest first, keeping each run that merges cleanly with those already kept. A
+full 20-task run therefore replaces older partial runs. The bar was pre-registered for
+`anthropic/claude-haiku-5.5`, so for other models the report gives a reading, not a
+pre-registered verdict. For Q&A it takes the newest run with both `baseline` and `grep+rig`.
+
 ## What this benchmark does not measure
 
 - **Latency.** Rig arms make more, smaller round trips. Wall-clock time is recorded per run
@@ -576,4 +701,11 @@ the fingerprints.
 - `sessions.ts`: the memory arms, the installed-instruction quotes, snapshot and per-trial
   copies, and the trial loop. `sessions-run.ts`: its plan, dry run and CLI.
   `report-sessions.ts`: its aggregation, bootstrap, verdict and markdown.
-- `results/`: one JSON file per run (`<UTC date>-<label>.json`).
+- `matrix.ts`: `bench:matrix`, the per-model plan, budget guard and runs. `lineup.json`: the
+  models it runs with `--models lineup`.
+- `models.ts`: the results manifest, vendors and price tiers. `report-models.ts`: the by-model
+  view.
+- `charts.ts`, `chart-svg.ts`, `chart.ts`: `bench:chart`, the chart data, the SVG building blocks
+  and the CLI.
+- `results/`: one JSON file per run (`<UTC date>-<label>.json`), plus `index.json`, the
+  manifest.

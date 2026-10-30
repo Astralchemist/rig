@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="442" viewBox="0 0 760 442" role="img" aria-labelledby="cross-model-title cross-model-desc">
+<title id="cross-model-title">Across models: memory gain and Q&amp;A token cost</title>
+<desc id="cross-model-desc">Per model: session-2 memory gain (memory-on minus memory-off, 95% CI) and single-shot grep+rig tokens relative to grep-only. anthropic/claude-haiku-5.5 (low-cost): memory +40.0 pp (95% CI +20.0 to +60.0 pp), PASS against the bar; Q&amp;A 133.6% of grep-only tokens. openai/gpt-6-luna (low-cost): memory not run yet; Q&amp;A not run yet. deepseek/deepseek-v4.1-flash (low-cost): memory +60.0 pp (95% CI +40.0 to +78.3 pp), FAIL against the bar; Q&amp;A not run yet. qwen/qwen3.8-flash (low-cost): memory not run yet; Q&amp;A not run yet. google/gemini-3.8-flash (low-cost): memory not run yet; Q&amp;A not run yet. anthropic/claude-sonnet-5.5 (frontier): memory not run yet; Q&amp;A not run yet. openai/gpt-6.1-sol (frontier): memory not run yet; Q&amp;A not run yet. google/gemini-4-argon (frontier): memory not run yet; Q&amp;A not run yet.</desc>
+<style>
+svg{--bg:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,0.10);--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a}
+@media (prefers-color-scheme: dark){svg{--bg:#1a1a19;--ink:#ffffff;--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,0.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70}}
+text{font-family:system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:12px;fill:var(--ink2)}
+.bg{fill:var(--bg);stroke:var(--border)}
+.title{font-size:15px;font-weight:600;fill:var(--ink)}
+.sub{fill:var(--ink2)}
+.head{font-weight:600;fill:var(--ink)}
+.lab{fill:var(--ink)}
+.val{fill:var(--ink2);font-variant-numeric:tabular-nums}
+.tick{font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums}
+.note{font-size:11px;fill:var(--muted)}
+.empty{font-size:11px;fill:var(--muted);font-style:italic}
+.grid{stroke:var(--grid);stroke-width:1}
+.axis{stroke:var(--axis);stroke-width:1}
+.ref{stroke:var(--ink2);stroke-width:1.5}
+.hit{fill:transparent}
+.ring{stroke:var(--bg);stroke-width:2}
+.f-s1{fill:var(--s1)}
+.w-s1{stroke:var(--s1);stroke-width:2;stroke-linecap:round;fill:none}
+.f-s2{fill:var(--s2)}
+.w-s2{stroke:var(--s2);stroke-width:2;stroke-linecap:round;fill:none}
+.f-s3{fill:var(--s3)}
+.w-s3{stroke:var(--s3);stroke-width:2;stroke-linecap:round;fill:none}
+.f-muted{fill:var(--muted)}
+.w-muted{stroke:var(--muted);stroke-width:2;stroke-linecap:round;fill:none}
+</style>
+<rect x="0.5" y="0.5" width="759" height="441" rx="8" class="bg"/>
+<text x="24" y="32" class="title">Across models: memory gain and Q&amp;A token cost</text>
+<text x="24" y="52" class="sub">Same prompts, tools, arms, trials and turn limit for every model, via OpenRouter, at each provider’s defaults.</text>
+<text x="230" y="84" class="head">Memory gain, pp (95% CI)</text>
+<text x="528" y="84" class="head">grep+rig ÷ grep-only tokens</text>
+<line x1="230" y1="110" x2="230" y2="390" class="grid"/><text x="230" y="405" class="tick" text-anchor="middle">−20</text><line x1="268" y1="110" x2="268" y2="390" class="grid"/><text x="268" y="405" class="tick" text-anchor="middle">0</text><line x1="306" y1="110" x2="306" y2="390" class="grid"/><text x="306" y="405" class="tick" text-anchor="middle">+20</text><line x1="344" y1="110" x2="344" y2="390" class="grid"/><text x="344" y="405" class="tick" text-anchor="middle">+40</text><line x1="382" y1="110" x2="382" y2="390" class="grid"/><text x="382" y="405" class="tick" text-anchor="middle">+60</text><line x1="420" y1="110" x2="420" y2="390" class="grid"/><text x="420" y="405" class="tick" text-anchor="middle">+80</text>
+<line x1="268" y1="110" x2="268" y2="390" class="axis"/>
+<line x1="296.5" y1="106" x2="296.5" y2="390" class="ref"/>
+<text x="300.5" y="104" class="note">bar +15.0 pp</text>
+<line x1="528" y1="110" x2="528" y2="390" class="grid"/><text x="528" y="405" class="tick" text-anchor="middle">0%</text><line x1="596" y1="110" x2="596" y2="390" class="grid"/><text x="596" y="405" class="tick" text-anchor="middle">100%</text><line x1="664" y1="110" x2="664" y2="390" class="grid"/><text x="664" y="405" class="tick" text-anchor="middle">200%</text>
+<line x1="596" y1="106" x2="596" y2="390" class="ref"/>
+<text x="600" y="104" class="note">grep-only</text>
+<text x="24" y="129" class="head">Low-cost · under $1.00 per M input tokens</text>
+<text x="24" y="152" class="lab" dominant-baseline="middle">anthropic/claude-haiku-5.5</text>
+<path d="M306 152H382M306 148V156M382 148V156" class="w-s1"/>
+<circle cx="344" cy="152" r="5" class="f-s1 ring"/>
+<text x="428" y="152" class="val" dominant-baseline="middle">+40.0</text>
+<circle cx="618.82" cy="152" r="5" class="f-s1 ring"/>
+<text x="672" y="152" class="val" dominant-baseline="middle">134%</text>
+<g><title>anthropic/claude-haiku-5.5: memory +40.0 pp (95% CI +20.0 to +60.0 pp), off 30% → on 70%, PASS; Q&amp;A 133.6% of grep-only tokens (run orientation-map)</title><rect x="24" y="138" width="712" height="28" class="hit"/></g>
+<text x="24" y="180" class="lab" dominant-baseline="middle">openai/gpt-6-luna</text>
+<text x="428" y="180" class="empty" dominant-baseline="middle">not run yet</text>
+<text x="672" y="180" class="empty" dominant-baseline="middle">not run yet</text>
+<g><title>openai/gpt-6-luna: memory not run yet; Q&amp;A not run yet</title><rect x="24" y="166" width="712" height="28" class="hit"/></g>
+<text x="24" y="208" class="lab" dominant-baseline="middle">deepseek/deepseek-v4.1-flash</text>
+<path d="M344 208H416.83M344 204V212M416.83 204V212" class="w-s1"/>
+<circle cx="382" cy="208" r="5" class="f-s1 ring"/>
+<text x="428" y="208" class="val" dominant-baseline="middle">+60.0</text>
+<text x="672" y="208" class="empty" dominant-baseline="middle">not run yet</text>
+<g><title>deepseek/deepseek-v4.1-flash: memory +60.0 pp (95% CI +40.0 to +78.3 pp), off 20% → on 80%, FAIL; Q&amp;A not run yet</title><rect x="24" y="194" width="712" height="28" class="hit"/></g>
+<text x="24" y="236" class="lab" dominant-baseline="middle">qwen/qwen3.8-flash</text>
+<text x="428" y="236" class="empty" dominant-baseline="middle">not run yet</text>
+<text x="672" y="236" class="empty" dominant-baseline="middle">not run yet</text>
+<g><title>qwen/qwen3.8-flash: memory not run yet; Q&amp;A not run yet</title><rect x="24" y="222" width="712" height="28" class="hit"/></g>
+<text x="24" y="264" class="lab" dominant-baseline="middle">google/gemini-3.8-flash</text>
+<text x="428" y="264" class="empty" dominant-baseline="middle">not run yet</text>
+<text x="672" y="264" class="empty" dominant-baseline="middle">not run yet</text>
+<g><title>google/gemini-3.8-flash: memory not run yet; Q&amp;A not run yet</title><rect x="24" y="250" width="712" height="28" class="hit"/></g>
+<text x="24" y="297" class="head">Frontier · $1.00 or more per M input tokens</text>
+<text x="24" y="320" class="lab" dominant-baseline="middle">anthropic/claude-sonnet-5.5</text>
+<text x="428" y="320" class="empty" dominant-baseline="middle">not run yet</text>
+<text x="672" y="320" class="empty" dominant-baseline="middle">not run yet</text>
+<g><title>anthropic/claude-sonnet-5.5: memory not run yet; Q&amp;A not run yet</title><rect x="24" y="306" width="712" height="28" class="hit"/></g>
+<text x="24" y="348" class="lab" dominant-baseline="middle">openai/gpt-6.1-sol</text>
+<text x="428" y="348" class="empty" dominant-baseline="middle">not run yet</text>
+<text x="672" y="348" class="empty" dominant-baseline="middle">not run yet</text>
+<g><title>openai/gpt-6.1-sol: memory not run yet; Q&amp;A not run yet</title><rect x="24" y="334" width="712" height="28" class="hit"/></g>
+<text x="24" y="376" class="lab" dominant-baseline="middle">google/gemini-4-argon</text>
+<text x="428" y="376" class="empty" dominant-baseline="middle">not run yet</text>
+<text x="672" y="376" class="empty" dominant-baseline="middle">not run yet</text>
+<g><title>google/gemini-4-argon: memory not run yet; Q&amp;A not run yet</title><rect x="24" y="362" width="712" height="28" class="hit"/></g>
+<text x="24" y="424" class="note">2 of 8 models measured. Memory bar: pre-registered for anthropic/claude-haiku-5.5 only; for other models it is a reference line.</text>
+</svg>

@@ -2,7 +2,7 @@
 // Optional LLM judge (--judge <model>): a second opinion next to the pattern
 // check, never a replacement for it. It sees the question, the reference
 // answer at the pinned commit and the agent's answer, and returns a verdict.
-import type { Provider } from './providers.ts';
+import { isInsufficientCredits, type Provider } from './providers.ts';
 import type { JudgeResult, Query } from './types.ts';
 
 const JUDGE_SYSTEM = `You grade answers to questions about a codebase against a reference answer. An answer is correct when it gives the facts the reference gives (file paths, symbol names, values); extra detail is fine, contradicting the reference or missing its key fact is not. Reply with JSON only: {"verdict":"correct"|"incorrect","reason":"<one sentence>"}`;
@@ -48,6 +48,7 @@ export const judgeAnswer = async (
       completion_tokens: turn.usage.completion_tokens,
     };
   } catch (err) {
+    if (isInsufficientCredits(err)) throw err;
     return {
       verdict: 'error',
       reason: err instanceof Error ? err.message : String(err),
