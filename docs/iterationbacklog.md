@@ -406,7 +406,7 @@ docs/
 - Sharing is per kind and opt-in by default for raw hook captures: they quote the user's own words, so they stay local until reviewed or promoted. Agent and human decisions, constraints and dead ends are shared.
 - Records from git carry provenance `git:<commit>` and go through the same trust tiers as hook capture before anything is injected at session start.
 
-**Schema additions.** `source` / `provenance` values for git-imported records; a cursor of the last imported commit per file.
+**Schema additions.** `source` / `provenance` values for git-imported records; a cursor of the last imported commit per file. Verdict records from E5 (`still holds`, `outdated`, `can't tell`, with the reviewer, the commit judged and the memory's anchor hash) live in the same file and update the memory's verification status.
 
 **New tools.** None for agents. CLI: `rig memory share|unshare <id>`; `rig install` adds the gitignore exception for the shared file.
 
@@ -593,6 +593,11 @@ CREATE INDEX idx_pulse_session_ts ON pulse_log(session_id, ts);
 
 **Dependencies.** C3, C4.
 
+**Update 2026-10-30: live agent-activity overlay.** The same pulse stream drawn live as trails, one colour per agent, so the map shows an agent working.
+- **Full trail, not only rig calls.** Activations today come only from rig's own tools. The `PostToolUse` hook (shipped with automatic capture) sees every read, grep and edit in Claude Code, so files the agent opens without rig light up too; edits from the file watcher get their own mark.
+- **Agent identity.** Record the MCP `initialize` handshake's `clientInfo` name on every activation, and keep `rig hook --client` / an install-time override, storing both: some clients send unhelpful or identical names, and colours must not collapse when two tools introduce themselves the same way.
+- **The clip is evidence, not only a demo.** Film one multi-session bench task twice, memory on and memory off, side by side: session two with memory skips the exploration the other repeats. Show it next to the 30% to 70% chart.
+
 ---
 
 ### D. Retrieval intelligence
@@ -767,6 +772,40 @@ ALTER TABLE pending_edges ADD COLUMN source_urls TEXT;
 
 ---
 
+#### E5. PR review action: blast radius and memory at risk
+
+**One-liner.** A GitHub Action that comments on each PR with what the change can break and which recorded decisions it may invalidate, and logs predicted against observed blast radius.
+
+**Why.** It puts rig in front of every reviewer without anyone installing it, runs in the project's own CI (no server, in line with the anti-goals), and generates the labels that make two claims measurable: mapping (predicted vs observed blast radius) and memory trust (reviewer verdicts on memories at risk).
+
+**The comment.**
+- **Blast radius:** the changed symbols, what depends on them, and the subgraph as a Mermaid drawing (E4's renderer in miniature). Inferred edges are dashed, and the comment states how many edges are structural and how many inferred, so reviewers can calibrate at a glance.
+- **Memory at risk:** decisions, constraints and dead ends anchored to changed code, each with what changed. Reviewers answer `still holds`, `outdated` or `can't tell`.
+
+**Labels.**
+- Only explicit clicks become labels; silence is never a "still holds". The click rate is tracked and reported; if it's low, the comment gets shorter or better targeted before its data counts.
+- Verdicts are stored as records in the shared memory file (B5), not collected centrally.
+
+**Observed blast radius.**
+- Where CI produces a coverage report, the tests that execute changed code define the observed radius. Without coverage the action degrades cleanly: no score, still the comment.
+- Scoring compares predicted nodes with nodes that have executed lines, and both sides go through the same line-to-node mapping code path, so mapping isn't graded against a different mapping.
+
+**First number.** Replay rig's own merged PRs (each merge commit, with `bun test` coverage) before going public. The pass bar is written down first; the result goes in the README beside the memory chart, with its sample size.
+
+**New tools.** `rig impact` on the CLI (the MCP tool `rig_impact` exists; the CLI command doesn't), `rig impact --diff <base>...<head> --format mermaid|json`, and the Action wrapping it. CI indexes with the structural graph only (no embedding model).
+
+**Acceptance.**
+- [ ] On rig's past PRs, a predicted-vs-observed score against a pre-registered bar, with sample size
+- [ ] The edge-origin counts are correct (requires step 2's provenance: heuristic manifest edges are currently labelled `ast`)
+- [ ] A repo without coverage gets the comment and no score, with no error
+- [ ] Verdict records round-trip through B5's file and change the memory's status
+
+**Dependencies.** `rig_impact` (shipped); edge provenance (research report step 2, a small piece pulled forward); B5 for verdict storage; verify-on-read (step 1) for "what changed" on a memory; E4's Mermaid renderer.
+
+**★ Risk surface.** A confident blast radius that misses dynamic dispatch, in someone else's review; reviewer fatigue turning the comment into noise; labels that look like ground truth but reflect who bothered to click; coverage that measures tests run, not real dependency. ★ **Deep research before building:** when this item's turn comes, we run a deep-research pass on these risks first and write its findings into the item before any code.
+
+---
+
 ### F. Scale
 
 #### F1. sqlite-vec HNSW for vector search
@@ -905,6 +944,9 @@ Acceptance for Phase 5: ✅ Rig generates its own architecture docs from its way
 ### Added 2026-10-30 (slotted against the research report's steps)
 - **B5** Memory that travels with the repo: build the shared file as step 1's append-only authored layer; share once verify-on-read lands.
 - **E4** Architecture blueprints: a first Mermaid and Blueprint-lens cut can use the orientation map today; inferred data stores wait for step 2's edge provenance.
+- **E5** PR review action: first in the current order, dogfooded on rig's own PRs before anyone else sees it; built alongside step 1, which its reviewer verdicts feed.
+- **C5** live overlay (update): after E5; agent identity from the MCP handshake first, trails second, then the paired clip.
+- Bench harness: accept any OpenAI-compatible endpoint, so contributors can run the pinned bench on their own models.
 
 ### Phase 6 — Scale
 16. **F1** sqlite-vec HNSW — trigger: real codebase crosses ~20k nodes
