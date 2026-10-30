@@ -71,6 +71,8 @@ export interface GraphPalette {
   edge: string;
   edgeStrong: string;
   pending: string;
+  /** Trail colours by agent order: the accent, then --agent-2..4. */
+  agents: [string, string, string, string];
   surface: string;
   fontCanvas: string;
 }
@@ -86,6 +88,12 @@ export const readGraphPalette = (): GraphPalette => {
     text2: v('--text-2', '#aab2c0'),
     text3: v('--text-3', '#8790a0'),
     accent: v('--accent', '#3ddbc3'),
+    agents: [
+      v('--accent', '#3ddbc3'),
+      v('--agent-2', '#e66fd0'),
+      v('--agent-3', '#9d8cff'),
+      v('--agent-4', '#d6e05a'),
+    ],
     series: [v('--series-1', '#3987e5'), v('--series-2', '#d95926'), v('--series-3', '#199e70')],
     neutral: v('--node-neutral', '#6b7488'),
     memory: v('--node-memory', '#c7cdd8'),

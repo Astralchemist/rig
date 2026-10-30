@@ -3,6 +3,7 @@ import { Maximize2, Minus, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
 import type { Snapshot, SnapshotNode } from './api.ts';
+import type { TrailPoint } from './App.tsx';
 import { GROUPS, groupOf, kindLabel, type GroupId, type Shape } from './kinds.ts';
 import { useTheme } from './theme.tsx';
 import { readGraphPalette, type GraphPalette } from './themes.ts';
@@ -48,6 +49,10 @@ export interface MapProps {
   pulses: Map<string, number>;
   // Nodes an agent asked the user to look at (focus:requested).
   highlight: Set<string>;
+  // Recent activations with the agent that made each (C5 trails).
+  trail: TrailPoint[];
+  // Agents in order of first appearance; the order picks the colour.
+  agents: string[];
   onOpenNeighbourhood: (id: string) => void;
 }
 
@@ -169,6 +174,8 @@ function Constellation({
   focusToken,
   pulses,
   highlight,
+  trail,
+  agents,
   onOpenNeighbourhood,
 }: MapProps): JSX.Element {
   const { theme } = useTheme();
@@ -283,7 +290,15 @@ function Constellation({
     ref.current?.zoom(2.4, 600);
   }, [focusToken, graphData.nodes]);
 
-  const pulsing = pulses.size > 0;
+  // Trails fade over time, so the canvas keeps drawing while one is visible.
+  const pulsing = pulses.size > 0 || trail.length > 0;
+  const agentColor = (agent: string | null): string =>
+    agent === null
+      ? palette.text3
+      : palette.agents[Math.max(0, agents.indexOf(agent)) % palette.agents.length]!;
+  // The agent that last touched each node, for its pulse colour.
+  const lastAgent = new Map<string, string | null>();
+  for (const t of trail) lastAgent.set(t.id, t.agent);
   // A selection the canvas can't show: outside the loaded snapshot (search
   // and deep links reach the whole graph), or hidden by the filters.
   const offMap: 'missing' | 'filtered' | null =
@@ -408,6 +423,42 @@ function Constellation({
     ctx.globalAlpha = 1;
   };
 
+  // C5: each agent's recent path through the graph, oldest steps faintest,
+  // drawn under the nodes. Steps on nodes the map hasn't loaded are skipped.
+  const TRAIL_MS = 45_000;
+  const drawTrails = (ctx: CanvasRenderingContext2D, scale: number): void => {
+    if (!trail.length) return;
+    const at = new Map(graphData.nodes.map((n) => [n.id, n]));
+    const now = Date.now();
+    const byAgent = new Map<string | null, TrailPoint[]>();
+    for (const t of trail) {
+      const list = byAgent.get(t.agent);
+      if (list) list.push(t);
+      else byAgent.set(t.agent, [t]);
+    }
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (const [agent, steps] of byAgent) {
+      const pts = steps.flatMap((t) => {
+        const n = at.get(t.id);
+        return n && n.x !== undefined && n.y !== undefined ? [{ x: n.x, y: n.y, ts: t.ts }] : [];
+      });
+      ctx.strokeStyle = agentColor(agent);
+      ctx.lineWidth = 2 / scale;
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1]!;
+        const b = pts[i]!;
+        if (a.x === b.x && a.y === b.y) continue;
+        ctx.globalAlpha = 0.75 * Math.max(0, 1 - (now - b.ts) / TRAIL_MS);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+  };
+
   const zoomBy = (f: number): void => {
     const fg = ref.current;
     if (!fg) return;
@@ -525,7 +576,9 @@ function Constellation({
               ctx.beginPath();
               ctx.arc(x, y, r + 3 + t * 16, 0, 2 * Math.PI);
               ctx.lineWidth = 1.6 / scale;
-              ctx.strokeStyle = palette.accent;
+              ctx.strokeStyle = lastAgent.has(n.id)
+                ? agentColor(lastAgent.get(n.id)!)
+                : palette.accent;
               ctx.globalAlpha = (1 - t) * 0.9;
               ctx.stroke();
             }
@@ -539,7 +592,10 @@ function Constellation({
           ctx.arc(n.x ?? 0, n.y ?? 0, radiusFor(n) + 3, 0, 2 * Math.PI);
           ctx.fill();
         }}
-        onRenderFramePre={drawGrid}
+        onRenderFramePre={(ctx, scale) => {
+          drawGrid(ctx, scale);
+          drawTrails(ctx, scale);
+        }}
         onRenderFramePost={drawLabels}
         onNodeHover={(raw) => {
           const n = raw as GraphNode | null;
@@ -626,7 +682,20 @@ function Constellation({
 
 export { Constellation as Map };
 
-export const Legend = ({ shown, total }: { shown: number; total: number }): JSX.Element => (
+const AGENT_VARS = ['--accent', '--agent-2', '--agent-3', '--agent-4'];
+
+export const Legend = ({
+  shown,
+  total,
+  agents = [],
+  allAgents = [],
+}: {
+  shown: number;
+  total: number;
+  // Agents with a trail on the map now, and every agent seen (for colour order).
+  agents?: string[];
+  allAgents?: string[];
+}): JSX.Element => (
   <div className="legend island" aria-label="Legend">
     {GROUPS.map((g) => (
       <span key={g.id}>
@@ -647,6 +716,17 @@ export const Legend = ({ shown, total }: { shown: number; total: number }): JSX.
     <span>
       <i className="line dash" /> Pending review
     </span>
+    {agents.map((a) => (
+      <span key={a} title={`${a}: recent activity`}>
+        <i
+          className="agent-dot"
+          style={{
+            ['--a' as string]: `var(${AGENT_VARS[Math.max(0, allAgents.indexOf(a)) % AGENT_VARS.length]})`,
+          }}
+        />
+        {a}
+      </span>
+    ))}
     {shown < total && (
       <span className="legend-count" title="Raise Map density in Settings to load more">
         <span className="num">{shown.toLocaleString()}</span> of{' '}

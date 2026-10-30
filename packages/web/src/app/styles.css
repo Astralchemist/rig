@@ -84,6 +84,11 @@
   --edge: rgb(170 185 210 / 0.11);
   --edge-strong: rgb(200 212 232 / 0.55);
   --pending: var(--status-warning);
+  /* Agent trails (C5): the first agent wears the accent; the rest avoid the
+     three node-kind hues and the pending amber. */
+  --agent-2: #e66fd0;
+  --agent-3: #9d8cff;
+  --agent-4: #d6e05a;
   --grid-dot: rgb(255 255 255 / 0.035);
 }
 
@@ -157,6 +162,9 @@
   --edge: rgb(40 60 100 / 0.13);
   --edge-strong: rgb(30 45 75 / 0.6);
   --pending: #d99400;
+  --agent-2: #b2358f;
+  --agent-3: #6550d8;
+  --agent-4: #7f8a00;
   --grid-dot: rgb(16 24 40 / 0.05);
 }
 
@@ -1065,6 +1073,13 @@ p {
 }
 .legend .line.faint {
   border-top-color: color-mix(in oklab, var(--text-3) 60%, transparent);
+}
+.legend .agent-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--a);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--a) 22%, transparent);
 }
 .legend .legend-count {
   gap: 4px;

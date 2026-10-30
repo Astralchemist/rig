@@ -52,6 +52,16 @@ const parseHash = (): { view: View; id: string | null } => {
 const QUIET = new Set(['selection:changed', 'focus:requested', 'hello', 'activation:fired']);
 
 const PulseWindow = 1600;
+// How long an agent's trail stays on the map, and how many steps it keeps.
+const TrailWindow = 45_000;
+const TrailMax = 40;
+
+/** One step of an agent's trail: a node it touched, when, and which agent (null: unknown). */
+export interface TrailPoint {
+  id: string;
+  ts: number;
+  agent: string | null;
+}
 
 function Fallback(): JSX.Element {
   return (
@@ -93,6 +103,9 @@ export function App(): JSX.Element {
     selected ? { id: selected, ts: Date.now() } : null,
   );
   const [pulses, setPulses] = useState<Map<string, number>>(() => new Map());
+  const [trail, setTrail] = useState<TrailPoint[]>([]);
+  // Agents in order of first appearance: the order picks their colour.
+  const [agents, setAgents] = useState<string[]>([]);
   const [highlight, setHighlight] = useState<Set<string>>(() => new Set());
   const [version, setVersion] = useState(0);
   const [palette, setPalette] = useState<{ open: boolean; q: string }>({ open: false, q: '' });
@@ -169,6 +182,31 @@ export function App(): JSX.Element {
       case 'activation:fired': {
         const ids = p.ids ?? [];
         const now = Date.now();
+        const by = (p.agents ?? {}) as Record<string, string>;
+        const seen = [...new Set(Object.values(by))];
+        if (seen.length)
+          setAgents((prev) =>
+            seen.every((a) => prev.includes(a))
+              ? prev
+              : [...prev, ...seen.filter((a) => !prev.includes(a))],
+          );
+        setTrail((prev) => {
+          const cutoff = now - TrailWindow;
+          const next = [
+            ...prev.filter((t) => t.ts > cutoff),
+            ...ids.map((id: string) => ({ id, ts: now, agent: by[id] ?? null })),
+          ];
+          // Keep the last TrailMax steps per agent.
+          const count = new Map<string | null, number>();
+          return next
+            .reverse()
+            .filter((t) => {
+              const n = (count.get(t.agent) ?? 0) + 1;
+              count.set(t.agent, n);
+              return n <= TrailMax;
+            })
+            .reverse();
+        });
         setPulses((prev) => {
           const next = new Map(prev);
           for (const id of ids) next.set(id, now);
@@ -478,13 +516,20 @@ export function App(): JSX.Element {
           onSelect={(id) => select(id)}
           focusToken={focusToken}
           pulses={pulses}
+          trail={trail}
+          agents={agents}
           highlight={highlight}
           onOpenNeighbourhood={(id) => {
             select(id);
             openLens('focus');
           }}
         />
-        <Legend shown={snap.nodes.length} total={status?.nodes ?? snap.nodes.length} />
+        <Legend
+          shown={snap.nodes.length}
+          total={status?.nodes ?? snap.nodes.length}
+          agents={agents.filter((a) => trail.some((t) => t.agent === a))}
+          allAgents={agents}
+        />
       </>
     );
   };
