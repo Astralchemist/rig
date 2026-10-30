@@ -97,6 +97,7 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
 
   If a symbol disappears, its memory is set aside rather than lost, and re-attached when the symbol comes back.
 - **Waypoints** live outside the context window. They are searchable by meaning (`rig_waypoints query="…"`), and the next session can load the previous one's.
+- **Automatic capture** (Claude Code). Hooks record what a conversation *settled*: agreed decisions, corrections, constraints and dead ends. The next session starts with a short brief of them. See [Automatic capture](#automatic-capture).
 - **Human review where it matters.** Links an agent proposes wait for your accept or reject on the map, and every change can be undone step by step.
 - **Portable memory.** `rig export-memory` and `rig import-memory` carry agent memory across fresh clones and machines.
 - **One graph, many agents.** Claude Code, Cursor, Codex and opencode can all work on the same project at the same time. Writes are concurrency-safe and record which agent made them.
@@ -112,6 +113,7 @@ distinct ports. Re-run any time, or use the explicit subcommands below.
 - Natural-language questions cost fewer tokens than with grep alone.
 - Exact identifier lookups still cost more. The installed guide tells agents to use grep for those.
 - Injecting the orientation map into every prompt cost more than it saved. That's why it's on demand.
+- Across two sessions, waypoints the agent drops itself raised session-2 success from 30% to 70% (+40 pp, pre-registered bar passed) at 94% of the tokens. Automatic capture alone reached 50% (+20 pp) but used 116% of the tokens, so it failed the same bar: today it is a backstop to agent-dropped waypoints, not a replacement.
 
 The raw results and reports are in [`scripts/bench/results/`](scripts/bench/results/).
 
@@ -165,7 +167,7 @@ rig uninstall claude          # remove exactly what install added (--all · --gl
 
 | Agent | Project (default) | `--global` |
 |---|---|---|
-| Claude Code | `.mcp.json` · `.claude/settings.json` · `CLAUDE.md` | `~/.claude.json` · `~/.claude/settings.json` · `~/.claude/CLAUDE.md` |
+| Claude Code | `.mcp.json` · `.claude/settings.json` (permissions, capture hooks) · `CLAUDE.md` | `~/.claude.json` · `~/.claude/settings.json` · `~/.claude/CLAUDE.md` |
 | Cursor | `.cursor/mcp.json` · `.cursor/cli.json` · `.cursor/rules/rig.mdc` | `~/.cursor/mcp.json` |
 | Codex CLI | — user-level only | `~/.codex/config.toml` · `~/.codex/AGENTS.md` |
 | opencode | — user-level only | `~/.config/opencode/opencode.jsonc` · `~/.config/opencode/AGENTS.md` |
@@ -180,6 +182,57 @@ tool answers with how to fix it (`rig init` or `rig start`).
 OpenRouter is an API, not an MCP host: `rig install openrouter` only writes a reference
 config to copy into the MCP client you use with it.
 
+### Automatic capture
+
+For Claude Code, `rig install claude` (and `rig start`) also adds hooks to the project's
+`.claude/settings.json` that run `rig hook <event>`. They record the moments a
+conversation settles something, so the next session doesn't have to rediscover them.
+They don't record the conversation itself. Capture is deterministic pattern matching
+over the transcript: no model call, no API key, and nothing leaves the machine.
+
+**Measured.** On the pre-registered multi-session benchmark, capture alone (no waypoint
+guidance) did not pass the bar: +20 pp success over no memory, but 116% of its tokens
+([report](scripts/bench/results/2026-10-29-sessions-memory-auto-0.3.0.md)). The extractor
+found the needed fact in 9 of 57 runs.
+
+**What's captured.** Only what the user's own words settle:
+- **agreed:** the agent proposed something and the user approved it ("yes", "go ahead",
+  "merge it", picking option B). Stored as a decision.
+- **correction:** "no, use X instead". Stored as a decision.
+- **decision:** what the user states was decided ("we went with X"). Stored as a decision.
+- **constraint:** "never…", "always…", "must…", "don't touch…", "only…".
+- **dead end:** the user declined or reversed something, ruled it out ("X was rejected
+  because Y"), or denied a tool call; or an attempt failed and was given up.
+
+Quoted text, code and questions never count. Each record keeps the user's words as its
+rationale, the files and symbols it names (linked into the graph), a confidence and the
+place in the conversation. A record already stored, in any session, isn't stored again.
+
+**What's injected.** At session start (also after `/resume` and compaction), the agent
+gets at most 1,500 characters headed "Settled in previous sessions in this project". It
+lists agreed decisions, constraints and dead ends, newest and most relevant first, plus
+open questions agents recorded. Only decisions, constraints and dead ends with
+confidence ≥ 0.7 are included. Everything else stays searchable (`rig_waypoints
+source="hook"`, `rig_search`) but is never injected. The brief is fenced as data: a
+record of what was said, not instructions.
+
+**Privacy.** Everything stays in `.rig/` (`.rig/capture/` holds the hook spool, cursors
+and log). API keys, tokens, private keys, `.env`-style secrets and credentials in URLs
+are redacted before anything is written. Hooks never block or fail the agent: errors go
+to `.rig/capture/hook.log`.
+
+**Opting out.** `rig install claude --no-hooks` (or `rig start --no-hooks`) leaves the
+hooks out and removes ones already installed. `rig uninstall claude` removes them with
+the rest of the wiring. Set `RIG_CAPTURE=0`, or `{ "capture": { "enabled": false } }`
+in `.rig/config.json`, to switch capture off without touching the hooks.
+
+| Hook | What `rig hook` does |
+|---|---|
+| `UserPromptSubmit`, `PostToolUse` | Append the prompt or tool use to the session's spool (about 20 ms) |
+| `Stop` (async), `PreCompact` | Capture the transcript since the last run and store what it settled |
+| `SessionEnd` | Queue the session; the next `SessionStart` captures it |
+| `SessionStart` (startup, resume, compact) | Print the brief as `additionalContext` |
+
 ---
 
 ## Commands
@@ -187,7 +240,7 @@ config to copy into the MCP client you use with it.
 | Command | What it does |
 |---|---|
 | `rig start` | One-shot: init + index + wire agent + open the live map |
-| `rig install <agent>` | Wire an agent into this project (`--global` for your user-level config) |
+| `rig install <agent>` | Wire an agent into this project (`--global` for your user-level config; `--no-hooks` to skip automatic capture) |
 | `rig uninstall <agent>` | Remove exactly what install added (`--all`, `--global`, `--dry-run`) |
 | `rig index` | Extract + write nodes, skipping unchanged files (`--include` / `--exclude <glob>`, `--force`) |
 | `rig sync` | Incremental update |
@@ -199,6 +252,7 @@ config to copy into the MCP client you use with it.
 | `rig export-docs` | Render waypoints into a markdown doc tree |
 | `rig export-memory` | Save agent memory (aliases, notes, links, promotions, waypoints) as JSONL that survives losing `.rig/` (`--out <file>`). It can contain conversation-derived text: review it before committing it |
 | `rig import-memory <file>` | Merge an export back in, e.g. after a fresh clone + `rig index`. Only adds; never overwrites |
+| `rig hook <event>` | Run by Claude Code's hooks: automatic capture and the session-start brief ([details](#automatic-capture)) |
 
 Run `rig --help` for the full list.
 

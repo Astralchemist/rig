@@ -15,7 +15,7 @@ const waypoint = z.object({
   id: z.string(),
   ts: z.number().int(),
   session_id: z.string(),
-  kind: z.enum(['decision', 'observation', 'constraint', 'open-question', 'principle']),
+  kind: z.enum(['decision', 'observation', 'constraint', 'open-question', 'principle', 'dead-end']),
   title: z.string(),
   summary: z.string(),
   analogy: z.string().nullable(),
@@ -25,6 +25,14 @@ const waypoint = z.object({
   compactable: z.boolean(),
   payloads: z.array(payload),
   rationale: z.string().optional().describe('Why it was dropped (absent on older waypoints)'),
+  source: z
+    .enum(['agent', 'hook'])
+    .optional()
+    .describe(
+      'hook: captured automatically from the conversation (absent on agent-dropped waypoints)',
+    ),
+  provenance: z.string().optional().describe('Who wrote a captured waypoint, e.g. hook:claude'),
+  confidence: z.number().optional().describe('Extractor confidence (0..1) of a captured waypoint'),
 });
 
 export default defineToolContract({

@@ -25,3 +25,13 @@ export const isRigListEntry = (entry: unknown): boolean =>
 export const isRigMapKey = (key: string): boolean => MAP_KEY.test(key);
 
 export const isRigToolTable = (header: string): boolean => TOML_TOOL_TABLE.test(header);
+
+// Hook handlers are rig's when their command runs `rig hook …` (any install
+// path of the binary: rig, rig-constellation, …/dist/rig.js).
+const HOOK_COMMAND = /(?:^|[\s/"'])(?:rig|rig-constellation|rig\.js)["']?\s+hook\s+\w/;
+
+export const isRigHookHandler = (handler: unknown): boolean =>
+  !!handler &&
+  typeof handler === 'object' &&
+  typeof (handler as { command?: unknown }).command === 'string' &&
+  HOOK_COMMAND.test((handler as { command: string }).command);

@@ -12,6 +12,8 @@ export interface WireOptions extends TokenContext {
   home?: string | undefined;
   // Host detection; defaults to each contract's detect(). Tests inject one.
   detect?: ((target: TargetContract) => Promise<boolean>) | undefined;
+  // File roles to leave out (`rig start --no-hooks`).
+  skipRoles?: readonly string[] | undefined;
 }
 
 export interface WireReport {
@@ -52,6 +54,7 @@ export const wireDetectedAgents = async (opts: WireOptions): Promise<WireReport>
         home,
         scope: 'project',
         dryRun: false,
+        ...(opts.skipRoles ? { skipRoles: opts.skipRoles } : {}),
       }),
     );
     const userLevel = wiredLocations(contract, opts.projectRoot, home).filter(

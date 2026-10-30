@@ -12,7 +12,17 @@ export const SYSTEM_PROMPT = `You are a senior engineer answering a question abo
 export interface AgentOpts {
   maxTurns: number;
   maxTokens: number;
+  // Hears every message of the conversation as it happens (memory-auto feeds
+  // session 1 to automatic capture). Nothing else changes.
+  onEvent?: (e: TranscriptEvent) => void;
 }
+
+// One message of a conversation, in the shape automatic capture reads.
+export type TranscriptEvent =
+  | { type: 'user'; text: string }
+  | { type: 'assistant'; text: string }
+  | { type: 'tool_call'; id: string; name: string; input: Record<string, unknown> }
+  | { type: 'tool_result'; id: string; output: string };
 
 export interface AgentOutcome {
   prompt_tokens: number;
@@ -71,9 +81,11 @@ export const runConversation = async (
   };
   const resolved = new Set<string>();
   const upstreams = new Set<string>();
+  const emit = opts.onEvent ?? (() => {});
   try {
     for (const [m, message] of messages.entries()) {
       if (m > 0) convo.addUserMessage(message);
+      emit({ type: 'user', text: message });
       let stop: StopReason = 'turn_limit';
       for (let i = 0; i < opts.maxTurns; i++) {
         const turn = await convo.send();
@@ -87,6 +99,7 @@ export const runConversation = async (
             : out.cost_usd + turn.usage.cost_usd;
         if (turn.resolvedModel) resolved.add(turn.resolvedModel);
         if (turn.upstream) upstreams.add(turn.upstream);
+        if (turn.text.trim()) emit({ type: 'assistant', text: turn.text });
         if (turn.toolCalls.length === 0) {
           out.final_text = turn.text;
           out.replies.push(turn.text);
@@ -95,9 +108,19 @@ export const runConversation = async (
         }
         const results: { id: string; content: string }[] = [];
         for (const call of turn.toolCalls) {
+          emit({
+            type: 'tool_call',
+            id: call.id,
+            name: call.name,
+            input:
+              call.input && typeof call.input === 'object'
+                ? (call.input as Record<string, unknown>)
+                : {},
+          });
           const content = call.inputError
             ? `error: tool arguments were not valid JSON (${call.inputError})`
             : await arm.exec(call.name, call.input);
+          emit({ type: 'tool_result', id: call.id, output: content });
           out.tool_chars[call.name] = (out.tool_chars[call.name] ?? 0) + content.length;
           out.tool_calls[call.name] = (out.tool_calls[call.name] ?? 0) + 1;
           out.tool_turns++;

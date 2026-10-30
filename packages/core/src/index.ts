@@ -21,6 +21,7 @@ export type {
   BuildOverviewOptions,
   WaypointKind,
   WaypointPayload,
+  WaypointSource,
   WaypointRow,
   UndoOutcome,
   MemoryExport,

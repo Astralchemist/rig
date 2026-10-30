@@ -1,18 +1,18 @@
 {
   "version": 1,
   "files": {
-    "core/anchors-registry.ts": "beb53c35680dc34b",
+    "core/anchors-registry.ts": "5d7ef87a0e8a67e2",
     "core/migrations.ts": "54314873edfc358a",
     "core/schema.sql": "2dfa669c08cb9f62",
-    "installer/claude.instructions.md": "16cfd8dec7fda83b",
+    "installer/claude.instructions.md": "22919ebc27da4678",
     "installer/claude.permissions.json": "cc4cb8b14c1bd034",
-    "installer/codex.instructions.md": "3abbfba87fb763cc",
+    "installer/codex.instructions.md": "87cacf6429d631cb",
     "installer/codex.permissions.json": "5a4c18c5134d6cc1",
-    "installer/cursor.instructions.md": "2dfc353473b2d754",
+    "installer/cursor.instructions.md": "e14a291c0506bfc8",
     "installer/cursor.permissions.json": "d0f44d3df32aa1fb",
-    "installer/opencode.instructions.md": "0b386cc5941e223c",
+    "installer/opencode.instructions.md": "241da42a2656c097",
     "installer/opencode.permissions.json": "e01c9da0e58b4404",
-    "installer/openrouter.instructions.md": "cbf6ae506a27ea33",
+    "installer/openrouter.instructions.md": "f6749db19b83a868",
     "mcp/handlers-index.ts": "b6410a591053c5aa",
     "mcp/handlers/rig_add_alias.handler.ts": "f416a8a5c90f1ca7",
     "mcp/handlers/rig_add_node.handler.ts": "c002f1cdb5230a2f",
@@ -51,7 +51,7 @@
     "mcp/handlers/rig_undo.handler.ts": "2addb3a0315adb0d",
     "mcp/handlers/rig_unused_deps.handler.ts": "79d099728b1a2de6",
     "mcp/handlers/rig_waypoints.handler.ts": "29f87f767a3b27e2",
-    "mcp/tools-manifest.json": "a1334190b0c3fc1b",
+    "mcp/tools-manifest.json": "4f65c5da996458f9",
     "web/ws-events.ts": "6a53cfff6cafb689"
   }
 }

@@ -8,11 +8,18 @@ import { defineAnchorContract } from '@rig/contracts';
 export default defineAnchorContract({
   type: 'conversation-waypoint',
   description:
-    'A discrete decision/observation/constraint/open-question/principle marker dropped by the AI during a session. Carries an analogy + summary + refs into the graph so future sessions can rehydrate the reasoning thread.',
+    'A discrete decision/observation/constraint/open-question/principle/dead-end marker, dropped by the AI during a session or captured automatically from the conversation by a hook. Carries an analogy + summary + refs into the graph so future sessions can rehydrate the reasoning thread.',
   extractor: 'manual',
   data_schema: z.object({
     session_id: z.string(),
-    type: z.enum(['decision', 'observation', 'constraint', 'open-question', 'principle']),
+    type: z.enum([
+      'decision',
+      'observation',
+      'constraint',
+      'open-question',
+      'principle',
+      'dead-end',
+    ]),
     title: z.string(),
     analogy: z.string().optional(),
     summary: z.string(),
@@ -36,6 +43,23 @@ export default defineAnchorContract({
         ]),
       )
       .default([]),
+    rationale: z.string().optional(),
+    // Automatic capture (rig hook): source 'hook', provenance `hook:<client>`,
+    // the extractor's confidence, and what it saw — the extractor kind
+    // (agreed / rejected / dead-end / correction / constraint / decision),
+    // the rule that fired, the conversation span and the raw anchors.
+    source: z.enum(['agent', 'hook']).optional(),
+    provenance: z.string().optional(),
+    confidence: z.number().min(0).max(1).optional(),
+    capture: z
+      .object({
+        kind: z.string(),
+        cue: z.string(),
+        span: z.object({ from: z.number().int(), to: z.number().int() }),
+        files: z.array(z.string()),
+        symbols: z.array(z.string()),
+      })
+      .optional(),
   }),
   ui: {
     icon: 'flag',

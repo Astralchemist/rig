@@ -40,7 +40,14 @@ describe('installer targets', () => {
     expect(result.applied.map((a) => a.path)).toEqual([
       join(PROJECT, '.mcp.json'),
       join(PROJECT, '.claude/settings.json'),
+      join(PROJECT, '.claude/settings.json'),
       join(PROJECT, 'CLAUDE.md'),
+    ]);
+    expect(result.applied.map((a) => a.role)).toEqual([
+      'mcp_config',
+      'permissions',
+      'hooks',
+      'instructions',
     ]);
     expect(result.applied.every((a) => a.changed)).toBe(true);
 

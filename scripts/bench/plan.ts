@@ -153,6 +153,8 @@ export interface SessionOverheads {
   guidance: number;
   bootstrap: number;
   waypoint_output: number;
+  // memory-auto's SessionStart brief in session 2's prompt.
+  brief: number;
 }
 
 export interface SessionTaskShape {
@@ -238,11 +240,19 @@ export const estimateSessions = (opts: {
     let c1: number | null = 0;
     let c2: number | null = 0;
     for (const t of opts.tasks) {
-      const m = opts.measured?.[arm];
+      // memory-auto has no earlier run of its own: from measured runs, session
+      // 1 is memory-off's and session 2 memory-on's plus the brief.
+      const mOff = opts.measured?.['memory-off'];
+      const mOn = opts.measured?.['memory-on'];
+      const m =
+        opts.measured?.[arm] ??
+        (arm === 'memory-auto' && mOff && mOn
+          ? { s1: mOff.s1, s2: add(mOn.s2, o.brief, 0) }
+          : undefined);
       const base1 = scale(SESSION_PROFILES.s1_per_message, t.messages);
       const s1: RunProfile | null = m
         ? m.s1
-        : arm === 'memory-off'
+        : arm === 'memory-off' || arm === 'memory-auto'
           ? base1
           : arm === 'memory-on'
             ? add(base1, o.write_tools + o.guidance, 1)
@@ -251,11 +261,13 @@ export const estimateSessions = (opts: {
         ? m.s2
         : arm === 'memory-on'
           ? add(SESSION_PROFILES.s2, o.read_tools + o.bootstrap, 1, o.waypoint_output)
-          : arm === 'oracle'
-            ? add(SESSION_PROFILES.s2, t.oracle_tokens, 0)
-            : arm === 'grep-only'
-              ? { ...SESSION_PROFILES.s2_grep_only }
-              : { ...SESSION_PROFILES.s2 };
+          : arm === 'memory-auto'
+            ? add(SESSION_PROFILES.s2, o.read_tools + o.bootstrap + o.brief, 1, o.waypoint_output)
+            : arm === 'oracle'
+              ? add(SESSION_PROFILES.s2, t.oracle_tokens, 0)
+              : arm === 'grep-only'
+                ? { ...SESSION_PROFILES.s2_grep_only }
+                : { ...SESSION_PROFILES.s2 };
       const accrue = (into: RunProfile, p: RunProfile): void => {
         into.prompt_tokens += p.prompt_tokens * opts.trials;
         into.completion_tokens += p.completion_tokens * opts.trials;

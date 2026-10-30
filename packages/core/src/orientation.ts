@@ -5,7 +5,8 @@ import { basename, join } from 'node:path';
 import type { SqliteAdapter } from './db/adapter.ts';
 import { EXTRACTED_NODE_SQL } from './db/extracted-nodes.ts';
 import { getMeta, setMeta } from './db/meta.ts';
-import { listWaypoints } from './db/waypoint-queries.ts';
+import { listWaypoints, type WaypointRow } from './db/waypoint-queries.ts';
+import { isSurfaceable } from './capture/trust.ts';
 import { EXTRACTOR_VERSION } from './extract/extractor.ts';
 
 // The orientation map: a compact, deterministic markdown overview of the
@@ -1311,7 +1312,7 @@ export const buildOverviewMap = (
   }
 
   // --- decisions --------------------------------------------------------------------
-  const decisions = listWaypoints(db, { kind: 'decision', limit: 6 }).map(
+  const decisions = recentDecisions(db).map(
     (w) =>
       `- ${new Date(w.ts).toISOString().slice(0, 10)} — ${clip(w.title.replace(/\s+/g, ' '), 140)}`,
   );
@@ -1335,6 +1336,11 @@ export const buildOverviewMap = (
   );
 };
 
+// The six newest decision waypoints the map lists: agent-dropped ones, and
+// captured ones only when they clear the injection bar (capture/trust.ts).
+const recentDecisions = (db: SqliteAdapter): WaypointRow[] =>
+  listWaypoints(db, { kind: 'decision', limit: 60 }).filter(isSurfaceable).slice(0, 6);
+
 // ---------------------------------------------------------------------------
 // Cache
 
@@ -1349,14 +1355,8 @@ export const overviewFingerprint = (db: SqliteAdapter, projectRoot: string): str
     .all() as { path: string; hash: string; v: number | null }[]) {
     h.update(`${r.path}\0${r.hash}\0${r.v ?? ''}\n`);
   }
-  for (const r of db
-    .prepare(
-      `SELECT id, name, created_at FROM nodes
-       WHERE type = 'conversation-waypoint' AND json_extract(data, '$.type') = 'decision'
-       ORDER BY created_at DESC, rowid DESC LIMIT 6`,
-    )
-    .all() as { id: string; name: string; created_at: number }[]) {
-    h.update(`w\0${r.id}\0${r.name}\0${r.created_at}\n`);
+  for (const w of recentDecisions(db)) {
+    h.update(`w\0${w.id}\0${w.title}\0${w.ts}\n`);
   }
   return h.digest('hex').slice(0, 16);
 };
