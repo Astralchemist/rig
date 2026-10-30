@@ -393,6 +393,35 @@ docs/
 
 ---
 
+#### B5. Memory that travels with the repo
+
+**One-liner.** The authored layer (waypoints, decisions, constraints, dead ends, accepted links, aliases) is written to a committed, merge-friendly file, so teammates, other machines and cloud agents get it with `git pull`. No server.
+
+**Why.** Local-first keeps verification next to the code and nothing leaves the machine, but today memory is per checkout: teammates don't see each other's decisions, a second laptop starts empty, and cloud or CI agents can't reach `localhost`. The derived graph is disposable (any machine rebuilds it from the repo); only the authored layer compounds, and it is small. Git is already the sync layer for everything else in the project, and committed memory shows up in PRs, so decisions get reviewed like code.
+
+**Mechanism.**
+- Builds on `rig export-memory` / `import-memory` (deterministic JSONL, portable `{kind, filePath, qualifiedName}` keys, unmatched records to `orphaned_memory`).
+- One record per line, sorted by id, append-only: edits append a new version and deletions append a tombstone, so two branches merge by union with no textual conflicts.
+- `rig index`, `rig sync` and `rig start` import new lines; agent writes append to the file as well as the database.
+- Sharing is per kind and opt-in by default for raw hook captures: they quote the user's own words, so they stay local until reviewed or promoted. Agent and human decisions, constraints and dead ends are shared.
+- Records from git carry provenance `git:<commit>` and go through the same trust tiers as hook capture before anything is injected at session start.
+
+**Schema additions.** `source` / `provenance` values for git-imported records; a cursor of the last imported commit per file.
+
+**New tools.** None for agents. CLI: `rig memory share|unshare <id>`; `rig install` adds the gitignore exception for the shared file.
+
+**Acceptance.**
+- [ ] Fresh clone + `rig start` on a second machine: the session-start brief includes decisions recorded on the first
+- [ ] Two branches that each add waypoints merge with no conflict in the memory file, and both sets load
+- [ ] Export → import → export is byte-identical
+- [ ] A poisoned record committed by another author is not injected above its trust tier (red-team case in the bench)
+
+**Dependencies.** `export-memory` (shipped 0.2.0); the append-only authored layer and verify-on-read (research report, step 1); trust tiers (shipped with capture).
+
+**Risk surface.** Memory from other people is injected into your agent, so poisoning matters more; private wording leaking through shared captures (hence opt-in for hook records); the file growing without the step-5 consolidation.
+
+---
+
 ### C. Observability layer
 
 #### C1. Hot-node tracking + heat scoring
@@ -706,6 +735,38 @@ ALTER TABLE pending_edges ADD COLUMN source_urls TEXT;
 
 ---
 
+#### E4. Architecture blueprints (export and Blueprint lens)
+
+**One-liner.** A generated architecture drawing of the project, read like a house plan at several scales, exported as Mermaid (committed and diffable), React Flow JSON and SVG, and shown in the map as a Blueprint lens.
+
+**Why.** The constellation shows every symbol; people asking "how is this built?" want the floor plan, not every nail. Rig already computes the ingredients deterministically for the orientation map: packages and their purposes, entry points, request/handler surfaces, key symbols and hubs, and declared dependencies. A blueprint is that map drawn. Committed next to the shared memory (B5) it stays current and reviewable.
+
+**Scales (C4-style).** Site plan: the system and what it talks to. Floor plan: packages and services. Room plan: modules inside one package. Fixtures: the symbols of one module (this is the existing Neighbourhood lens).
+
+**Shapes.** Flowchart conventions, kept strict so the drawing means what it looks like:
+- cylinder: data store (SQLite, Postgres, Redis, files on disk), inferred from client dependencies and their call sites
+- diamond: a branch in control flow, such as a router or dispatcher choosing a handler
+- parallelogram: input/output surface (HTTP routes, CLI commands, MCP tools)
+- rounded rectangle: package, service or module; hexagon: external service or third-party package
+- document: docs and markdown sections
+- design decisions, constraints and dead ends are not diamonds (a diamond already means "branch"); they are pinned notes or flags on the component they govern, from decision waypoints, with dead ends struck through
+
+**Mechanism.** One blueprint model built from the index, with no model call; renderers for Mermaid flowchart, React Flow JSON (the app's lens, laid out with dagre, already a dependency) and SVG. Cached and refreshed by fingerprint like the orientation map. Every box links to `file:line`. Inferred elements (data stores, external services) are dashed and carry a confidence.
+
+**New tools.** `rig blueprint [--level site|floor|room] [--scope <package>] [--format mermaid|reactflow|svg] [--out <file>]`; the map's Blueprint lens with an Export menu. An agent-facing `rig://blueprint` resource only if a bench arm shows it beats the control (injecting the orientation map cost 187%).
+
+**Acceptance.**
+- [ ] On rig and on next-auth, the floor plan fits one screen (about 30 boxes or fewer) without hand editing
+- [ ] Data-store and external-service detection reaches at least 90% precision on a hand-labelled sample
+- [ ] Mermaid output is byte-identical when nothing changed, and renders on GitHub
+- [ ] Each export is stamped with the commit it was generated from
+
+**Dependencies.** Orientation map (shipped 0.3.0); provenance and confidence on edges (research report, step 2) for honest dashed lines; B5 for committing it alongside memory.
+
+**Risk surface.** Hairball drawings (mitigated by levels and folding sibling packages, as the orientation map does); a confident-looking but wrong diagram (mitigated by dashed inferred elements and the commit stamp); overlap with the orientation map (it shares the model; only the renderer is new).
+
+---
+
 ### F. Scale
 
 #### F1. sqlite-vec HNSW for vector search
@@ -840,6 +901,10 @@ Acceptance for Phase 4: ✅ AI can pick up a project from prior session via `rig
 15. **B3** Doc generation from waypoints ✅ shipped 2026-05-24 as `rig export-docs`
 
 Acceptance for Phase 5: ✅ Rig generates its own architecture docs from its waypoint chain (B3); ✅ agent picks its own toolchain via the graph (C4 + D4).
+
+### Added 2026-10-30 (slotted against the research report's steps)
+- **B5** Memory that travels with the repo: build the shared file as step 1's append-only authored layer; share once verify-on-read lands.
+- **E4** Architecture blueprints: a first Mermaid and Blueprint-lens cut can use the orientation map today; inferred data stores wait for step 2's edge provenance.
 
 ### Phase 6 — Scale
 16. **F1** sqlite-vec HNSW — trigger: real codebase crosses ~20k nodes
