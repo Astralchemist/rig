@@ -71,6 +71,9 @@ export interface ClusterArgs {
 }
 
 export interface DropWaypointArgs {
+  // A fixed id instead of a fresh one: importing shared memory uses the
+  // record's id, so importing again finds it and adds nothing.
+  id?: string;
   kind: WaypointKind;
   title: string;
   summary: string;
@@ -267,11 +270,13 @@ export class RigWrites {
       .get(nodeId) as { hub_explicit: number; is_hub: number; hubness: number } | null;
     if (!prev) return false;
     adapter
-      .prepare(`UPDATE nodes SET hub_explicit = 1, is_hub = 1, hubness = MAX(hubness, 0.3) WHERE id = ?`)
+      .prepare(
+        `UPDATE nodes SET hub_explicit = 1, is_hub = 1, hubness = MAX(hubness, 0.3) WHERE id = ?`,
+      )
       .run(nodeId);
-    const hubness = (adapter
-      .prepare(`SELECT hubness FROM nodes WHERE id = ?`)
-      .get(nodeId) as { hubness: number }).hubness;
+    const hubness = (
+      adapter.prepare(`SELECT hubness FROM nodes WHERE id = ?`).get(nodeId) as { hubness: number }
+    ).hubness;
     recordMutation(adapter, {
       sessionId: ctx.sessionId,
       kind: 'promote_hub',
@@ -289,7 +294,7 @@ export class RigWrites {
   // failed").
   dropWaypoint(args: DropWaypointArgs, ctx: WriteCtx): string {
     const adapter = this.db.adapter;
-    const id = `waypoint:${crypto.randomUUID()}`;
+    const id = args.id ?? `waypoint:${crypto.randomUUID()}`;
     const now = Date.now();
     const data = {
       session_id: ctx.sessionId,
@@ -342,11 +347,26 @@ export class RigWrites {
     return id;
   }
 
+  // Remove a waypoint and its edges (cascade). Used when a shared record is
+  // unshared; returns whether anything was deleted.
+  deleteWaypoint(id: string): boolean {
+    const r = this.db.adapter
+      .prepare(`DELETE FROM nodes WHERE id = ? AND type = 'conversation-waypoint'`)
+      .run(id) as { changes?: number };
+    return (r.changes ?? 0) > 0;
+  }
+
   // Idempotently register one of the AI's own skills as a graph anchor.
   // Deterministic id `skill:<name>` so re-seeding on every startup is a no-op
   // after the first run; data stays in sync with the contract if descriptions
   // change. C4 — closes the loop so rig_pull can rank skills alongside code.
-  upsertSkill(args: { name: string; description: string; tier: string; summary?: string | undefined; recordsActivation?: boolean }): string {
+  upsertSkill(args: {
+    name: string;
+    description: string;
+    tier: string;
+    summary?: string | undefined;
+    recordsActivation?: boolean;
+  }): string {
     const adapter = this.db.adapter;
     const id = `skill:${args.name}`;
     const now = Date.now();
