@@ -19,17 +19,27 @@ export type LineRange = [number, number];
  * deletion still counts as changed. Deleted files are left out: nothing in
  * the new version is there to depend on them.
  */
-export const parseUnifiedDiff = (diff: string): Map<string, LineRange[]> => {
+export const parseUnifiedDiff = (
+  diff: string,
+  side: 'new' | 'old' = 'new',
+): Map<string, LineRange[]> => {
+  // `side: 'old'` reads the removed side instead (paths from `--- a/…`,
+  // ranges from `-l,n`): the parent's lines a change touches.
   const out = new Map<string, LineRange[]>();
   let file: string | null = null;
+  const header = side === 'new' ? '+++ ' : '--- ';
+  const prefix = side === 'new' ? /^b\// : /^a\//;
   for (const line of diff.split('\n')) {
-    if (line.startsWith('+++ ')) {
+    if (line.startsWith(header)) {
       const p = line.slice(4).trim();
-      file = p === '/dev/null' ? null : p.replace(/^b\//, '');
+      file = p === '/dev/null' ? null : p.replace(prefix, '');
       continue;
     }
     if (!file || !line.startsWith('@@')) continue;
-    const m = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(line);
+    const m =
+      side === 'new'
+        ? /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(line)
+        : /^@@ -(\d+)(?:,(\d+))? \+\d+(?:,\d+)? @@/.exec(line);
     if (!m) continue;
     const start = Number(m[1]);
     const count = m[2] === undefined ? 1 : Number(m[2]);
@@ -147,6 +157,50 @@ const toImpactNode = (r: NodeRow): ImpactNode & { endLine: number | null } => {
 // Node types that never stand for code a change can touch.
 const NOT_SYMBOLS = new Set(['file', 'conversation-waypoint', 'cluster', 'skill', 'concept']);
 
+type Located = ImpactNode & { endLine: number | null };
+
+/** A file's symbols with line ranges (functions, methods, classes, …; not the file node or memory). */
+export const symbolsInFile = (db: SqliteAdapter, file: string): Located[] =>
+  (
+    db
+      .prepare(`SELECT id, type, name, data FROM nodes WHERE json_extract(data, '$.filePath') = ?`)
+      .all(file) as NodeRow[]
+  )
+    .map(toImpactNode)
+    .filter((n) => !NOT_SYMBOLS.has(n.type) && n.startLine !== null && n.endLine !== null);
+
+/**
+ * The innermost symbols overlapping `range`: a symbol is dropped when another
+ * overlapping symbol sits inside it, so a changed method doesn't also count
+ * its class. The one line-to-symbol mapping, used by the prediction and by
+ * the evaluation's oracle alike.
+ */
+export const innermostSymbols = <T extends Located>(
+  symbols: readonly T[],
+  range: LineRange,
+): T[] => {
+  const hits = symbols.filter((n) => n.startLine! <= range[1] && n.endLine! >= range[0]);
+  return hits.filter(
+    (a) =>
+      !hits.some(
+        (b) =>
+          b !== a &&
+          b.startLine! >= a.startLine! &&
+          b.endLine! <= a.endLine! &&
+          b.endLine! - b.startLine! < a.endLine! - a.startLine!,
+      ),
+  );
+};
+
+/** The innermost symbol whose line range contains `line`, or null. */
+export const innermostSymbolAt = <T extends Located>(
+  symbols: readonly T[],
+  line: number,
+): T | null =>
+  innermostSymbols(symbols, [line, line]).sort(
+    (a, b) => a.endLine! - a.startLine! - (b.endLine! - b.startLine!),
+  )[0] ?? null;
+
 export interface DiffImpactOptions {
   /** How many dependency steps to follow back from the changed symbols. */
   depth?: number;
@@ -184,19 +238,7 @@ export const diffImpact = (
       (n) => !NOT_SYMBOLS.has(n.type) && n.startLine !== null && n.endLine !== null,
     );
     for (const range of ranges) {
-      const hits = symbols.filter((n) => n.startLine! <= range[1] && n.endLine! >= range[0]);
-      // Innermost only: drop a symbol when another hit sits inside it.
-      const inner = hits.filter(
-        (a) =>
-          !hits.some(
-            (b) =>
-              b !== a &&
-              b.startLine! >= a.startLine! &&
-              b.endLine! <= a.endLine! &&
-              b.endLine! - b.startLine! < a.endLine! - a.startLine!,
-          ),
-      );
-      for (const n of inner) {
+      for (const n of innermostSymbols(symbols, range)) {
         const { endLine: _end, ...node } = n;
         if (n.type === 'markdown-section') {
           docs.set(n.id, node);
