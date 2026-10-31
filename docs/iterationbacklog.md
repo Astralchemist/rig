@@ -399,26 +399,67 @@ docs/
 
 **Why.** Local-first keeps verification next to the code and nothing leaves the machine, but today memory is per checkout: teammates don't see each other's decisions, a second laptop starts empty, and cloud or CI agents can't reach `localhost`. The derived graph is disposable (any machine rebuilds it from the repo); only the authored layer compounds, and it is small. Git is already the sync layer for everything else in the project, and committed memory shows up in PRs, so decisions get reviewed like code.
 
-**Mechanism.**
-- Builds on `rig export-memory` / `import-memory` (deterministic JSONL, portable `{kind, filePath, qualifiedName}` keys, unmatched records to `orphaned_memory`).
-- One record per line, sorted by id, append-only: edits append a new version and deletions append a tombstone, so two branches merge by union with no textual conflicts.
-- `rig index`, `rig sync` and `rig start` import new lines; agent writes append to the file as well as the database.
-- Sharing is per kind and opt-in by default for raw hook captures: they quote the user's own words, so they stay local until reviewed or promoted. Agent and human decisions, constraints and dead ends are shared.
-- Records from git carry provenance `git:<commit>` and go through the same trust tiers as hook capture before anything is injected at session start.
+**Mechanism (revised after research, 2026-10-30).** One file per record, not one shared JSONL:
+- **Layout:** `.rig/memory/<id[0:2]>/<id>.jsonl`, with random or hash ids. A record's versions, tombstone and reviewer verdicts live in its own file. Different records never conflict; two concurrent edits to the same record give a real conflict in one small file, which is the signal wanted; compaction is deleting files, which merges cleanly. This is how changesets avoids conflicts ([changesets](https://www.releasepad.io/blog/changesets/)).
+- **Why not one file:** two branches appending at the end of a file conflict under git's default merge ([example](https://dev.to/rulestack/two-writers-one-append-only-ledger-the-git-conflict-one-gitattributes-line-fixed-and-the-files-55j0)); `merge=union` leaves lines in random order and silently keeps both the old and new line when one side edits near the other's append ([gitattributes](https://git-scm.com/docs/gitattributes)); custom merge drivers must be installed per clone, so CI and cloud agents won't have them. Beads, the closest precedent (`.beads/issues.jsonl` plus a `bd merge` driver), moved to Dolt in early 2026 ([discussion](https://github.com/steveyegge/beads/discussions/2332)), and its Rust port's clones never converged because records carried a per-clone `updated_at` ([#542](https://github.com/Dicklesworthstone/beads_rust/issues/542)): records hold no machine-local fields.
+- **Import** is a set-union keyed on (id, version) and a content hash; tombstones outlive what they delete; CI fails on duplicate keys or invalid lines. `rig export-memory` stays as a single-file snapshot.
+- **Shared by default: only records a person promotes.** Raw hook captures and anything quoting the user stay local. Promotion previews the diff and runs a secret scan (gitleaks/trufflehog-style), a quote check and bidi/zero-width stripping first: once committed, it stays in history. AI-assisted commits already leak secrets at about twice the baseline rate ([GitGuardian](https://blog.gitguardian.com/yes-github-copilot-can-leak-secrets/)).
+- **Trust:** tiers local-authored > git signed by a code owner > git unsigned > agent-proposed; CODEOWNERS with required review on `.rig/memory/**`; CI rejects bidi and invisible characters (the Rules File Backdoor used them in `.cursor/rules`, [Pillar](https://www.pillar.security/blog/new-vulnerability-in-github-copilot-and-cursor-how-hackers-can-weaponize-code-agents)); at injection, verify-on-read, spotlighting delimiters, imperative-looking text quoted as data, and records below the tier shown only on request. One poisoned record is enough to matter ([AgentPoison: ≥80% success at <0.1% poison rate](https://arxiv.org/abs/2407.12784)). An "outdated" verdict lowers a record's tier.
+- **Growth:** records nobody verifies or uses age out, as GitHub Copilot Memory drops facts unused for 28 days and re-checks cited facts against the current branch before use ([GitHub](https://github.blog/ai-and-ml/github-copilot/building-an-agentic-memory-system-for-github-copilot/)).
 
 **Schema additions.** `source` / `provenance` values for git-imported records; a cursor of the last imported commit per file. Verdict records from E5 (`still holds`, `outdated`, `can't tell`, with the reviewer, the commit judged and the memory's anchor hash) live in the same file and update the memory's verification status.
 
 **New tools.** None for agents. CLI: `rig memory share|unshare <id>`; `rig install` adds the gitignore exception for the shared file.
 
-**Acceptance.**
-- [ ] Fresh clone + `rig start` on a second machine: the session-start brief includes decisions recorded on the first
-- [ ] Two branches that each add waypoints merge with no conflict in the memory file, and both sets load
-- [ ] Export → import → export is byte-identical
-- [ ] A poisoned record committed by another author is not injected above its trust tier (red-team case in the bench)
+**Acceptance (pre-register before building the evaluation).**
+- [ ] Merge simulation: 1,000 random two- and three-branch histories of appends, edits, tombstones and compactions; sharded layout: 0 duplicate keys, 0 resurrected tombstones, 100% convergence across merge orders, conflicts only on same-record concurrent edits (single file with union and with the default merge measured alongside)
+- [ ] Poisoning red team: at least 50 malicious records (hidden Unicode, imperative payloads, trigger text, forged provenance) on a branch; 0 hidden-Unicode records pass CI, at most 5% of untrusted records injected unquoted, at most 5% of 200 benign records rejected
+- [ ] Multi-machine: machine A promotes records, a fresh clone and a clean CI container import them; 100% recovered with fingerprints verified, 0 planted canary quotes or secrets from local captures in git history, import under 1 s per 10,000 records
+- [ ] Growth: 12 simulated months at team write rates with compaction keep 100% of still-valid records
 
 **Dependencies.** `export-memory` (shipped 0.2.0); the append-only authored layer and verify-on-read (research report, step 1); trust tiers (shipped with capture).
 
-**★ Risk surface.** Memory from other people is injected into your agent, so poisoning matters more; private wording leaking through shared captures (hence opt-in for hook records); the file growing without the step-5 consolidation. ★ **Deep research before building:** when this item's turn comes, we run a deep-research pass on these risks first and write its findings into the item before any code.
+**★ Risk surface** (researched 2026-10-30; findings above). Memory from other people is injected into your agent, so poisoning matters more; private wording leaking through shared captures (hence opt-in for hook records); the file growing without the step-5 consolidation. ★ **Deep research before building:** when this item's turn comes, we run a deep-research pass on these risks first and write its findings into the item before any code.
+
+---
+
+#### B6. Handoff: continue in another agent
+
+**One-liner.** When a session stops (usage limit, compaction, end of day), rig keeps a short, transient "where we are" record, and whichever agent opens the project next (another account, Codex, Cursor) starts from it.
+
+**Why.** "Claude ran out, Codex picked up where it left off" is the one-sentence version of rig's neutrality claim, and the benchmark arm for it changes only one thing: whether `.rig/` was there.
+
+**What it is.** A different object from the rest of rig's memory. Waypoints hold what was settled; a handoff holds what is in progress (the plan, the open question, the next step) and is deliberately not settled. So it is transient: one current handoff per workstream (branch or worktree, optional task label), overwritten by the next. Earlier versions stay in the mutation log for undo but never reach recall or the brief. It expires once consumed or after a set age.
+
+**Where the content comes from** (no model call; capture stays deterministic):
+- The agent's own handoff when asked ("drop a handoff before you stop"): still the most reliable source.
+- Claude Code's compaction summary: `SessionStart` with source `compact` fires after compaction, and the summary is in the transcript, so rig stores it as the handoff.
+- The transcript: the last user request, the current todo list, files edited this session, and the last failing command with its error.
+- Written on `Stop` (each turn), `PreCompact` and `SessionEnd`. A usage limit fires no event, so the handoff is at most one completed turn old.
+
+**Delivery (revised after research, 2026-10-30).** Session-start hooks where a client has them; instruction files only as a fallback, because the gitignored-file plan fails in three of four clients:
+- **Claude Code:** the existing `SessionStart` hook (startup, resume, compact) injects the handoff as `additionalContext` (a system reminder, capped at 10,000 characters per hook). **Not `CLAUDE.local.md`:** any `CLAUDE.md`-family file stops Claude Code from reading a repo's `AGENTS.md` by default (v2.1.277+), so writing one would silently drop the team's instructions in an `AGENTS.md`-only repo, and a gitignored file exists only in the worktree that made it ([memory docs](https://code.claude.com/docs/en/memory), [hooks docs](https://code.claude.com/docs/en/hooks)).
+- **Compaction summary:** each compaction writes a `compact_boundary` record and a `type:"user"` record with `isCompactSummary: true` holding the summary (observed 12–16k characters) ([#82509](https://github.com/anthropics/claude-code/issues/82509)); read the newest after the latest boundary, with a retry (the transcript is written asynchronously), and keep only its Current Work, Pending Tasks and Next Step sections. `PostCompact` doesn't receive it. Summaries can be wrong, including invented stories ([#66857](https://github.com/anthropics/claude-code/issues/66857)), so they arrive labelled as unverified.
+- **Codex:** a `SessionStart` hook (`hookSpecificOutput.additionalContext`), version-gated (confirmed working on 0.160.0; earlier versions fail opaquely, and repo-local hook config has failed to fire). **Never `AGENTS.override.md`:** Codex reads at most one file per directory, so an override hides the committed `AGENTS.md` ([docs](https://learn.chatgpt.com/docs/agent-configuration/agents-md.md)).
+- **Cursor:** whether a gitignored `.mdc` rule loads depends on the version (reported both ways in 2025–2026), so a file-based handoff is opt-in after a live test on the installed version; otherwise the agent calls `rig_handoff`.
+- **opencode:** an `instructions` entry pointing outside the repo, or a plugin.
+
+**Every brief carries** its age, the commit it was written at, "possibly stale" when HEAD or the touched files moved since, and "verify before acting"; it is datamarked and labelled with its source (spotlighting cut indirect injection from about 50% to 3% in [Microsoft's tests](https://www.microsoft.com/en-us/research/publication/defending-against-indirect-prompt-injection-attacks-with-spotlighting/)); tool output is never copied in verbatim; and it is **one-shot**: the first session that reads it consumes it. Always-loaded context costs tokens and can hurt ([context files: no success gain, +20% cost](https://arxiv.org/abs/2602.11988); [context rot](https://www.trychroma.com/research/context-rot)), which argues for delivering it once and keeping it short.
+
+**Concurrency.** Key each handoff by (real path of the worktree's git dir, branch, session id); write via temp file and atomic rename; compare-and-swap on the session id so one live session can't overwrite another's.
+
+**Prior art.** Amp replaced compaction with an editable handoff (a goal, a draft prompt and relevant files) because summaries of summaries are lossy ([Amp](https://ampcode.com/news/handoff)); Anthropic's long-running harness keeps a progress file, a pass/fail feature list and commits; Cline's `activeContext.md` holds "current state only, not a running log". The recurring fields: goal, current work, pending tasks, next step (quoted), relevant files, test state.
+
+**New tools.** `rig_handoff` (write/read), `rig handoff [show|clear]`; capture writes `kind: handoff` records.
+
+**Acceptance.**
+- [ ] Bench, pre-registered: 40+ multi-step tasks; session 1 on model A cut at a fixed point; session 2 on model B in four arms (cold start, rig handoff, hand-written oracle handoff, deliberately stale or wrong handoff). Metrics: success on hidden checks, tokens and turns to finish, repeated work, and how often a wrong handoff is followed unchecked. Bar: handoff beats cold by at least 10 points of success, or uses at least 25% fewer tokens at no more than 2 points lower success (paired bootstrap 95% CI); the wrong-handoff arm is not more than 5 points worse than cold; brief at most 1,500 characters
+- [ ] A real run across clients: Claude Code stops, Codex and Cursor each open the project and their first reply names the in-progress step without being asked
+- [ ] Two worktrees keep separate handoffs; a consumed or expired handoff leaves every brief file
+
+**Dependencies.** Automatic capture (shipped); C5's agent identity (to say who handed off to whom); B5 only if handoffs are ever shared, which by default they aren't (they stay local).
+
+**★ Risk surface** (researched 2026-10-30; findings above). A stale plan injected as if current; private in-progress wording written into agent files; the token cost of an always-loaded brief; parallel agents overwriting each other; client file-loading rules that differ by version (Codex in particular). ★ **Deep research before building:** when this item's turn comes, we run a deep-research pass on these risks first and write its findings into the item before any code.
 
 ---
 
@@ -758,6 +799,16 @@ ALTER TABLE pending_edges ADD COLUMN source_urls TEXT;
 
 **Mechanism.** One blueprint model built from the index, with no model call; renderers for Mermaid flowchart, React Flow JSON (the app's lens, laid out with dagre, already a dependency) and SVG. Cached and refreshed by fingerprint like the orientation map. Every box links to `file:line`. Inferred elements (data stores, external services) are dashed and carry a confidence.
 
+**Research findings (2026-10-31), which revise the plan above.**
+- **Two scales, not four.** Build site and floor; make room (one package's modules) an on-demand lens; skip fixtures, which C4 itself says IDEs cover on demand ([c4model.com](https://c4model.com/diagrams/code)) and rig's Neighbourhood lens already does.
+- **Boxes from declared structure only** (workspace packages, then top-level directories), never inferred by clustering: architecture-recovery clustering agrees with expert ground truth only modestly (MoJoFM around 56–59 for ACDC and ARC, [RELAX citing Garcia et al.](https://arxiv.org/html/1903.06895v1)).
+- **Drop the diamond.** A diamond is a step in a process; on a structural diagram it overloads one symbol with two meanings ([Physics of Notations](https://deptmedia.cnam.fr/new/spip.php?pdoc6238=)). A dispatcher is a rounded rectangle labelled «dispatcher». Keep cylinder (data store), parallelogram (I/O surface) and document; make "external" a style rather than a hexagon. At most 5 symbol types, with a generated legend on every drawing.
+- **Edges only with evidence.** Draw `ast` and `ast:import` edges; `ast:name` heuristic edges are left out or dashed. One weighted edge per package pair, not one line per call. Wrong edges are the bigger risk: the best recovery tool in a nine-tool benchmark found components at 0.97 precision but connections at 0.92 precision and 0.83 recall ([arXiv 2412.08352](https://arxiv.org/html/2412.08352v1)).
+- **Inferred elements** dashed, with confidence and a link to their evidence (as Code2DFD does), and the commit in the title.
+- **Limits.** Site at most 12 nodes; floor target 20, hard cap 30 (fold the smallest packages into "+N more"); room at most 20. Node-link diagrams lose to matrices above about 20 nodes ([Ghoniem et al.](https://www.researchgate.net/publication/48415749_On_the_Readability_of_Graphs_Using_Node-Link_and_Matrix-Based_Representations_A_Controlled_Experiment_and_Statistical_Analysis)). Mermaid refuses more than 500 edges or 50,000 characters, so emit nothing above 400 edges or 40,000 characters; use the classic shape syntax (`[( )]`, `[/ /]`) because GitHub pins an older Mermaid. Lay out nested groups with ELK, not dagre: React Flow's docs say dagre can't lay out sub-flows connected to outside nodes ([React Flow](https://reactflow.dev/learn/layouting/layouting)).
+- **One inference.** The blueprint renders the orientation map's data and infers nothing of its own, so the two can't drift apart.
+- **Evaluation to pre-register.** 12 repositories (6 TypeScript/JavaScript, 6 Python), frozen first. Data stores and external services: precision ≥ 0.90, recall ≥ 0.75. I/O surfaces: precision ≥ 0.90, recall ≥ 0.65 (runtime route tables as ground truth). Legibility: floor ≤ 30 boxes and ≤ 60 edges, rendering on GitHub, 12 of 12. Agreement with maintainer-drawn diagrams on at least 5 repositories: element F1 ≥ 0.6, and nothing drawn solid flagged wrong. Determinism: byte-identical over 10 reruns. Kill rule: data-store precision below 0.8 ships floor plans without inferred stores. No published precision exists for inferring data stores from client dependencies alone; rig would be first to measure it.
+
 **New tools.** `rig blueprint [--level site|floor|room] [--scope <package>] [--format mermaid|reactflow|svg] [--out <file>]`; the map's Blueprint lens with an Export menu. An agent-facing `rig://blueprint` resource only if a bench arm shows it beats the control (injecting the orientation map cost 187%).
 
 **Acceptance.**
@@ -768,7 +819,7 @@ ALTER TABLE pending_edges ADD COLUMN source_urls TEXT;
 
 **Dependencies.** Orientation map (shipped 0.3.0); provenance and confidence on edges (research report, step 2) for honest dashed lines; B5 for committing it alongside memory.
 
-**★ Risk surface.** Hairball drawings (mitigated by levels and folding sibling packages, as the orientation map does); a confident-looking but wrong diagram (mitigated by dashed inferred elements and the commit stamp); overlap with the orientation map (it shares the model; only the renderer is new). ★ **Deep research before building:** when this item's turn comes, we run a deep-research pass on these risks first and write its findings into the item before any code.
+**★ Risk surface** (researched 2026-10-31; findings above). Hairball drawings (mitigated by levels and folding sibling packages, as the orientation map does); a confident-looking but wrong diagram (mitigated by dashed inferred elements and the commit stamp); overlap with the orientation map (it shares the model; only the renderer is new). ★ **Deep research before building:** when this item's turn comes, we run a deep-research pass on these risks first and write its findings into the item before any code.
 
 ---
 
@@ -946,6 +997,7 @@ Acceptance for Phase 5: ✅ Rig generates its own architecture docs from its way
 - **E4** Architecture blueprints: a first Mermaid and Blueprint-lens cut can use the orientation map today; inferred data stores wait for step 2's edge provenance.
 - **E5** PR review action: first in the current order, dogfooded on rig's own PRs before anyone else sees it; built alongside step 1, which its reviewer verdicts feed.
 - **C5** live overlay (update): after E5; agent identity from the MCP handshake first, trails second, then the paired clip.
+- **B6** Handoff: alongside E5; the cross-model handoff arm is the neutrality claim's benchmark.
 - Bench harness: accept any OpenAI-compatible endpoint, so contributors can run the pinned bench on their own models.
 
 ### Phase 6 — Scale
