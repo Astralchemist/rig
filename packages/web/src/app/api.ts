@@ -34,6 +34,23 @@ export interface SnapshotPending {
   provenance: string;
 }
 
+export interface BlueprintBox {
+  id: string;
+  label: string;
+  kind: 'package' | 'store' | 'external' | 'io';
+  detail?: string;
+  evidence?: string;
+  inferred: boolean;
+}
+
+export interface Blueprint {
+  level: 'site' | 'floor';
+  commit: string | null;
+  boxes: BlueprintBox[];
+  edges: { from: string; to: string; weight: number; inferred: boolean }[];
+  folded: string[];
+}
+
 export interface Snapshot {
   nodes: SnapshotNode[];
   edges_structural: Array<{ src: string; dst: string; kind: string }>;
@@ -281,6 +298,12 @@ export const api = {
   undo: () => post<UndoResult>('/api/undo'),
   select: (id: string | null) => post<{ ok: true }>('/api/selection', { node_id: id }),
   overview: () => request<Overview>('/api/overview'),
+  blueprint: (level: 'site' | 'floor') => request<Blueprint>(`/api/blueprint?level=${level}`),
+  blueprintMermaid: async (level: 'site' | 'floor'): Promise<string> => {
+    const res = await fetch(`/api/blueprint?level=${level}&format=mermaid`);
+    if (!res.ok) throw new Error(`blueprint: HTTP ${res.status}`);
+    return res.text();
+  },
   waypoints: (q: { kind?: string; q?: string }) => {
     const p = new URLSearchParams();
     if (q.kind) p.set('kind', q.kind);

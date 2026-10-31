@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  Copy,
   ExternalLink,
   GitFork,
   Inbox,
@@ -27,6 +28,7 @@ import {
   relTime,
   absTime,
   WAYPOINT_KINDS,
+  type Blueprint,
   type CriticalStep,
   type ImpactTree,
   type Neighborhood,
@@ -50,9 +52,15 @@ import {
   type CardData,
   type FlowEdgeData,
   type WaypointData,
+  BP_H,
+  BP_W,
+  type BlueprintData,
 } from './parts.tsx';
 
-type AnyNode = Node<CardData, 'card'> | Node<WaypointData, 'waypoint'>;
+type AnyNode =
+  | Node<CardData, 'card'>
+  | Node<WaypointData, 'waypoint'>
+  | Node<BlueprintData, 'blueprint'>;
 type FlowEdge = Edge<FlowEdgeData, 'typed'>;
 
 const cardHeight = (c: NodeCard, center: boolean): number => {
@@ -1092,6 +1100,146 @@ function WaypointsInner({
           </>
         ) : null}
       </section>
+    </div>
+  );
+}
+
+// --- Blueprint (E4) ----------------------------------------------------------
+
+export interface BlueprintProps {
+  version: number;
+}
+
+export function BlueprintView(props: BlueprintProps): JSX.Element {
+  return (
+    <ReactFlowProvider>
+      <BlueprintInner {...props} />
+    </ReactFlowProvider>
+  );
+}
+
+function BlueprintInner({ version }: BlueprintProps): JSX.Element {
+  const [level, setLevel] = useState<'floor' | 'site'>('floor');
+  const toast = useToast();
+  const plan = useLoad<Blueprint>(() => api.blueprint(level), [level, version]);
+
+  const graph = useMemo(() => {
+    const b = plan.data;
+    if (!b) return null;
+    const kindOf = new Map(b.boxes.map((x) => [x.id, x.kind]));
+    const isPkg = (id: string): boolean => kindOf.get(id) === 'package';
+    const nodes: AnyNode[] = b.boxes.map((x) => ({
+      id: x.id,
+      type: 'blueprint',
+      position: { x: 0, y: 0 },
+      data: {
+        label: x.label,
+        kind: x.kind,
+        inferred: x.inferred,
+        ...(x.detail ? { detail: x.detail } : {}),
+        ...(x.evidence ? { evidence: x.evidence } : {}),
+      },
+    }));
+    const edges: FlowEdge[] = b.edges.map((e, i) => ({
+      id: `b:${i}`,
+      source: e.from,
+      target: e.to,
+      type: 'typed',
+      markerEnd: marker,
+      // Only package-to-package edges are counted imports; the rest say
+      // where a surface or store attaches.
+      data: e.inferred
+        ? { table: 'structural', kind: '', label: false, dashed: true }
+        : isPkg(e.from) && isPkg(e.to)
+          ? { table: 'semantic', kind: `${e.weight} import${e.weight === 1 ? '' : 's'}` }
+          : { table: 'semantic', kind: '', label: false },
+    }));
+    return {
+      nodes: layout(nodes, edges, {
+        rankdir: 'LR',
+        ranksep: 90,
+        nodesep: 22,
+        size: () => ({ w: BP_W, h: BP_H }),
+      }),
+      edges,
+      plan: b,
+    };
+  }, [plan.data]);
+
+  const copyMermaid = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(await api.blueprintMermaid(level));
+      toast({
+        tone: 'success',
+        title: 'Mermaid copied',
+        detail: 'Paste it into a README or a PR: GitHub renders it.',
+      });
+    } catch (e) {
+      toast({
+        tone: 'danger',
+        title: 'Could not copy',
+        detail: e instanceof Error ? e.message : String(e),
+      });
+    }
+  };
+
+  return (
+    <div className="detail-flow" style={{ position: 'absolute', inset: 0 }}>
+      {plan.err ? (
+        <Failed message={plan.err} retry={plan.retry} />
+      ) : !graph ? (
+        <Loading label="Drawing the plan…" />
+      ) : graph.nodes.length === 0 ? (
+        <div className="state">
+          <div className="state-inner">
+            <h2>No packages to draw</h2>
+            <p>
+              The blueprint draws declared packages: add a package.json or pyproject.toml, then
+              re-index.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <FlowCanvas
+          label={level === 'floor' ? 'Floor plan' : 'Site plan'}
+          nodes={graph.nodes}
+          edges={graph.edges}
+        />
+      )}
+      <div className="flow-toolbar">
+        <div className="seg" role="group" aria-label="Plan">
+          <button aria-pressed={level === 'floor'} onClick={() => setLevel('floor')}>
+            Floor plan
+          </button>
+          <button aria-pressed={level === 'site'} onClick={() => setLevel('site')}>
+            Site plan
+          </button>
+        </div>
+        <button className="btn island" style={{ height: 32 }} onClick={() => void copyMermaid()}>
+          <Copy /> Copy Mermaid
+        </button>
+      </div>
+      {graph && (
+        <div className="flow-note island bp-legend">
+          <span>
+            <i className="bp-swatch" data-kind="package" /> package
+          </span>
+          <span>
+            <i className="bp-swatch" data-kind="store" /> data store
+          </span>
+          <span>
+            <i className="bp-swatch" data-kind="io" /> input / output
+          </span>
+          <span>
+            <i className="bp-swatch" data-kind="external" /> external service
+          </span>
+          <span>dashed: inferred from a dependency</span>
+          {graph.plan.commit && <span className="num">at {graph.plan.commit.slice(0, 7)}</span>}
+          {graph.plan.folded.length > 0 && (
+            <span>{graph.plan.folded.length} small packages folded</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

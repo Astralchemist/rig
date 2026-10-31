@@ -8,6 +8,7 @@ import {
   List,
   Network,
   Orbit,
+  LayoutPanelLeft,
   PanelRightOpen,
   RotateCcw,
   Search,
@@ -34,9 +35,18 @@ const FocusView = lazy(() => flow().then((m) => ({ default: m.FocusView })));
 const ImpactView = lazy(() => flow().then((m) => ({ default: m.ImpactView })));
 const ReviewView = lazy(() => flow().then((m) => ({ default: m.ReviewView })));
 const WaypointsView = lazy(() => flow().then((m) => ({ default: m.WaypointsView })));
+const BlueprintView = lazy(() => flow().then((m) => ({ default: m.BlueprintView })));
 
-type View = 'map' | 'focus' | 'impact' | 'review' | 'waypoints' | 'overview';
-const VIEWS = new Set<View>(['map', 'focus', 'impact', 'review', 'waypoints', 'overview']);
+type View = 'map' | 'focus' | 'impact' | 'blueprint' | 'review' | 'waypoints' | 'overview';
+const VIEWS = new Set<View>([
+  'map',
+  'focus',
+  'impact',
+  'blueprint',
+  'review',
+  'waypoints',
+  'overview',
+]);
 
 // Hash routes: #<view>, #<view>/<id>, and the 0.3 form #<node id>.
 const parseHash = (): { view: View; id: string | null } => {
@@ -346,8 +356,8 @@ export function App(): JSX.Element {
       return { ...f, hidden };
     });
 
-  const lens = view === 'focus' || view === 'impact' ? view : 'map';
-  const nodeStage = view === 'map' || view === 'focus' || view === 'impact';
+  const lens = view === 'focus' || view === 'impact' || view === 'blueprint' ? view : 'map';
+  const nodeStage = view === 'map' || view === 'focus' || view === 'impact' || view === 'blueprint';
   const empty = snap !== null && snap.nodes.length === 0;
 
   const stage = (): JSX.Element => {
@@ -427,6 +437,7 @@ export function App(): JSX.Element {
           </div>
         </div>
       );
+    if (view === 'blueprint') return <BlueprintView version={version} />;
     if (view === 'focus' || view === 'impact') {
       if (!selected)
         return (
@@ -607,6 +618,14 @@ export function App(): JSX.Element {
                 onClick={() => openLens('impact')}
               >
                 <GitFork /> Impact
+              </button>
+              <button
+                role="tab"
+                aria-selected={lens === 'blueprint'}
+                title="The project drawn like a floor plan: packages, imports, and what they talk to"
+                onClick={() => setView('blueprint')}
+              >
+                <LayoutPanelLeft /> <span className="only-wide">Blueprint</span>
               </button>
             </div>
             {selected && !inspector && (
