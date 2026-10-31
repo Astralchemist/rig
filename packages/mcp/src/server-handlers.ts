@@ -23,9 +23,7 @@ export interface ToolsManifest {
   tools: ToolManifestEntry[];
 }
 
-export const buildHandlersMap = (
-  exports: Record<string, unknown>,
-): Map<string, ToolHandler> => {
+export const buildHandlersMap = (exports: Record<string, unknown>): Map<string, ToolHandler> => {
   const out = new Map<string, ToolHandler>();
   for (const value of Object.values(exports)) {
     if (!value || typeof value !== 'object') continue;
@@ -65,25 +63,73 @@ export const RESOURCES: readonly ResourceDef[] = [
   },
 ];
 
-const SERVER_INFO = {
-  protocolVersion: '2024-11-05',
+// Protocol versions rig speaks, newest first. A client asking for one of
+// these gets it; anything else gets the newest (MCP version negotiation).
+// Every version gets the same results: structuredContent and isError are
+// additive, and annotations are ignored by clients that predate them.
+export const SUPPORTED_PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05'] as const;
+
+export const negotiateProtocol = (requested: unknown): string =>
+  typeof requested === 'string' && (SUPPORTED_PROTOCOLS as readonly string[]).includes(requested)
+    ? requested
+    : SUPPORTED_PROTOCOLS[0];
+
+const serverInfo = (protocolVersion: string) => ({
+  protocolVersion,
   capabilities: { tools: {}, resources: {} },
   serverInfo: { name: 'rig', version: (pkg as { version: string }).version },
-};
+});
 
-const isParams = (v: unknown): v is Record<string, unknown> =>
-  typeof v === 'object' && v !== null;
+// Tool annotations (MCP 2025-03-26): hints for the client's approval UI.
+// Reads never change anything; writes change only rig's own memory, and only
+// rig_undo takes something away. Rig never reaches the network.
+export const toolAnnotations = (t: ToolManifestEntry) => ({
+  readOnlyHint: t.tier !== 'write',
+  destructiveHint: t.name === 'rig_undo',
+  idempotentHint: t.tier !== 'write',
+  openWorldHint: false,
+});
+
+// Tool errors a caller can act on come back as results with isError, so the
+// model sees them (MCP: execution errors belong in the result); an unknown
+// tool stays a protocol error.
+// NOT_INITIALIZED is a server state, not a tool failure, and its data (the
+// directory and the fix) is for the host, so it stays a protocol error too.
+const PROTOCOL_ERRORS = new Set(['TOOL_NOT_FOUND', 'NOT_INITIALIZED']);
+
+const isParams = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
 const handleToolsCall = async (
   params: unknown,
   ctx: ToolContext,
   handlers: Map<string, ToolHandler>,
-): Promise<{ content: Array<{ type: 'text'; text: string }> }> => {
+): Promise<{
+  content: Array<{ type: 'text'; text: string }>;
+  structuredContent?: Record<string, unknown>;
+  isError?: boolean;
+}> => {
   const p = isParams(params) ? params : {};
   const name = typeof p.name === 'string' ? p.name : '';
   const args = p.arguments;
-  const result = await dispatchToolCall(name, args, ctx, handlers);
-  return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+  try {
+    const result = await dispatchToolCall(name, args, ctx, handlers);
+    // Every tool declares an outputSchema, so the result also goes out as
+    // structuredContent (MCP 2025-06-18); the text copy serves older clients.
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result) }],
+      ...(isParams(result) && !Array.isArray(result)
+        ? { structuredContent: result as Record<string, unknown> }
+        : {}),
+    };
+  } catch (err) {
+    if (err instanceof ToolError && !PROTOCOL_ERRORS.has(err.code)) {
+      return {
+        content: [{ type: 'text', text: `${err.code}: ${err.message}` }],
+        isError: true,
+      };
+    }
+    throw err;
+  }
 };
 
 export const makeMessageHandler = (
@@ -114,11 +160,16 @@ export const makeMessageHandler = (
           clientInfo && typeof clientInfo.name === 'string' ? clientInfo.name : 'unknown';
         // Stamp this MCP session as ai:<client> so write tools have provenance.
         ctx.provenance = `ai:${clientName}`;
-        transport.sendResult(id as string | number, SERVER_INFO);
+        transport.sendResult(
+          id as string | number,
+          serverInfo(negotiateProtocol(isParams(params) ? params.protocolVersion : undefined)),
+        );
         return;
       }
       if (method === 'tools/list') {
-        transport.sendResult(id as string | number, { tools: manifest.tools });
+        transport.sendResult(id as string | number, {
+          tools: manifest.tools.map((t) => ({ ...t, annotations: toolAnnotations(t) })),
+        });
         return;
       }
       if (method === 'resources/list') {
@@ -157,23 +208,21 @@ export const makeMessageHandler = (
         return;
       }
       if (method === 'tools/call') {
-        const result = await handleToolsCall(
-          (message as JsonRpcRequest).params,
-          ctx,
-          handlers,
-        );
+        const result = await handleToolsCall((message as JsonRpcRequest).params, ctx, handlers);
         transport.sendResult(id as string | number, result);
         return;
       }
-      transport.sendError(id as string | number, ErrorCodes.MethodNotFound, `Method not found: ${method}`);
+      transport.sendError(
+        id as string | number,
+        ErrorCodes.MethodNotFound,
+        `Method not found: ${method}`,
+      );
     } catch (err) {
       if (err instanceof ToolError) {
-        transport.sendError(
-          id as string | number,
-          ErrorCodes.InternalError,
-          err.message,
-          { ...err.data, rigError: err.code },
-        );
+        transport.sendError(id as string | number, ErrorCodes.InternalError, err.message, {
+          ...err.data,
+          rigError: err.code,
+        });
         return;
       }
       transport.sendError(
