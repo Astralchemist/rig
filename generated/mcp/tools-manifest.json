@@ -1026,6 +1026,15 @@
                     "string",
                     "null"
                   ]
+                },
+                "purl": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "used_by": {
+                  "type": "number"
                 }
               },
               "required": [
@@ -1037,7 +1046,9 @@
                 "is_dev",
                 "is_optional",
                 "is_peer",
-                "resolved_version"
+                "resolved_version",
+                "purl",
+                "used_by"
               ],
               "additionalProperties": false
             }

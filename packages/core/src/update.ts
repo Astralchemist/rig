@@ -4,6 +4,7 @@ import { statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import type { SqliteAdapter } from './db/adapter.ts';
 import type { Database } from './db/database.ts';
+import { rebuildDependencyEdges } from './db/dep-edges.ts';
 import { enrichDependenciesFromLockfiles } from './db/dep-resolution.ts';
 import { EXTRACTED_KINDS_SQL, EXTRACTED_NODE_SQL } from './db/extracted-nodes.ts';
 import { replaceFileArtifacts } from './db/file-artifacts.ts';
@@ -404,6 +405,8 @@ export async function runUpdate(
     });
     // A2 — pull resolved versions out of lockfiles and attach to declared-deps.
     await retryWhenBusy(() => enrichDependenciesFromLockfiles(db, projectRoot));
+    // Which files import each declared dependency.
+    await retryWhenBusy(() => rebuildDependencyEdges(db));
     if (mode === 'index') {
       onProgress?.({ phase: 'communities' });
       const communityCount = await retryWhenBusy(() => detectCommunities(db));

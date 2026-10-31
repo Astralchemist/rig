@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { existsSync, readFileSync } from 'node:fs';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
+import { parse as parseJsonc } from 'jsonc-parser';
 import type { SqliteAdapter } from './adapter.ts';
+import { pinnedVersion, purlOf } from './dep-edges.ts';
 
 interface LockfileV2or3 {
   lockfileVersion?: number;
@@ -27,6 +29,30 @@ const parsePackageLock = (lockPath: string): Map<string, string> => {
     }
   } catch {
     // Best-effort: a malformed lockfile is silently skipped.
+  }
+  return out;
+};
+
+// bun.lock (text, JSONC, Bun 1.2+): `packages` maps a name to
+// [`name@version`, ...]. Nested installs are keyed `parent/name`, so only
+// entries whose key is their own name count, as with package-lock.json.
+const parseBunLock = (lockPath: string): Map<string, string> => {
+  const out = new Map<string, string>();
+  try {
+    const parsed = parseJsonc(readFileSync(lockPath, 'utf-8')) as {
+      packages?: Record<string, unknown>;
+    };
+    for (const [key, entry] of Object.entries(parsed?.packages ?? {})) {
+      const id = Array.isArray(entry) ? entry[0] : null;
+      if (typeof id !== 'string') continue;
+      const at = id.lastIndexOf('@');
+      if (at <= 0 || id.slice(0, at) !== key) continue;
+      const version = id.slice(at + 1);
+      // Workspace and git entries carry no registry version.
+      if (/^\d/.test(version)) out.set(key, version);
+    }
+  } catch {
+    // Best-effort, like the other lockfiles.
   }
   return out;
 };
@@ -77,10 +103,12 @@ const parsePythonLock = (lockPath: string): Map<string, string> => {
   return out;
 };
 
-// Walk the declared-dependency anchors, locate each manifest's sibling lock
-// file (npm: package-lock.json; Python: uv.lock then poetry.lock), and update
-// the dep node's data.resolvedVersion with the installed version reported.
-// Run after extraction so upserts don't overwrite the enrichment. Idempotent.
+// Walk the declared-dependency anchors, find each manifest's lockfile (npm:
+// package-lock.json or bun.lock, here or in a parent; Python: uv.lock then
+// poetry.lock beside pyproject.toml), set data.resolvedVersion to the installed
+// version, and data.purl to the dependency's package URL, versioned when the
+// lockfile or an exact pin gives one version. Run after extraction so upserts
+// don't overwrite the enrichment. Idempotent.
 export const enrichDependenciesFromLockfiles = (
   db: SqliteAdapter,
   projectRoot: string,
@@ -97,17 +125,32 @@ export const enrichDependenciesFromLockfiles = (
   const npmCache = new Map<string, Map<string, string>>();
   const pyCache = new Map<string, Map<string, string>>();
 
+  // The manifest's own directory first, then each parent up to the project
+  // root: a workspace package's versions live in the root lockfile.
+  // package-lock.json wins over bun.lock in the same directory.
   const getNpm = (manifestPath: string): Map<string, string> | null => {
-    const abs = resolve(projectRoot, manifestPath);
-    const lockPath = join(dirname(abs), 'package-lock.json');
-    if (npmCache.has(lockPath)) return npmCache.get(lockPath)!;
-    if (!existsSync(lockPath)) {
-      npmCache.set(lockPath, new Map());
-      return null;
+    const root = resolve(projectRoot);
+    let dir = dirname(resolve(projectRoot, manifestPath));
+    for (;;) {
+      if (!npmCache.has(dir)) {
+        const npmLock = join(dir, 'package-lock.json');
+        const bunLock = join(dir, 'bun.lock');
+        npmCache.set(
+          dir,
+          existsSync(npmLock)
+            ? parsePackageLock(npmLock)
+            : existsSync(bunLock)
+              ? parseBunLock(bunLock)
+              : new Map(),
+        );
+      }
+      const map = npmCache.get(dir)!;
+      if (map.size > 0) return map;
+      if (dir === root || relative(root, dir).startsWith('..')) return null;
+      const up = dirname(dir);
+      if (up === dir) return null;
+      dir = up;
     }
-    const map = parsePackageLock(lockPath);
-    npmCache.set(lockPath, map);
-    return map;
   };
 
   const getPython = (manifestPath: string): Map<string, string> | null => {
@@ -135,6 +178,19 @@ export const enrichDependenciesFromLockfiles = (
     for (const d of deps) {
       const parsed = JSON.parse(d.data) as Record<string, unknown>;
       const source = parsed.depSource;
+      const before = JSON.stringify(parsed);
+      const save = (): void => {
+        const version =
+          (parsed.resolvedVersion as string | undefined) ??
+          pinnedVersion(String(source), String(parsed.depSpec ?? ''));
+        const purl = purlOf(String(source), d.name, version, String(parsed.depSpec ?? ''));
+        if (purl) parsed.purl = purl;
+        else delete parsed.purl;
+        const after = JSON.stringify(parsed);
+        if (after === before) return;
+        upd.run(after, now, d.id);
+        touched++;
+      };
       let map: Map<string, string> | null = null;
       if (source === 'npm') {
         map = getNpm(d.manifest_path ?? '');
@@ -143,16 +199,12 @@ export const enrichDependenciesFromLockfiles = (
         // deps. requirements.txt entries already carry their pinned version
         // via the spec; surfacing a separate resolved_version would duplicate
         // for no analytical gain.
-        if (basename(d.manifest_path ?? '') !== 'pyproject.toml') continue;
-        map = getPython(d.manifest_path ?? '');
-      } else continue;
-      if (!map) continue;
-      const resolved = map.get(d.name);
-      if (!resolved) continue;
-      if (parsed.resolvedVersion === resolved) continue;
-      parsed.resolvedVersion = resolved;
-      upd.run(JSON.stringify(parsed), now, d.id);
-      touched++;
+        if (basename(d.manifest_path ?? '') === 'pyproject.toml')
+          map = getPython(d.manifest_path ?? '');
+      }
+      const resolved = map?.get(d.name);
+      if (resolved) parsed.resolvedVersion = resolved;
+      save();
     }
   })();
   return touched;

@@ -79,6 +79,17 @@ const pushHeritageRefs = (
   }
 };
 
+// The specifier of `import('x')` or `require('x')`, when it is a plain string.
+const literalModuleOf = (call: SyntaxNode): string | null => {
+  const fn = call.childForFieldName('function');
+  if (!fn || !(fn.type === 'import' || (fn.type === 'identifier' && fn.text === 'require')))
+    return null;
+  const arg = call.childForFieldName('arguments')?.namedChild(0);
+  if (arg?.type !== 'string') return null;
+  const frags = arg.namedChildren.filter((c) => c !== null);
+  return frags.length === 1 && frags[0]!.type === 'string_fragment' ? frags[0]!.text : null;
+};
+
 export function visit(node: SyntaxNode, ctx: VisitCtx): void {
   if (ctx.extractor.callTypes.includes(node.type)) {
     const callee = calleeNameOf(node);
@@ -87,6 +98,22 @@ export function visit(node: SyntaxNode, ctx: VisitCtx): void {
         fromNodeId: ctx.scope[ctx.scope.length - 1]!.id,
         referenceName: callee,
         referenceKind: 'calls',
+        line: node.startPosition.row + 1,
+        column: node.startPosition.column,
+        filePath: ctx.filePath,
+        language: ctx.language,
+      });
+    }
+  }
+  // `import('x')` and `require('x')` with a literal specifier load a module
+  // too, so they count as imports of it (lazy-loaded dependencies included).
+  if (node.type === 'call_expression') {
+    const spec = literalModuleOf(node);
+    if (spec) {
+      ctx.refs.push({
+        fromNodeId: ctx.scope[0]!.id,
+        referenceName: spec,
+        referenceKind: 'imports',
         line: node.startPosition.row + 1,
         column: node.startPosition.column,
         filePath: ctx.filePath,

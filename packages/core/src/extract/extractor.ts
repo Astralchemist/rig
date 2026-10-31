@@ -21,7 +21,8 @@ import type {
 // match, so bump this whenever an extractor change would produce different
 // rows for the same source; otherwise unchanged files keep stale extraction.
 // 2: markdown sections carry a body excerpt.
-export const EXTRACTOR_VERSION = 2;
+// 3: literal `import('x')` and `require('x')` are recorded as imports.
+export const EXTRACTOR_VERSION = 3;
 
 export async function extractFromSource(
   filePath: string,

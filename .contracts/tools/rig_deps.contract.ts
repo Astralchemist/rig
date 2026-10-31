@@ -12,6 +12,8 @@ const declaredDep = z.object({
   is_optional: z.boolean(),
   is_peer: z.boolean(),
   resolved_version: z.string().nullable(),
+  purl: z.string().nullable(),
+  used_by: z.number(),
 });
 
 export default defineToolContract({
@@ -21,9 +23,12 @@ export default defineToolContract({
   since: '1.0',
   summary: 'List declared dependencies from package manifests',
   description: `
-List the dependencies a project declares in its package manifests (currently
-package.json; more formats coming). Each entry has {name, spec, source,
-manifest_path, is_dev, is_optional, is_peer}.
+List the dependencies a project declares in its package manifests
+(package.json, requirements.txt, pyproject.toml). Each entry has {name, spec,
+source, manifest_path, is_dev, is_optional, is_peer, resolved_version, purl,
+used_by}: purl is the package URL (pkg:npm/..., pkg:pypi/...), versioned when
+a lockfile or exact pin gives one version; used_by counts the files and
+symbols whose imports resolve to it (imports_package edges).
 
 Use for "what does this project depend on" and "what version of X does it
 declare" questions. For symbol-level lookup of how a package is imported
