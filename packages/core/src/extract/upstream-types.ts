@@ -123,6 +123,9 @@ export interface UnresolvedReference {
   // Imports only: the names `from pkg import a, b` pulls in, which may be
   // submodules of pkg.
   importedNames?: string[];
+  // Callbacks: the function this one is handed to (`retry(save)`), which may
+  // call it. The resolver links viaCallee -> referenceName, not the owner.
+  viaCallee?: string;
 }
 
 export interface ExtractionError {

@@ -16,12 +16,14 @@ import type { SqliteAdapter } from './adapter.ts';
  * - name:   a call or reference matched by a name unique in the project, not
  *           by scope; a heuristic, and the likeliest to be wrong
  * - tests:  an import from a file whose path looks like a test
+ * - callback: a function handed to another that may call it (`retry(save)`)
  */
 export const EDGE_ORIGIN = {
   syntax: 'ast',
   import: 'ast:import',
   name: 'ast:name',
   tests: 'ast:tests',
+  callback: 'ast:callback',
 } as const;
 
 /** SQL condition matching every derived edge: 'ast' or 'ast:<origin>'. */

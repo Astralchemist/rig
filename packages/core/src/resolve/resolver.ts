@@ -103,6 +103,16 @@ export const resolveReferences = (
       }
       continue;
     }
+    if (ref.viaCallee) {
+      // Callback: link the receiving function to the one it was handed.
+      const callee = byName.get(ref.viaCallee);
+      const target = byName.get(ref.referenceName);
+      if (callee?.length === 1 && target?.length === 1 && callee[0] !== target[0]) {
+        insertEdge.run(callee[0]!, target[0]!, 'calls', EDGE_ORIGIN.callback, now);
+        edges++;
+      }
+      continue;
+    }
     const cands = byName.get(ref.referenceName);
     if (cands && cands.length === 1 && cands[0] !== ref.fromNodeId) {
       insertEdge.run(ref.fromNodeId, cands[0]!, ref.referenceKind, EDGE_ORIGIN.name, now);

@@ -245,3 +245,73 @@ describe('callbacks and dispatch tables', () => {
     expect(refs.map((r) => r.src)).toContain('watch');
   });
 });
+
+describe('may-call edges and dynamic imports', () => {
+  let dir: string;
+  let rig: Rig;
+  beforeAll(async () => {
+    dir = mkdtempSync(join(tmpdir(), 'rig-maycall-'));
+    writeFileSync(
+      join(dir, 'a.ts'),
+      [
+        'export function retryWhenBusy<T>(fn: () => T): T { return fn(); }',
+        'export function save(x: number): number {',
+        '  return x + 1;',
+        '}',
+        'export class Store {',
+        '  sync(): number { return 1; }',
+        '  watch(): number { return retryWhenBusy(() => this.sync()); }',
+        '}',
+        'export function passer(): number { return retryWhenBusy(save as never); }',
+        '',
+      ].join('\n'),
+    );
+    writeFileSync(
+      join(dir, 'cli.ts'),
+      "export const COMMANDS = { sync: async () => (await import('./cmd.ts')).runSync };\n",
+    );
+    writeFileSync(join(dir, 'cmd.ts'), 'export function runSync(): void {}\n');
+    rig = await Rig.init(dir, { embedder: new DeterministicEmbedder() });
+    await rig.indexAll();
+  });
+  afterAll(() => {
+    rig.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+  const edge = (src: string, dst: string) =>
+    rig.database.adapter
+      .prepare(
+        `SELECT kind, provenance FROM edges WHERE src = (SELECT id FROM nodes WHERE name = ?) AND dst = (SELECT id FROM nodes WHERE name = ?)`,
+      )
+      .all(src, dst);
+
+  test('a function handed a callback may call it, by name or through an inline arrow', () => {
+    expect(edge('retryWhenBusy', 'save')).toContainEqual({
+      kind: 'calls',
+      provenance: 'ast:callback',
+    });
+    expect(edge('retryWhenBusy', 'sync')).toContainEqual({
+      kind: 'calls',
+      provenance: 'ast:callback',
+    });
+  });
+
+  test('so changing the callback reaches the function that calls it', () => {
+    const r = diffImpact(
+      rig.database.adapter,
+      new Map([['a.ts', [[3, 3]] as [number, number][]]]),
+      [],
+      { depth: 1 },
+    );
+    expect(r.dependents.map((d) => d.name)).toContain('retryWhenBusy');
+  });
+
+  test('a member of a dynamic import is referenced', () => {
+    const rows = rig.database.adapter
+      .prepare(
+        `SELECT (SELECT name FROM nodes WHERE id = e.src) AS src FROM edges e WHERE e.kind = 'references' AND e.dst = (SELECT id FROM nodes WHERE name = 'runSync')`,
+      )
+      .all() as { src: string }[];
+    expect(rows.map((r) => r.src)).toContain('cli.ts');
+  });
+});

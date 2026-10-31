@@ -23,7 +23,10 @@ import type {
 // 2: markdown sections carry a body excerpt.
 // 3: a function used as a value (argument, object or array entry) is a
 //    'references' ref, so callbacks and dispatch tables link to it.
-export const EXTRACTOR_VERSION = 3;
+// 4: callbacks (a function's arguments, and calls inside inline callbacks)
+//    become may-call refs from the receiving function; members of dynamic
+//    import() results become references.
+export const EXTRACTOR_VERSION = 4;
 
 export async function extractFromSource(
   filePath: string,
@@ -49,7 +52,12 @@ export async function extractFromSource(
     if (base === 'package.json') {
       return { ...extractPackageJson(filePath, source), durationMs: Date.now() - start };
     }
-    if (base.endsWith('requirements.txt') || base.endsWith('requirements-dev.txt') || base.endsWith('dev-requirements.txt') || base.endsWith('requirements-test.txt')) {
+    if (
+      base.endsWith('requirements.txt') ||
+      base.endsWith('requirements-dev.txt') ||
+      base.endsWith('dev-requirements.txt') ||
+      base.endsWith('requirements-test.txt')
+    ) {
       return { ...extractRequirementsTxt(filePath, source), durationMs: Date.now() - start };
     }
     if (base === 'pyproject.toml') {
