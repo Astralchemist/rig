@@ -61,3 +61,36 @@ which rule made them used.
 
 **Disclosed:** the labeller (Claude) also wrote the report under test.
 Each label is committed with its evidence, so it can be checked.
+
+### Result, v1 (2026-10-31): FAIL
+
+[results/2026-10-31-deps.md](results/2026-10-31-deps.md). The report's
+precision was **3.5%** (bar ≥ 80%). Of 86 labelled flags, 3 were really
+unused, 82 were used and 1 was unclear. Every repo did badly: rig 0/15,
+next-auth 3/40 (a sample of 109 flags), hono 0/21, fastapi 0/1, httpx 0/9.
+
+Why it was wrong (counted by the rule that made each flag used):
+- **Tools run as commands (29):** `typescript` (`tsc`), `prettier`, `tsx`,
+  `typedoc`, `mypy`, `ruff`, `twine`. They're used from package.json scripts,
+  shell scripts and CI, never imported.
+- **`@types/X` (25):** `X` is imported, or the package holds runtime
+  globals (`@types/node`, `@types/bun`).
+- **Named in config files (10):** `.prettierrc` and its plugins, tsconfig
+  `types`, mkdocs themes and extensions, postcss.
+- **Imports the report missed (9):** six were workspace packages
+  (`@rig/core` and others), whose imports resolve to files, so they never
+  reach the unresolved references the report reads. Two were
+  `require.resolve('tree-sitter-wasms/...')`. One was a PyPI distribution
+  whose module has a different name (`opentelemetry-api` installs
+  `opentelemetry`).
+- **Plugins and peers loaded by a used tool (8), and one library peer
+  dependency.**
+
+The labels were found by grepping the whole repository, as pre-registered,
+not only the package that declares the dependency. A per-package reading
+would label more flags unused. It was not measured, so it isn't claimed.
+
+What follows: the report can't call something unused based only on import
+names. Repairing it means counting commands in scripts and CI, config files,
+`@types` pairing, workspace packages and peers. That is a new
+pre-registration and a new run.
