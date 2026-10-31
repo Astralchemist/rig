@@ -16,6 +16,7 @@ const COMMANDS: Record<string, () => Promise<Command>> = {
   query: async () => (await import('./query-cmd.ts')).runQuery,
   files: async () => (await import('./files-cmd.ts')).runFiles,
   overview: async () => (await import('./overview-cmd.ts')).runOverview,
+  blueprint: async () => (await import('./blueprint-cmd.ts')).runBlueprint,
   install: async () => (await import('./install-cmd.ts')).runInstall,
   uninstall: async () => (await import('./uninstall-cmd.ts')).runUninstall,
   serve: async () => (await import('./serve-cmd.ts')).runServe,
@@ -44,6 +45,9 @@ commands:
   files       list indexed files
   overview    print the orientation map your agent gets from rig_overview
               (--budget <tokens>, default 2000; --json)
+  blueprint   the project drawn like a house plan, as Mermaid or JSON: packages,
+              resolved imports between them, and data stores, services and I/O
+              inferred from dependencies (dashed) [--level site|floor] [--out <file>]
   install     wire Rig into Claude Code / Cursor / Codex / opencode — writes into this
               project by default; --global writes your user-level config; for Claude
               Code also the automatic-capture hooks (--no-hooks to leave them out)

@@ -77,16 +77,7 @@ interface Sym {
   exported: boolean;
 }
 
-interface Manifest {
-  dir: string; // '' for the project root
-  path: string;
-  name: string | null;
-  description: string | null;
-  json: PackageJson | null;
-  pyScripts: [string, string][];
-}
-
-interface PackageJson {
+export interface PackageJson {
   name?: unknown;
   description?: unknown;
   main?: unknown;
@@ -516,6 +507,85 @@ export const clampBudget = (budget: number | undefined): number =>
     Math.max(MIN_OVERVIEW_BUDGET, Math.round(budget ?? DEFAULT_OVERVIEW_BUDGET)),
   );
 
+/** A package.json or pyproject.toml, with what the orientation map and blueprints read from it. */
+export interface Manifest {
+  dir: string; // '' for the project root
+  path: string;
+  name: string | null;
+  description: string | null;
+  json: PackageJson | null;
+  pyScripts: [string, string][];
+}
+
+/** A dependency a manifest declares. */
+export interface Dep {
+  name: string;
+  spec: string;
+  manifest: string;
+  runtime: boolean;
+}
+
+/** Every package.json and pyproject.toml among `files` (a pyproject only where no package.json shares its directory). */
+export const readManifests = (
+  files: readonly string[],
+  readText: (p: string) => string | null,
+): Manifest[] => {
+  const manifests: Manifest[] = [];
+  for (const p of files) {
+    const b = basename(p);
+    if (b !== 'package.json' && b !== 'pyproject.toml') continue;
+    const text = readText(p);
+    if (text === null) continue;
+    if (b === 'package.json') {
+      let json: PackageJson | null = null;
+      try {
+        json = JSON.parse(text) as PackageJson;
+      } catch {
+        json = null;
+      }
+      manifests.push({
+        dir: dirOf(p),
+        path: p,
+        name: typeof json?.name === 'string' ? json.name : null,
+        description: typeof json?.description === 'string' ? json.description : null,
+        json,
+        pyScripts: [],
+      });
+    } else if (!manifests.some((m) => m.dir === dirOf(p))) {
+      const py = parsePyproject(text);
+      manifests.push({
+        dir: dirOf(p),
+        path: p,
+        name: py.name,
+        description: py.description,
+        json: null,
+        pyScripts: py.scripts,
+      });
+    }
+  }
+  return manifests;
+};
+
+/** Every declared dependency in the index, by manifest then name. */
+export const readDeclaredDeps = (db: SqliteAdapter): Dep[] =>
+  (
+    db
+      .prepare(
+        `SELECT name, json_extract(data, '$.filePath') AS manifest,
+                COALESCE(json_extract(data, '$.depSpec'), '') AS spec,
+                json_extract(data, '$.isDevDep') AS dev, json_extract(data, '$.isPeerDep') AS peer
+         FROM nodes WHERE type = 'declared-dependency' ORDER BY manifest, name`,
+      )
+      .all() as { name: string; manifest: string; spec: string; dev: number; peer: number }[]
+  ).map(
+    (d): Dep => ({
+      name: d.name,
+      spec: d.spec,
+      manifest: d.manifest,
+      runtime: d.dev !== 1 && d.peer !== 1,
+    }),
+  );
+
 export const buildOverviewMap = (
   db: SqliteAdapter,
   projectRoot: string,
@@ -609,39 +679,7 @@ export const buildOverviewMap = (
   const inCount = (m: Map<string, Set<string>>, k: string): number => m.get(k)?.size ?? 0;
 
   // --- manifests & packages ---------------------------------------------------
-  const manifests: Manifest[] = [];
-  for (const p of files) {
-    const b = basename(p);
-    if (b !== 'package.json' && b !== 'pyproject.toml') continue;
-    const text = readText(p);
-    if (text === null) continue;
-    if (b === 'package.json') {
-      let json: PackageJson | null = null;
-      try {
-        json = JSON.parse(text) as PackageJson;
-      } catch {
-        json = null;
-      }
-      manifests.push({
-        dir: dirOf(p),
-        path: p,
-        name: typeof json?.name === 'string' ? json.name : null,
-        description: typeof json?.description === 'string' ? json.description : null,
-        json,
-        pyScripts: [],
-      });
-    } else if (!manifests.some((m) => m.dir === dirOf(p))) {
-      const py = parsePyproject(text);
-      manifests.push({
-        dir: dirOf(p),
-        path: p,
-        name: py.name,
-        description: py.description,
-        json: null,
-        pyScripts: py.scripts,
-      });
-    }
-  }
+  const manifests = readManifests(files, readText);
   const rootManifest = manifests.find((m) => m.dir === '') ?? null;
   const pkgDirs = [...new Set(manifests.map((m) => m.dir))].sort((a, b) => b.length - a.length);
   const pkgOfCache = new Map<string, string>();
@@ -652,29 +690,7 @@ export const buildOverviewMap = (
   };
   const localNames = new Set(manifests.map((m) => m.name).filter((n): n is string => !!n));
 
-  interface Dep {
-    name: string;
-    spec: string;
-    manifest: string;
-    runtime: boolean;
-  }
-  const declared = (
-    db
-      .prepare(
-        `SELECT name, json_extract(data, '$.filePath') AS manifest,
-                COALESCE(json_extract(data, '$.depSpec'), '') AS spec,
-                json_extract(data, '$.isDevDep') AS dev, json_extract(data, '$.isPeerDep') AS peer
-         FROM nodes WHERE type = 'declared-dependency' ORDER BY manifest, name`,
-      )
-      .all() as { name: string; manifest: string; spec: string; dev: number; peer: number }[]
-  ).map(
-    (d): Dep => ({
-      name: d.name,
-      spec: d.spec,
-      manifest: d.manifest,
-      runtime: d.dev !== 1 && d.peer !== 1,
-    }),
-  );
+  const declared = readDeclaredDeps(db);
   // Packages that declare each local package as a dependency.
   const dependents = new Map<string, Set<string>>();
   for (const d of declared) if (localNames.has(d.name)) addTo(dependents, d.name, d.manifest);
