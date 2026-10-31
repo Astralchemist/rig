@@ -39,3 +39,22 @@ through every waypoint kind, including `open-question`, which the brief injects.
   the check; how `rig_waypoints` labels them.
 
 **Verdict.** PASS if every bar holds; FAIL otherwise.
+
+### Result, v1 (2026-10-31): FAIL
+
+[results/2026-10-31-memory.md](results/2026-10-31-memory.md). E1 passed:
+135 of 500 histories were non-concurrent, with 0 conflicts, 0 errors, 0
+resurrections and both orders the same in all 135. All 365 concurrent ones
+conflicted, which is the intended signal. E2 failed on one bar: the
+hidden-Unicode and secret checks caught 100%, and 0 of the 200 benign records
+were flagged, but **9 shared records reached the session brief** (bar 0).
+Imperative and forged records passed the check (0%), as expected, and all 250
+were labelled `shared`.
+
+Why: the brief's "Open threads" section lists the 5 latest `open-question`
+waypoints with source `agent`, and imported shared records have that source.
+So a committed record of that kind is printed under a header saying it was
+captured from conversations with the user. The count of 9 is too high, since
+the harness matched titles as substrings ("Benign decision 1" is inside
+"Benign decision 12"). The section holds at most 5, so the true number is
+between 1 and 5. The verdict is the same either way.
