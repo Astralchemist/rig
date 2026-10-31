@@ -24,6 +24,7 @@ const COMMANDS: Record<string, () => Promise<Command>> = {
   'export-docs': async () => (await import('./export-docs-cmd.ts')).runExportDocs,
   'export-memory': async () => (await import('./memory-cmd.ts')).runExportMemory,
   'import-memory': async () => (await import('./memory-cmd.ts')).runImportMemory,
+  memory: async () => (await import('./shared-memory-cmd.ts')).runMemory,
   update: async () => (await import('./update-cmd.ts')).runUpdate,
   hook: async () => (await import('./hook-cmd.ts')).runHook,
 };
@@ -63,6 +64,9 @@ commands:
               merge an export back in, e.g. after a fresh clone + \`rig index\`. Adds what is
               missing, never overwrites what is there; memory of symbols not found waits in
               orphans until they are indexed
+  memory      share memory with everyone on the repo, through git (.rig-memory/, one
+              file per record): promote <waypoint-id> [--include-captured] | unshare <id>
+              | import | check (for CI) | list
   update      update rig to the latest npm release (--check to only report)
   hook        <event> [--client claude] — run by your agent's hooks: captures what a
               conversation settled (decisions, constraints, dead ends) into .rig/ and
