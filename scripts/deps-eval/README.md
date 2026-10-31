@@ -127,3 +127,40 @@ The sample and the label rules are v1's (at most 40 flags per repo, seed
 many flags it has before and after, per repo.
 
 **Verdict.** PASS if both bars hold, otherwise FAIL.
+
+### Result, v2 (2026-10-31): FAIL
+
+[results/2026-10-31-deps-v2-heldout.md](results/2026-10-31-deps-v2-heldout.md).
+The fix (531a162) was written against the v1 repos only, then run once on the
+held-out repos.
+
+- **Bar 1, held-out precision: 42.3%** (22 unused of 52 labelled; bar ≥ 80%),
+  so it fails. By repo: zustand 2/4, tRPC 20/35 (one unclear), Flask 0/13,
+  Starlette 0 flags. v1's report scored 3.5%.
+- **Bar 2, known true positives still caught: 3 of 3**, so it holds. On the
+  v1 repos, flags dropped from 155 to 16 (rig 15 → 0, next-auth 109 → 16,
+  hono 21 → 0, httpx 9 → 0, fastapi 1 → 0).
+
+Why it still fails:
+- **Flask (13):** every flag comes from `examples/celery/requirements.txt`,
+  which pip-compile generated. It's a lockfile of Celery's transitive
+  dependencies (`kombu  # via celery`), not a list of direct ones. I
+  labelled them used (rule 5, loaded at runtime by Celery). Read as unused
+  instead, precision would be 35/52 = 67.3%, still under the bar. The fix is
+  to recognise compiled requirements files as lockfiles.
+- **Peers and plugins a used tool loads (7 outside Flask):** `@mdx-js/react`
+  under Docusaurus, `jsdom` as vitest's environment, `typedoc-plugin-markdown`,
+  `@docusaurus/faster`, an eslint import resolver, and `tslib` as the peer of
+  `@rollup/plugin-typescript`. Telling these apart needs each package's
+  published `peerDependencies`, which the index doesn't have offline.
+- **CLIs whose command differs from the package (3):** `@docusaurus/core`
+  (`docusaurus`), `@lerna-lite/cli` (`lerna`) and `@manypkg/cli`
+  (`manypkg`). These bins are only known when node_modules is installed.
+- **Config files the scan doesn't read (4):** `serverless.yml` plugins and
+  `docusaurus.typedoc.js`.
+- **twoslash code samples in docs (2):** shiki-twoslash compiles imports in
+  ```` ```ts twoslash ```` blocks.
+
+Scoring changed only in display (the Markdown header printed a template
+literally); no numbers changed. Another revision has to be tested on a fresh
+held-out corpus: these four repos have now been seen.

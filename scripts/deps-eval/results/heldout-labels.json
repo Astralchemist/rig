@@ -1,0 +1,239 @@
+{
+  "zustand:package.json:@vitest/ui": {
+    "label": "unused",
+    "note": "no --ui anywhere; only installed by one workflow (pnpm add), never run"
+  },
+  "zustand:package.json:eslint-import-resolver-typescript": {
+    "label": "used",
+    "rule": 5,
+    "note": "eslint.config.mjs settings 'import/resolver': { typescript: true } loads it"
+  },
+  "zustand:examples/demo/package.json:prismjs": {
+    "label": "unused",
+    "note": "never imported; the demo uses prism-react-renderer"
+  },
+  "zustand:package.json:tslib": {
+    "label": "used",
+    "rule": 5,
+    "note": "peer of @rollup/plugin-typescript, imported in rollup.config.mjs"
+  },
+  "trpc:package.json:@actions/core": {
+    "label": "unused",
+    "note": "mentioned nowhere outside manifests"
+  },
+  "trpc:package.json:@actions/github": {
+    "label": "unused",
+    "note": "mentioned nowhere outside manifests"
+  },
+  "trpc:www/package.json:@algolia/client-search": {
+    "label": "unused",
+    "note": "mentioned nowhere; not a peer of @docsearch/react"
+  },
+  "trpc:www/package.json:@babel/core": {
+    "label": "unused",
+    "note": "no babel config in www; Docusaurus brings its own babel"
+  },
+  "trpc:www/package.json:@babel/preset-env": {
+    "label": "unused",
+    "note": "no babel config in www"
+  },
+  "trpc:www/package.json:@docusaurus/core": {
+    "label": "used",
+    "rule": 2,
+    "note": "\"start\": \"docusaurus start\" (the bin is `docusaurus`)"
+  },
+  "trpc:www/package.json:@docusaurus/faster": {
+    "label": "used",
+    "rule": 5,
+    "note": "docusaurus.config.ts future faster: true"
+  },
+  "trpc:packages/tests/package.json:@fastify/busboy": {
+    "label": "unused",
+    "note": "mentioned nowhere outside manifests"
+  },
+  "trpc:examples/next-formdata/package.json:@hookform/error-message": {
+    "label": "unused",
+    "note": "mentioned nowhere outside manifests"
+  },
+  "trpc:package.json:@lerna-lite/cli": {
+    "label": "used",
+    "rule": 2,
+    "note": "pnpm lerna publish in the release workflow (bin `lerna`)"
+  },
+  "trpc:package.json:@lerna-lite/publish": {
+    "label": "used",
+    "rule": 5,
+    "note": "the publish command lerna-lite's cli loads for `lerna publish`"
+  },
+  "trpc:package.json:@manypkg/cli": {
+    "label": "used",
+    "rule": 2,
+    "note": "manypkg fix in scripts and the lint workflow"
+  },
+  "trpc:www/package.json:@mdx-js/react": {
+    "label": "used",
+    "rule": 5,
+    "note": "peer of @docusaurus/core"
+  },
+  "trpc:www/package.json:@octokit/graphql-schema": {
+    "label": "unused",
+    "note": "mentioned nowhere outside manifests"
+  },
+  "trpc:packages/server/package.json:@oxc-project/runtime": {
+    "label": "unclear",
+    "note": "helper runtime that oxc/rolldown (tsdown) can import into build output; whether this build does was not settled"
+  },
+  "trpc:www/package.json:@tanstack/query-core": {
+    "label": "unused",
+    "note": "mentioned nowhere; @tanstack/react-query depends on it itself"
+  },
+  "trpc:www/package.json:@unkey/ratelimit": {
+    "label": "used",
+    "rule": 1,
+    "note": "imported in a `twoslash include` block, which shiki-twoslash type-checks at docs build"
+  },
+  "trpc:package.json:@vitest/ui": {
+    "label": "unused",
+    "note": "no --ui anywhere"
+  },
+  "trpc:packages/tests/package.json:abort-controller": {
+    "label": "unused",
+    "note": "mentioned nowhere outside manifests"
+  },
+  "trpc:package.json:concurrently": {
+    "label": "unused",
+    "note": "no concurrently/conc command anywhere (only a `conc` variable in a test)"
+  },
+  "trpc:www/package.json:docusaurus-plugin-typedoc": {
+    "label": "used",
+    "rule": 3,
+    "note": "plugins in www/docusaurus.typedoc.js"
+  },
+  "trpc:www/package.json:docusaurus-preset-shiki-twoslash": {
+    "label": "unused",
+    "note": "not in docusaurus.config.ts (it uses remark-shiki-twoslash); only a CSS comment"
+  },
+  "trpc:package.json:fast-glob": {
+    "label": "unused",
+    "note": "mentioned nowhere outside manifests"
+  },
+  "trpc:packages/tests/package.json:jsdom": {
+    "label": "used",
+    "rule": 5,
+    "note": "vitest.shared.ts environment: 'jsdom'"
+  },
+  "trpc:www/package.json:prism-react-renderer": {
+    "label": "unused",
+    "note": "never imported; Docusaurus's theme depends on it itself"
+  },
+  "trpc:www/package.json:react-error-boundary": {
+    "label": "used",
+    "rule": 1,
+    "note": "imported in `tsx twoslash` blocks that shiki-twoslash type-checks"
+  },
+  "trpc:www/package.json:react-github-btn": {
+    "label": "unused",
+    "note": "mentioned nowhere outside manifests"
+  },
+  "trpc:examples/lambda-url/package.json:serverless-esbuild": {
+    "label": "used",
+    "rule": 3,
+    "note": "plugins in serverless.yml"
+  },
+  "trpc:examples/lambda-api-gateway/package.json:serverless-esbuild": {
+    "label": "used",
+    "rule": 3,
+    "note": "plugins in serverless.yml"
+  },
+  "trpc:examples/lambda-api-gateway/package.json:serverless-offline": {
+    "label": "used",
+    "rule": 3,
+    "note": "plugins in serverless.yml"
+  },
+  "trpc:packages/tests/package.json:supertest": {
+    "label": "unused",
+    "note": "mentioned nowhere outside manifests"
+  },
+  "trpc:examples/fastify-server/package.json:tslib": {
+    "label": "unused",
+    "note": "no importHelpers, no rollup typescript plugin"
+  },
+  "trpc:packages/react-query/package.json:tslib": {
+    "label": "unused",
+    "note": "no importHelpers; builds with tsdown"
+  },
+  "trpc:packages/client/package.json:tslib": {
+    "label": "unused",
+    "note": "no importHelpers; builds with tsdown"
+  },
+  "trpc:www/package.json:typedoc-plugin-markdown": {
+    "label": "used",
+    "rule": 5,
+    "note": "peer of docusaurus-plugin-typedoc, which is configured"
+  },
+  "flask:examples/celery/requirements.txt:amqp": {
+    "label": "used",
+    "rule": 5,
+    "note": "pinned transitive dependency in a pip-compile lockfile (`# via` celery, kombu, redis, click-repl); loaded at runtime by Celery. Read as unused, precision would still be under the bar"
+  },
+  "flask:examples/celery/requirements.txt:async-timeout": {
+    "label": "used",
+    "rule": 5,
+    "note": "pinned transitive dependency in a pip-compile lockfile (`# via` celery, kombu, redis, click-repl); loaded at runtime by Celery. Read as unused, precision would still be under the bar"
+  },
+  "flask:examples/celery/requirements.txt:billiard": {
+    "label": "used",
+    "rule": 5,
+    "note": "pinned transitive dependency in a pip-compile lockfile (`# via` celery, kombu, redis, click-repl); loaded at runtime by Celery. Read as unused, precision would still be under the bar"
+  },
+  "flask:examples/celery/requirements.txt:click-didyoumean": {
+    "label": "used",
+    "rule": 5,
+    "note": "pinned transitive dependency in a pip-compile lockfile (`# via` celery, kombu, redis, click-repl); loaded at runtime by Celery. Read as unused, precision would still be under the bar"
+  },
+  "flask:examples/celery/requirements.txt:click-plugins": {
+    "label": "used",
+    "rule": 5,
+    "note": "pinned transitive dependency in a pip-compile lockfile (`# via` celery, kombu, redis, click-repl); loaded at runtime by Celery. Read as unused, precision would still be under the bar"
+  },
+  "flask:examples/celery/requirements.txt:click-repl": {
+    "label": "used",
+    "rule": 5,
+    "note": "pinned transitive dependency in a pip-compile lockfile (`# via` celery, kombu, redis, click-repl); loaded at runtime by Celery. Read as unused, precision would still be under the bar"
+  },
+  "flask:examples/celery/requirements.txt:kombu": {
+    "label": "used",
+    "rule": 5,
+    "note": "pinned transitive dependency in a pip-compile lockfile (`# via` celery, kombu, redis, click-repl); loaded at runtime by Celery. Read as unused, precision would still be under the bar"
+  },
+  "flask:examples/celery/requirements.txt:prompt-toolkit": {
+    "label": "used",
+    "rule": 5,
+    "note": "pinned transitive dependency in a pip-compile lockfile (`# via` celery, kombu, redis, click-repl); loaded at runtime by Celery. Read as unused, precision would still be under the bar"
+  },
+  "flask:examples/celery/requirements.txt:pytz": {
+    "label": "used",
+    "rule": 5,
+    "note": "pinned transitive dependency in a pip-compile lockfile (`# via` celery, kombu, redis, click-repl); loaded at runtime by Celery. Read as unused, precision would still be under the bar"
+  },
+  "flask:examples/celery/requirements.txt:redis": {
+    "label": "used",
+    "rule": 5,
+    "note": "pinned transitive dependency in a pip-compile lockfile (`# via` celery, kombu, redis, click-repl); loaded at runtime by Celery. Read as unused, precision would still be under the bar"
+  },
+  "flask:examples/celery/requirements.txt:six": {
+    "label": "used",
+    "rule": 5,
+    "note": "pinned transitive dependency in a pip-compile lockfile (`# via` celery, kombu, redis, click-repl); loaded at runtime by Celery. Read as unused, precision would still be under the bar"
+  },
+  "flask:examples/celery/requirements.txt:vine": {
+    "label": "used",
+    "rule": 5,
+    "note": "pinned transitive dependency in a pip-compile lockfile (`# via` celery, kombu, redis, click-repl); loaded at runtime by Celery. Read as unused, precision would still be under the bar"
+  },
+  "flask:examples/celery/requirements.txt:wcwidth": {
+    "label": "used",
+    "rule": 5,
+    "note": "pinned transitive dependency in a pip-compile lockfile (`# via` celery, kombu, redis, click-repl); loaded at runtime by Celery. Read as unused, precision would still be under the bar"
+  }
+}

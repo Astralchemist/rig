@@ -29,10 +29,7 @@ const { counts, flags } = JSON.parse(readFileSync(join(dir, FLAGS), 'utf-8')) as
   counts: Record<string, { flagged: number; labelled: number; declared: number }>;
   flags: Flag[];
 };
-const labels = JSON.parse(readFileSync(join(dir, LABELS), 'utf-8')) as Record<
-  string,
-  Labelled
->;
+const labels = JSON.parse(readFileSync(join(dir, LABELS), 'utf-8')) as Record<string, Labelled>;
 
 const missing = flags.filter((f) => !labels[f.key]);
 if (missing.length) throw new Error(`unlabelled: ${missing.map((f) => f.key).join(', ')}`);
@@ -63,7 +60,7 @@ const RULES: Record<string, string> = {
 const md = [
   `# Dependency-report evaluation — ${verdict}`,
   '',
-  'Pre-registered in `scripts/deps-eval/README.md`. Labels and evidence: `results/${LABELS}`, `results/${FLAGS}`.',
+  `Pre-registered in \`scripts/deps-eval/README.md\`. Labels and evidence: \`results/${LABELS}\`, \`results/${FLAGS}\`.`,
   '',
   `Pooled precision of \`rig_unused_deps\`: **${pct(pooled.precision)}** (${pooled.unused} unused of ${pooled.n} labelled; bar ≥ 80%).`,
   '',
