@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { listWaypoints, type WaypointKind, type WaypointRow } from '../db/waypoint-queries.ts';
+import { SHARED_PROVENANCE } from '../memory/shared.ts';
 import type { Rig } from '../rig.ts';
 import { lexicalSimilarity } from './store.ts';
 import { clip } from './text.ts';
@@ -65,7 +66,11 @@ export const buildBrief = (rig: Rig, opts: BriefOptions = {}): string => {
   const db = rig.database.adapter;
 
   const captured = listWaypoints(db, { source: 'hook', limit: 400 }).filter(isInjectable);
-  const open = listWaypoints(db, { kind: 'open-question', source: 'agent', limit: 5 });
+  // Only this checkout's open questions: a shared record comes from whoever
+  // committed it, and the header says these came from the user.
+  const open = listWaypoints(db, { kind: 'open-question', source: 'agent', limit: 20 })
+    .filter((w) => w.provenance !== SHARED_PROVENANCE)
+    .slice(0, 5);
 
   const items: Item[] = [];
   const seen: string[] = [];
