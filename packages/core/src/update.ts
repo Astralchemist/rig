@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { Fingerprinter } from './memory/anchor-fingerprint.ts';
 import { createHash } from 'node:crypto';
 import { statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -373,7 +374,9 @@ export async function runUpdate(
     // linking two removed nodes lands in both rows.
     const orphaned = snapshotOrphans(db, removed);
     deleteNodes(db, removed);
-    const reattached = reattachOrphans(db, written);
+    const reattached = reattachOrphans(db, written, {
+      fingerprints: new Fingerprinter(db, projectRoot),
+    });
     const stats = rebuildStructuralEdges(db, projectRoot);
     onProgress?.({ phase: 'tests-edges' });
     inferTestsEdges(db);

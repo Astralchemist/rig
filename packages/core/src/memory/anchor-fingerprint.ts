@@ -83,6 +83,40 @@ export class Fingerprinter {
     return fingerprintText(lines.slice(loc.startLine - 1, loc.endLine).join('\n'));
   }
 
+  /**
+   * The node's fingerprint as if it still had `oldName`: its own name swapped
+   * back, so a function that was only renamed matches the fingerprint stored
+   * under the old name. Null without a source location.
+   */
+  ofRenamed(nodeId: string, oldName: string): string | null {
+    const loc = locationOf(this.db, nodeId);
+    const row = this.db.prepare('SELECT name FROM nodes WHERE id = ?').get(nodeId) as
+      | { name: string }
+      | undefined;
+    if (!loc || !row) return null;
+    const lines = this.lines(loc.filePath);
+    if (!lines) return null;
+    const esc = row.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const text = lines
+      .slice(loc.startLine - 1, loc.endLine)
+      .join('\n')
+      .replace(new RegExp(`\\b${esc}\\b`, 'g'), oldName);
+    return fingerprintText(text);
+  }
+
+  private lines(filePath: string): string[] | null {
+    let lines = this.files.get(filePath);
+    if (lines === undefined) {
+      try {
+        lines = readFileSync(join(this.projectRoot, filePath), 'utf-8').split('\n');
+      } catch {
+        lines = null;
+      }
+      this.files.set(filePath, lines);
+    }
+    return lines;
+  }
+
   /** Fingerprints of every ref that has a source location (files and memory have none). */
   ofAll(nodeIds: readonly string[]): Record<string, string> {
     const out: Record<string, string> = {};

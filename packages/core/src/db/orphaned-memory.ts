@@ -251,6 +251,15 @@ interface Match {
   node: AnchoredNode;
   orphanedAt: number;
   payload: OrphanPayload;
+  // A rename: the re-attached symbol's current fingerprint replaces the one
+  // memory stored, since only the name changed.
+  fingerprint?: string;
+}
+
+/** What the rename pass needs from verify-on-read's fingerprints. */
+export interface RenameFingerprints {
+  of(nodeId: string): string | null;
+  ofRenamed(nodeId: string, oldName: string): string | null;
 }
 
 // Re-attach orphaned memory to freshly written nodes whose anchor and ordinal
@@ -262,7 +271,11 @@ interface Match {
 // that is gone is gone for good). A re-attached waypoint_references edge also
 // gets its waypoint's constellation_refs rewritten to the new id. Returns the
 // number of orphan rows re-attached.
-export const reattachOrphans = (db: SqliteAdapter, nodes: readonly AnchoredNode[]): number => {
+export const reattachOrphans = (
+  db: SqliteAdapter,
+  nodes: readonly AnchoredNode[],
+  opts: { fingerprints?: RenameFingerprints } = {},
+): number => {
   const files = new Set(
     (
       db.prepare(`SELECT DISTINCT file_path FROM orphaned_memory`).all() as { file_path: string }[]
@@ -303,6 +316,54 @@ export const reattachOrphans = (db: SqliteAdapter, nodes: readonly AnchoredNode[
   for (const n of candidates) {
     if (matchedNodes.has(n.id) || !CALLABLE_KINDS.has(n.kind)) continue;
     for (const kind of CALLABLE_KINDS) if (kind !== n.kind) pair(n, kind);
+  }
+  // Renames (step 1): a function whose memory stored a fingerprint, matched
+  // by body to exactly one unmatched new function, in any file, once that
+  // function's name is swapped back. Two candidates are left alone.
+  if (opts.fingerprints) {
+    const fp = opts.fingerprints;
+    const stored = db.prepare(
+      `SELECT json_extract(data, '$.anchor_fingerprints."' || ? || '"') AS fp FROM nodes
+       WHERE type = 'conversation-waypoint'
+         AND json_extract(data, '$.anchor_fingerprints."' || ? || '"') IS NOT NULL LIMIT 1`,
+    );
+    const rows = db
+      .prepare(
+        `SELECT id, node_id, kind, qualified_name, payload, orphaned_at FROM orphaned_memory ORDER BY id`,
+      )
+      .all() as {
+      id: number;
+      node_id: string;
+      kind: string;
+      qualified_name: string;
+      payload: string;
+      orphaned_at: number;
+    }[];
+    for (const r of rows) {
+      if (usedRows.has(r.id) || !CALLABLE_KINDS.has(r.kind)) continue;
+      const then = (stored.get(r.node_id, r.node_id) as { fp: string | null } | null)?.fp;
+      if (!then) continue;
+      const oldName = r.qualified_name.split('.').pop() ?? r.qualified_name;
+      const hits = nodes.filter(
+        (n) =>
+          !matchedNodes.has(n.id) &&
+          CALLABLE_KINDS.has(n.kind) &&
+          fp.ofRenamed(n.id, oldName) === then,
+      );
+      if (hits.length !== 1) continue;
+      const n = hits[0]!;
+      matches.push({
+        rowId: r.id,
+        oldId: r.node_id,
+        node: n,
+        orphanedAt: r.orphaned_at,
+        payload: JSON.parse(r.payload) as OrphanPayload,
+        fingerprint: fp.of(n.id) ?? then,
+      });
+      idMap.set(r.node_id, n.id);
+      usedRows.add(r.id);
+      matchedNodes.add(n.id);
+    }
   }
   if (matches.length === 0) return 0;
 
@@ -448,8 +509,8 @@ export const reattachOrphans = (db: SqliteAdapter, nodes: readonly AnchoredNode[
           // The fingerprint follows its anchor to the new id, so verify-on-read
           // compares the re-attached symbol with what the memory was about.
           if (data.anchor_fingerprints && oldId in data.anchor_fingerprints) {
-            data.anchor_fingerprints[newId] = data.anchor_fingerprints[oldId]!;
-            delete data.anchor_fingerprints[oldId];
+            data.anchor_fingerprints[newId] = m.fingerprint ?? data.anchor_fingerprints[oldId]!;
+            if (newId !== oldId) delete data.anchor_fingerprints[oldId];
           }
           if (Array.isArray(data.constellation_refs)) {
             data.constellation_refs = data.constellation_refs.map((r) => (r === oldId ? newId : r));

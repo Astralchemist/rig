@@ -92,3 +92,75 @@ describe('verify-on-read', () => {
     );
   });
 });
+
+// Step 1: a renamed function keeps its memory, matched by body.
+describe('renames', () => {
+  let dir: string;
+  let rig: Rig;
+  beforeEach(async () => {
+    dir = mkdtempSync(join(tmpdir(), 'rig-rename-'));
+    writeFileSync(
+      join(dir, 'auth.ts'),
+      'export function login(user: string): boolean {\n  return user.trim().length > 0;\n}\n',
+    );
+    writeFileSync(join(dir, 'other.ts'), 'export function noop(): void {}\n');
+    rig = await Rig.init(dir, { embedder: new DeterministicEmbedder() });
+    await rig.indexAll();
+    const login = rig.searchNodes('login').find((n) => n.name === 'login')!;
+    rig.writes.dropWaypoint(
+      {
+        kind: 'decision',
+        title: 'Any trimmed user',
+        summary: 's',
+        constellationRefs: [login.id],
+        keyTerms: [],
+        rationale: 'r',
+      },
+      { sessionId: 's1', actor: 'ai:test' },
+    );
+  });
+  afterEach(() => {
+    rig.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+  const only = () => rig.verifyWaypoints(rig.getWaypoints({ limit: 10 }))[0]!;
+
+  test('renamed in place: the memory follows and stays verified', async () => {
+    writeFileSync(
+      join(dir, 'auth.ts'),
+      'export function signIn(user: string): boolean {\n  return user.trim().length > 0;\n}\n',
+    );
+    await rig.sync();
+    const w = only();
+    expect(rig.getNode(w.constellation_refs[0]!)?.name).toBe('signIn');
+    expect(w.verification.status).toBe('verified');
+  });
+
+  test('moved to another file and renamed: still followed', async () => {
+    writeFileSync(join(dir, 'auth.ts'), '');
+    writeFileSync(
+      join(dir, 'other.ts'),
+      'export function noop(): void {}\nexport function signIn(user: string): boolean {\n  return user.trim().length > 0;\n}\n',
+    );
+    await rig.sync();
+    expect(rig.getNode(only().constellation_refs[0]!)?.name).toBe('signIn');
+  });
+
+  test('renamed and changed: not followed, reads missing', async () => {
+    writeFileSync(
+      join(dir, 'auth.ts'),
+      'export function signIn(user: string): boolean {\n  return user.length > 3;\n}\n',
+    );
+    await rig.sync();
+    expect(only().verification.status).toBe('missing');
+  });
+
+  test('two identical candidates: left alone', async () => {
+    writeFileSync(
+      join(dir, 'auth.ts'),
+      'export function a(user: string): boolean {\n  return user.trim().length > 0;\n}\nexport function b(user: string): boolean {\n  return user.trim().length > 0;\n}\n',
+    );
+    await rig.sync();
+    expect(only().verification.status).toBe('missing');
+  });
+});
