@@ -17,12 +17,19 @@ interface Labelled {
   note: string;
 }
 
+const arg = (k: string, d: string): string => {
+  const i = process.argv.indexOf(k);
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1]! : d;
+};
+const FLAGS = arg('--flags', 'flags.json');
+const LABELS = arg('--labels', 'labels.json');
+const TAG = arg('--tag', '');
 const dir = resolve(import.meta.dir, 'results');
-const { counts, flags } = JSON.parse(readFileSync(join(dir, 'flags.json'), 'utf-8')) as {
+const { counts, flags } = JSON.parse(readFileSync(join(dir, FLAGS), 'utf-8')) as {
   counts: Record<string, { flagged: number; labelled: number; declared: number }>;
   flags: Flag[];
 };
-const labels = JSON.parse(readFileSync(join(dir, 'labels.json'), 'utf-8')) as Record<
+const labels = JSON.parse(readFileSync(join(dir, LABELS), 'utf-8')) as Record<
   string,
   Labelled
 >;
@@ -56,7 +63,7 @@ const RULES: Record<string, string> = {
 const md = [
   `# Dependency-report evaluation — ${verdict}`,
   '',
-  'Pre-registered in `scripts/deps-eval/README.md`. Labels and evidence: `results/labels.json`, `results/flags.json`.',
+  'Pre-registered in `scripts/deps-eval/README.md`. Labels and evidence: `results/${LABELS}`, `results/${FLAGS}`.',
   '',
   `Pooled precision of \`rig_unused_deps\`: **${pct(pooled.precision)}** (${pooled.unused} unused of ${pooled.n} labelled; bar ≥ 80%).`,
   '',
@@ -77,8 +84,8 @@ const md = [
 ].join('\n');
 const date = new Date().toISOString().slice(0, 10);
 writeFileSync(
-  join(dir, `${date}-deps.json`),
+  join(dir, `${date}-deps${TAG}.json`),
   JSON.stringify({ verdict, pooled, byRule, counts }, null, 2) + '\n',
 );
-writeFileSync(join(dir, `${date}-deps.md`), md + '\n');
+writeFileSync(join(dir, `${date}-deps${TAG}.md`), md + '\n');
 console.log(md);

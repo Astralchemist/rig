@@ -7,6 +7,15 @@ All notable changes to Rig are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **`rig_unused_deps` stops flagging tools.** A pre-registered evaluation on five public repos found that only 3.5% of its "unused" flags were right (`scripts/deps-eval`): most declared dependencies are compilers, linters, type packages and plugins that are never imported. A dependency now counts as used in any of these cases:
+  - it is run as a command (package.json scripts, CI workflows, Makefiles, shell scripts, tox), under its package name or its command name (`typescript` as `tsc`);
+  - a config file names it (tsconfig, eslint, prettier, vite and other `*.config.*` files, mkdocs, pyproject `[tool.*]`), or it has its own config file (`.prettierrc`, `lefthook.yml`);
+  - it is `@types/X` and X is used, or it holds runtime globals (`@types/node`);
+  - it is a workspace package that some file imports;
+  - it is a framework's peer (react-dom under next) or a library's peer dependency;
+  - it is loaded with `require.resolve` or `import.meta.resolve`.
+
+  PyPI `-api`, `-sdk`, `-binary` and `-headless` distributions match their family module (`opentelemetry-api` installs `opentelemetry`).
 - **Dependencies get package URLs and importers.** Every declared dependency carries a `purl` (`pkg:npm/%40types/node@20.11.5`, `pkg:pypi/typing-extensions@4.9.0`). It is versioned when a lockfile or an exact pin gives one version, and left out for workspace, path and git dependencies. Files that import a dependency get an `imports_package` edge to it, from the nearest manifest above them that declares it, so a workspace package's own manifest wins over the root's. `rig_deps` returns `purl` and `used_by` for each dependency. Versions are now read from `bun.lock` as well as `package-lock.json`, in the manifest's directory or a parent, so workspace packages pick up the root lockfile. Literal `import('x')` and `require('x')` count as imports, so a lazily loaded dependency counts as used (extractor version 3, so the next index re-extracts every file).
 - **A rebuilt map.** A rail with four views (Map, Review, Waypoints, Overview), an inspector for the selected node, and light and dark themes that also follow the OS (`Match system` is the new default; saved themes keep working).
   - The constellation stays on canvas. Labels are placed without overlap and in priority order, node kinds are three validated colours plus neutral with shape as a second cue, the layout no longer re-runs on every database change, and a List view gives the same nodes as a sortable, keyboard-driven table.

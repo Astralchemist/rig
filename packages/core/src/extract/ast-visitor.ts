@@ -79,10 +79,19 @@ const pushHeritageRefs = (
   }
 };
 
-// The specifier of `import('x')` or `require('x')`, when it is a plain string.
+// The specifier of `import('x')`, `require('x')`, `require.resolve('x')` or
+// `import.meta.resolve('x')`, when it is a plain string.
 const literalModuleOf = (call: SyntaxNode): string | null => {
   const fn = call.childForFieldName('function');
-  if (!fn || !(fn.type === 'import' || (fn.type === 'identifier' && fn.text === 'require')))
+  if (
+    !fn ||
+    !(
+      fn.type === 'import' ||
+      (fn.type === 'identifier' && fn.text === 'require') ||
+      (fn.type === 'member_expression' &&
+        (fn.text === 'require.resolve' || fn.text === 'import.meta.resolve'))
+    )
+  )
     return null;
   const arg = call.childForFieldName('arguments')?.namedChild(0);
   if (arg?.type !== 'string') return null;
