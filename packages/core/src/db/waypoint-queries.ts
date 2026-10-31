@@ -48,6 +48,10 @@ export interface WaypointRow {
   source?: WaypointSource;
   provenance?: string;
   confidence?: number;
+  // Consolidation (step 5): a lesson lists the records it merged; each
+  // merged record points at its lesson and is hidden from listings.
+  sources?: string[];
+  consolidated_into?: string;
 }
 
 interface RawNode {
@@ -71,6 +75,8 @@ interface RawData {
   source?: WaypointSource;
   provenance?: string;
   confidence?: number;
+  sources?: string[];
+  consolidated_into?: string;
 }
 
 const parse = (r: RawNode): WaypointRow => {
@@ -92,6 +98,8 @@ const parse = (r: RawNode): WaypointRow => {
     ...(d.source === 'hook' || d.source === 'agent' ? { source: d.source } : {}),
     ...(typeof d.provenance === 'string' ? { provenance: d.provenance } : {}),
     ...(typeof d.confidence === 'number' ? { confidence: d.confidence } : {}),
+    ...(Array.isArray(d.sources) ? { sources: d.sources } : {}),
+    ...(typeof d.consolidated_into === 'string' ? { consolidated_into: d.consolidated_into } : {}),
   };
 };
 
@@ -105,6 +113,8 @@ export interface ListWaypointsOpts {
   // 'agent' also matches waypoints stored without a source.
   source?: WaypointSource;
   limit?: number;
+  // Records merged into a lesson are hidden unless asked for.
+  includeConsolidated?: boolean;
 }
 
 // Returns the id of the most recently active session (sessions.last_seen)
@@ -156,6 +166,7 @@ export const listWaypoints = (db: SqliteAdapter, opts: ListWaypointsOpts = {}): 
   } else if (opts.source === 'agent') {
     filters.push(`COALESCE(json_extract(data, '$.source'), 'agent') = 'agent'`);
   }
+  if (!opts.includeConsolidated) filters.push(`json_extract(data, '$.consolidated_into') IS NULL`);
   params.push(limit);
   const rows = db
     .prepare(
