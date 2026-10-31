@@ -12,6 +12,10 @@ export async function runSync(cwd: string): Promise<void> {
     process.stdout.write(
       `synced: ${result.filesChanged} changed, ${result.filesPurged} purged in ${result.durationMs}ms${memory}\n`,
     );
+    // Shared memory from .rig-memory/ (B5): whatever a pull brought in.
+    const { importShared, describeImport } = await import('@rig/core/memory/shared.ts');
+    const shared = describeImport(importShared(rig));
+    if (shared) process.stdout.write(`${shared}\n`);
   } finally {
     rig.close();
   }

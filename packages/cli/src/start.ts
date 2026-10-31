@@ -45,7 +45,11 @@ export const runStart = async (cwd: string): Promise<void> => {
   const mapUrl = web.token ? `${web.url}/auth?t=${web.token}` : web.url;
 
   banner(project, mapUrl);
-  line(init.created ? sym.ok : sym.dot, init.created ? 'initialized' : 'already set up', init.rigDir);
+  line(
+    init.created ? sym.ok : sym.dot,
+    init.created ? 'initialized' : 'already set up',
+    init.rigDir,
+  );
   if (!flag('--no-open')) openUrl(mapUrl);
   line(sym.ok, 'map live', web.url);
 
@@ -63,13 +67,22 @@ export const runStart = async (cwd: string): Promise<void> => {
       },
     });
     endProgress();
-    const skills = rig.seedSkills((toolsManifest as { tools: { name: string; description: string; tier: string }[] }).tools);
+    const skills = rig.seedSkills(
+      (toolsManifest as { tools: { name: string; description: string; tier: string }[] }).tools,
+    );
     web.ws.broadcast({
       type: 'index:progress',
       ts: Date.now(),
       payload: { phase: 'done', done: true, nodes: r.nodes, edges: r.edges, files: r.files },
     });
-    line(sym.ok, 'indexed', `${r.nodes} nodes · ${r.edges} edges · ${r.files} files · ${skills} skills`);
+    line(
+      sym.ok,
+      'indexed',
+      `${r.nodes} nodes · ${r.edges} edges · ${r.files} files · ${skills} skills`,
+    );
+    const { importShared, describeImport } = await import('@rig/core/memory/shared.ts');
+    const shared = describeImport(importShared(rig));
+    if (shared) line(sym.ok, 'memory', shared.replace(/^shared memory: /, 'shared: '));
   } finally {
     rig.close();
   }
