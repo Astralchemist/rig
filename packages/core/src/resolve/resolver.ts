@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { EDGE_ORIGIN } from '../db/extracted-nodes.ts';
 import type { SqliteAdapter } from '../db/adapter.ts';
 import type { Edge, Node, UnresolvedReference } from '../extract/upstream-types.ts';
 import { resolveModuleImport } from './import-resolver.ts';
@@ -19,7 +20,8 @@ export type ResolvableNode = Pick<Node, 'id' | 'name' | 'kind' | 'filePath'>;
  * non-import refs, tsconfig-paths + relative-path resolution for imports.
  *
  * - Direct edges from the extractor (`contains`, future intra-file edges)
- *   are written verbatim with provenance='ast'.
+ *   are written verbatim with provenance='ast'; resolved imports get
+ *   'ast:import' and unique-name matches 'ast:name' (EDGE_ORIGIN).
  * - Imports use the file-path index + tsconfig.json paths to resolve module
  *   paths to file nodes. Bare specifiers (npm packages) stay unresolved.
  * - Other refs (calls/references/extends/implements) resolved by exact name
@@ -62,7 +64,7 @@ export const resolveReferences = (
 
   for (const e of directEdges) {
     if (!known.has(e.source) || !known.has(e.target)) continue;
-    insertEdge.run(e.source, e.target, e.kind, 'ast', now);
+    insertEdge.run(e.source, e.target, e.kind, EDGE_ORIGIN.syntax, now);
     edges++;
   }
 
@@ -87,20 +89,42 @@ export const resolveReferences = (
               })
           : null;
       if (fileId && fileId !== ref.fromNodeId) {
-        insertEdge.run(ref.fromNodeId, fileId, 'imports', 'ast', now);
+        insertEdge.run(ref.fromNodeId, fileId, 'imports', EDGE_ORIGIN.import, now);
         edges++;
       } else {
-        insertUnresolved.run(ref.fromNodeId, ref.referenceName, ref.filePath ?? '', ref.line, ref.referenceKind);
+        insertUnresolved.run(
+          ref.fromNodeId,
+          ref.referenceName,
+          ref.filePath ?? '',
+          ref.line,
+          ref.referenceKind,
+        );
         unresolved++;
+      }
+      continue;
+    }
+    if (ref.viaCallee) {
+      // Callback: link the receiving function to the one it was handed.
+      const callee = byName.get(ref.viaCallee);
+      const target = byName.get(ref.referenceName);
+      if (callee?.length === 1 && target?.length === 1 && callee[0] !== target[0]) {
+        insertEdge.run(callee[0]!, target[0]!, 'calls', EDGE_ORIGIN.callback, now);
+        edges++;
       }
       continue;
     }
     const cands = byName.get(ref.referenceName);
     if (cands && cands.length === 1 && cands[0] !== ref.fromNodeId) {
-      insertEdge.run(ref.fromNodeId, cands[0]!, ref.referenceKind, 'ast', now);
+      insertEdge.run(ref.fromNodeId, cands[0]!, ref.referenceKind, EDGE_ORIGIN.name, now);
       edges++;
     } else {
-      insertUnresolved.run(ref.fromNodeId, ref.referenceName, ref.filePath ?? '', ref.line, ref.referenceKind);
+      insertUnresolved.run(
+        ref.fromNodeId,
+        ref.referenceName,
+        ref.filePath ?? '',
+        ref.line,
+        ref.referenceKind,
+      );
       unresolved++;
     }
   }

@@ -53,6 +53,47 @@ const WRAPPER_TYPES = new Set([
   'type_assertion',
 ]);
 
+const FUNCTION_NODE_TYPES = new Set([
+  'arrow_function',
+  'function_expression',
+  'function',
+  'lambda',
+]);
+
+/** Names a call's arguments hand over to the callee, as functions it may call. */
+const callbackTargets = (args: SyntaxNode): string[] => {
+  const out = new Set<string>();
+  const nameOf = (v: SyntaxNode | null): string | null => {
+    while (v && WRAPPER_TYPES.has(v.type)) v = v.namedChild(0);
+    if (!v) return null;
+    if (v.type === 'identifier') return v.text;
+    if (v.type === 'member_expression' && v.childForFieldName('object')?.type === 'this')
+      return v.childForFieldName('property')?.text ?? null;
+    return null;
+  };
+  // Calls made directly in an inline callback's body (not in functions nested
+  // inside it).
+  const callsIn = (n: SyntaxNode, top: boolean): void => {
+    if (!top && FUNCTION_NODE_TYPES.has(n.type)) return;
+    if (n.type === 'call_expression' || n.type === 'call') {
+      const f = nameOf(n.childForFieldName('function'));
+      if (f) out.add(f);
+    }
+    for (let i = 0; i < n.namedChildCount; i++) {
+      const c = n.namedChild(i);
+      if (c) callsIn(c, false);
+    }
+  };
+  for (let i = 0; i < args.namedChildCount; i++) {
+    const a = args.namedChild(i);
+    if (!a) continue;
+    const direct = nameOf(a);
+    if (direct) out.add(direct);
+    else if (FUNCTION_NODE_TYPES.has(a.type)) callsIn(a, true);
+  }
+  return [...out];
+};
+
 const pushReference = (node: SyntaxNode, ctx: VisitCtx, kind: EdgeKind): void => {
   const owner = ctx.scope[ctx.scope.length - 1];
   if (!owner) return;
@@ -81,6 +122,24 @@ const pushHeritageRefs = (node: SyntaxNode, ctx: VisitCtx, kind: EdgeKind): void
 export function visit(node: SyntaxNode, ctx: VisitCtx): void {
   if (ctx.extractor.callTypes.includes(node.type)) {
     const callee = calleeNameOf(node);
+    // Callbacks: the function receiving them may call them. A function passed
+    // by name (`retry(save)`, `on(x, this.sync)`), and the functions an
+    // inline callback calls (`retry(() => this.sync())`).
+    const args = node.childForFieldName('arguments');
+    if (callee && args) {
+      for (const name of callbackTargets(args)) {
+        ctx.refs.push({
+          fromNodeId: ctx.scope[ctx.scope.length - 1]!.id,
+          referenceName: name,
+          referenceKind: 'calls',
+          line: node.startPosition.row + 1,
+          column: node.startPosition.column,
+          filePath: ctx.filePath,
+          language: ctx.language,
+          viaCallee: callee,
+        });
+      }
+    }
     if (callee) {
       ctx.refs.push({
         fromNodeId: ctx.scope[ctx.scope.length - 1]!.id,
@@ -143,6 +202,17 @@ export function visit(node: SyntaxNode, ctx: VisitCtx): void {
     }
   }
   if (node.type === 'shorthand_property_identifier') pushReference(node, ctx, 'references');
+  // A member of a dynamic import: `(await import('./x.ts')).runX`.
+  if (node.type === 'member_expression') {
+    let obj = node.childForFieldName('object');
+    while (obj && WRAPPER_TYPES.has(obj.type)) obj = obj.namedChild(0);
+    if (obj?.type === 'await_expression') obj = obj.namedChild(0);
+    while (obj && WRAPPER_TYPES.has(obj.type)) obj = obj.namedChild(0);
+    if (obj?.type === 'call_expression' && obj.childForFieldName('function')?.type === 'import') {
+      const prop = node.childForFieldName('property');
+      if (prop) pushReference(prop, ctx, 'references');
+    }
+  }
 
   // Type identifiers anywhere else (parameter types, return types, generics).
   if (TYPE_IDENT_NODE_TYPES.has(node.type)) {

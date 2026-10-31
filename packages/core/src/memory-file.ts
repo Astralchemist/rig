@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { SqliteAdapter } from './db/adapter.ts';
-import { DERIVED_EDGE_PROVENANCE, EXTRACTED_NODE_SQL } from './db/extracted-nodes.ts';
+import { DERIVED_EDGE_SQL, EXTRACTED_NODE_SQL } from './db/extracted-nodes.ts';
 import { nodesAtAnchor, type OrphanAnchor, type OrphanPayload } from './db/orphaned-memory.ts';
 import { parseSourceUrls } from './db/pending-edges.ts';
 import { CALLABLE_KINDS } from './reconcile-nodes.ts';
@@ -322,9 +322,8 @@ export const exportMemory = (db: SqliteAdapter): MemoryExport =>
       provenance: string;
       created_at: number;
     }>(
-      `SELECT src, dst, kind, provenance, created_at FROM edges WHERE provenance != ?
+      `SELECT src, dst, kind, provenance, created_at FROM edges WHERE NOT ${DERIVED_EDGE_SQL()}
        ORDER BY kind, src, dst`,
-      DERIVED_EDGE_PROVENANCE,
     )) {
       emit({
         type: 'edge',

@@ -6,8 +6,29 @@ import type { SqliteAdapter } from './adapter.ts';
 // refs written by resolver.ts, tests edges by graph/tests-edges.ts). Anything
 // else on `edges` was written by an actor (waypoint_references,
 // waypoint_succeeds, cluster membership): the update pipeline never rebuilds
-// it, and keeps it in orphaned_memory when its node is deleted.
-export const DERIVED_EDGE_PROVENANCE = 'ast';
+// it, and keeps it in orphaned_memory when its node is deleted. Derived
+// edges carry 'ast' or 'ast:<origin>' (EDGE_ORIGIN below).
+/**
+ * How a derived edge was found; every value stays in the 'ast' family so the
+ * rebuild still finds them all (DERIVED_EDGE_SQL).
+ * - syntax: read straight off the syntax tree (contains, extends, implements)
+ * - import: a module path resolved to a file
+ * - name:   a call or reference matched by a name unique in the project, not
+ *           by scope; a heuristic, and the likeliest to be wrong
+ * - tests:  an import from a file whose path looks like a test
+ * - callback: a function handed to another that may call it (`retry(save)`)
+ */
+export const EDGE_ORIGIN = {
+  syntax: 'ast',
+  import: 'ast:import',
+  name: 'ast:name',
+  tests: 'ast:tests',
+  callback: 'ast:callback',
+} as const;
+
+/** SQL condition matching every derived edge: 'ast' or 'ast:<origin>'. */
+export const DERIVED_EDGE_SQL = (col = 'provenance'): string =>
+  `(${col} = 'ast' OR ${col} LIKE 'ast:%')`;
 
 // Node kinds only agents write. Every other NodeKind can come out of an
 // extractor; agent-added types (cluster, add_node's free-form types) are not

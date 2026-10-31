@@ -15,7 +15,7 @@ export const inferTestsEdges = (db: SqliteAdapter): number => {
   const res = db
     .prepare(
       `INSERT OR IGNORE INTO edges (src, dst, kind, provenance, created_at)
-       SELECT e.src, e.dst, 'tests', 'ast', strftime('%s','now') * 1000
+       SELECT e.src, e.dst, 'tests', 'ast:tests', strftime('%s','now') * 1000
        FROM edges e
        JOIN nodes n ON n.id = e.src
        WHERE e.kind = 'imports'
