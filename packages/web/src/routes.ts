@@ -6,7 +6,13 @@ import { impactTree, listOrphans, neighborhood, nodeCards } from './views.ts';
 // How long a typeahead search waits for the embedding model before answering
 // from names and keywords alone. The first query starts the model loading.
 const SEARCH_WAIT_MS = 1200;
-const WAYPOINT_KINDS = new Set(['decision', 'observation', 'constraint', 'open-question', 'principle']);
+const WAYPOINT_KINDS = new Set([
+  'decision',
+  'observation',
+  'constraint',
+  'open-question',
+  'principle',
+]);
 // Mutations the activity feed leaves out: gaze, not edits.
 const QUIET_KINDS = "('selection', 'focus')";
 
@@ -52,8 +58,13 @@ interface GraphQuery {
 const intOrUndef = (s: string | undefined): number | undefined =>
   s === undefined ? undefined : Number.parseInt(s, 10);
 
-const ensureNode = (rig: Rig, id: string): { ok: true } | { ok: false; status: number; body: { error: string } } =>
-  rig.getNode(id) ? { ok: true } : { ok: false, status: 404, body: { error: `node ${id} not found` } };
+const ensureNode = (
+  rig: Rig,
+  id: string,
+): { ok: true } | { ok: false; status: number; body: { error: string } } =>
+  rig.getNode(id)
+    ? { ok: true }
+    : { ok: false, status: 404, body: { error: `node ${id} not found` } };
 
 export const registerRoutes = (app: FastifyInstance, rig: Rig): void => {
   app.get('/api/status', async () => rig.status());
@@ -102,8 +113,16 @@ export const registerRoutes = (app: FastifyInstance, rig: Rig): void => {
     async (req, reply) => {
       const e = ensureNode(rig, req.params.id);
       if (!e.ok) return reply.code(e.status).send(e.body);
-      const steps = rig.getCriticalPath(req.params.id, Math.min(intOrUndef(req.query.max_steps) ?? 16, 32));
-      const cards = new Map(nodeCards(rig, steps.map((s) => s.id)).map((c) => [c.id, c]));
+      const steps = rig.getCriticalPath(
+        req.params.id,
+        Math.min(intOrUndef(req.query.max_steps) ?? 16, 32),
+      );
+      const cards = new Map(
+        nodeCards(
+          rig,
+          steps.map((s) => s.id),
+        ).map((c) => [c.id, c]),
+      );
       return {
         path: steps.map((s) => ({ ...s, card: cards.get(s.id) ?? null })),
       };
@@ -112,7 +131,10 @@ export const registerRoutes = (app: FastifyInstance, rig: Rig): void => {
 
   // Cards for a set of ids (comma-separated), in the order asked.
   app.get<{ Querystring: CardsQuery }>('/api/cards', async (req, reply) => {
-    const ids = (req.query.ids ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    const ids = (req.query.ids ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     if (ids.length === 0) return reply.code(400).send({ error: 'ids query param required' });
     if (ids.length > 500) return reply.code(400).send({ error: 'at most 500 ids' });
     return nodeCards(rig, ids);
@@ -175,11 +197,36 @@ export const registerRoutes = (app: FastifyInstance, rig: Rig): void => {
     }
   });
 
-  app.get<{ Querystring: FilesQuery }>('/api/files', async (req) =>
-    rig.getFiles(req.query.filter),
-  );
+  app.get<{ Querystring: FilesQuery }>('/api/files', async (req) => rig.getFiles(req.query.filter));
 
   app.get('/api/pending-edges', async () => rig.writes.listPending());
+
+  // The architecture blueprint (E4): JSON for the map's Blueprint lens, or
+  // the same plan as Mermaid for copying.
+  app.get<{ Querystring: { level?: string; format?: string } }>(
+    '/api/blueprint',
+    async (req, reply) => {
+      const { buildBlueprint, blueprintToMermaid } = await import('@rig/core/blueprint.ts');
+      const level = req.query.level === 'site' ? 'site' : 'floor';
+      let commit: string | null = null;
+      try {
+        const { execFileSync } = await import('node:child_process');
+        commit = execFileSync('git', ['rev-parse', 'HEAD'], {
+          cwd: rig.projectRoot,
+          encoding: 'utf-8',
+          stdio: ['ignore', 'pipe', 'ignore'],
+        }).trim();
+      } catch {
+        commit = null;
+      }
+      const b = buildBlueprint(rig.database.adapter, rig.projectRoot, { level, commit });
+      if (req.query.format === 'mermaid') {
+        reply.type('text/plain; charset=utf-8');
+        return blueprintToMermaid(b);
+      }
+      return b;
+    },
+  );
 
   // The orientation map rig_overview and rig://overview serve.
   app.get<{ Querystring: { budget?: string } }>('/api/overview', async (req) => {
@@ -199,7 +246,8 @@ export const registerRoutes = (app: FastifyInstance, rig: Rig): void => {
   // relevance instead (hybrid, keyword-only when degraded).
   app.get<{ Querystring: WaypointsQuery }>('/api/waypoints', async (req, reply) => {
     const kind = req.query.kind;
-    if (kind && !WAYPOINT_KINDS.has(kind)) return reply.code(400).send({ error: `unknown kind ${kind}` });
+    if (kind && !WAYPOINT_KINDS.has(kind))
+      return reply.code(400).send({ error: `unknown kind ${kind}` });
     const opts = {
       ...(req.query.session_id ? { sessionId: req.query.session_id } : {}),
       ...(kind ? { kind: kind as WaypointKind } : {}),
@@ -242,7 +290,15 @@ export const registerRoutes = (app: FastifyInstance, rig: Rig): void => {
          FROM mutation_log m WHERE m.kind NOT IN ${QUIET_KINDS}
          ORDER BY m.id DESC LIMIT ?`,
       )
-      .all(limit) as { id: number; ts: number; session_id: string; kind: string; payload: string; actor: string; undone: number }[];
+      .all(limit) as {
+      id: number;
+      ts: number;
+      session_id: string;
+      kind: string;
+      payload: string;
+      actor: string;
+      undone: number;
+    }[];
     const next = db
       .prepare(
         `SELECT m.id, m.ts, m.kind, m.payload FROM mutation_log m
@@ -260,32 +316,28 @@ export const registerRoutes = (app: FastifyInstance, rig: Rig): void => {
       }
     };
     return {
-      next_undo: next ? { id: next.id, ts: next.ts, kind: next.kind, payload: parse(next.payload) } : null,
+      next_undo: next
+        ? { id: next.id, ts: next.ts, kind: next.kind, payload: parse(next.payload) }
+        : null,
       items: rows.map((r) => ({ ...r, payload: parse(r.payload), undone: r.undone === 1 })),
     };
   });
 
-  app.post<{ Params: { id: string } }>(
-    '/api/pending-edges/:id/accept',
-    async (req, reply) => {
-      const id = Number.parseInt(req.params.id, 10);
-      if (Number.isNaN(id)) return reply.code(400).send({ error: 'invalid id' });
-      const row = rig.writes.acceptPending(id, { sessionId: 'web', actor: 'user:web' });
-      if (!row) return reply.code(404).send({ error: 'pending edge not found or already resolved' });
-      return { ok: true, accepted: row };
-    },
-  );
+  app.post<{ Params: { id: string } }>('/api/pending-edges/:id/accept', async (req, reply) => {
+    const id = Number.parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return reply.code(400).send({ error: 'invalid id' });
+    const row = rig.writes.acceptPending(id, { sessionId: 'web', actor: 'user:web' });
+    if (!row) return reply.code(404).send({ error: 'pending edge not found or already resolved' });
+    return { ok: true, accepted: row };
+  });
 
-  app.post<{ Params: { id: string } }>(
-    '/api/pending-edges/:id/reject',
-    async (req, reply) => {
-      const id = Number.parseInt(req.params.id, 10);
-      if (Number.isNaN(id)) return reply.code(400).send({ error: 'invalid id' });
-      const ok = rig.writes.rejectPending(id, { sessionId: 'web', actor: 'user:web' });
-      if (!ok) return reply.code(404).send({ error: 'pending edge not found or already resolved' });
-      return { ok: true };
-    },
-  );
+  app.post<{ Params: { id: string } }>('/api/pending-edges/:id/reject', async (req, reply) => {
+    const id = Number.parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return reply.code(400).send({ error: 'invalid id' });
+    const ok = rig.writes.rejectPending(id, { sessionId: 'web', actor: 'user:web' });
+    if (!ok) return reply.code(404).send({ error: 'pending edge not found or already resolved' });
+    return { ok: true };
+  });
 
   // Same shape as rig_undo: undone, or null with reason (+ failed when an
   // inverse could not be applied).
@@ -296,12 +348,9 @@ export const registerRoutes = (app: FastifyInstance, rig: Rig): void => {
     return { undone: null, reason: r.reason, ...(ref ? { failed: ref } : {}) };
   });
 
-  app.post<{ Body: { node_id?: string | null } }>(
-    '/api/selection',
-    async (req) => {
-      const nodeId = typeof req.body?.node_id === 'string' ? req.body.node_id : null;
-      rig.writes.recordSelection(nodeId, { sessionId: 'web', actor: 'user:web' });
-      return { ok: true };
-    },
-  );
+  app.post<{ Body: { node_id?: string | null } }>('/api/selection', async (req) => {
+    const nodeId = typeof req.body?.node_id === 'string' ? req.body.node_id : null;
+    rig.writes.recordSelection(nodeId, { sessionId: 'web', actor: 'user:web' });
+    return { ok: true };
+  });
 };

@@ -1853,3 +1853,76 @@ table.data tbody tr:focus-visible {
     bottom: 76px;
   }
 }
+
+/* Blueprint lens (E4): the shape follows the kind; inferred boxes are dashed. */
+.bp-node {
+  width: 210px;
+  min-height: 76px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-raise);
+  color: var(--text-1);
+}
+.bp-node[data-kind='store'] {
+  border-radius: 50% / 18px;
+  text-align: center;
+  align-items: center;
+}
+.bp-node[data-kind='io'] {
+  border-radius: 4px;
+  transform: skewX(-10deg);
+}
+.bp-node[data-kind='io'] > * {
+  transform: skewX(10deg);
+}
+.bp-node[data-kind='external'] {
+  background: color-mix(in oklab, var(--text-3) 12%, var(--surface-2));
+  color: var(--text-2);
+}
+.bp-node[data-inferred='true'] {
+  border-style: dashed;
+  border-color: color-mix(in oklab, var(--text-3) 70%, transparent);
+  box-shadow: none;
+}
+.bp-label {
+  font-weight: 600;
+  font-size: var(--t-sm);
+}
+.bp-detail {
+  font-size: var(--t-2xs);
+  color: var(--text-3);
+}
+.bp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  align-items: center;
+}
+.bp-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.bp-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 11px;
+  background: var(--surface-2);
+  border: 1px solid var(--text-3);
+  border-radius: 3px;
+}
+.bp-swatch[data-kind='store'] {
+  border-radius: 50% / 4px;
+}
+.bp-swatch[data-kind='io'] {
+  transform: skewX(-12deg);
+}
+.bp-swatch[data-kind='external'] {
+  background: color-mix(in oklab, var(--text-3) 25%, var(--surface-2));
+}

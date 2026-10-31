@@ -209,6 +209,18 @@ test.describe('map UI', () => {
     await expect(page.getByRole('application', { name: /Constellation/ })).toBeVisible();
   });
 
+  test("the Blueprint lens draws the plan or says why it can't", async ({ page }) => {
+    await page.goto(state.loginUrl);
+    await page.getByRole('tab', { name: /Blueprint/ }).click();
+    await expect(
+      page
+        .locator('.bp-node')
+        .first()
+        .or(page.getByRole('heading', { name: 'No packages to draw' })),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('button', { name: /Copy Mermaid/ })).toBeVisible();
+  });
+
   test('settings: Daylight applies at once and survives a reload', async ({ page }) => {
     await signIn(page);
     await page.getByRole('button', { name: 'Theme settings' }).click();

@@ -28,7 +28,40 @@ export type FlowEdgeData = {
   kind: string;
   weight?: number;
   label?: boolean;
+  /** Drawn dashed: inferred rather than read from the code (blueprints). */
+  dashed?: boolean;
 };
+
+/** A box in the architecture blueprint (E4): its shape follows its kind. */
+export type BlueprintData = {
+  label: string;
+  kind: 'package' | 'store' | 'external' | 'io';
+  detail?: string;
+  evidence?: string;
+  inferred: boolean;
+};
+
+export const BP_W = 210;
+export const BP_H = 76;
+
+export const BlueprintNode = memo(function BlueprintNode({
+  data,
+}: NodeProps<Node<BlueprintData>>): JSX.Element {
+  return (
+    <div
+      className="bp-node"
+      data-kind={data.kind}
+      data-inferred={data.inferred ? 'true' : undefined}
+      title={data.evidence ? `Inferred from ${data.evidence}` : undefined}
+    >
+      <Handle type="target" position={Position.Left} className="flow-handle" />
+      <div className="bp-label truncate">{data.label}</div>
+      {data.detail && <div className="bp-detail truncate">{data.detail}</div>}
+      {data.evidence && <div className="bp-detail truncate">from {data.evidence}</div>}
+      <Handle type="source" position={Position.Right} className="flow-handle" />
+    </div>
+  );
+});
 
 export const CARD_W = 232;
 export const CARD_H = 92;
@@ -128,6 +161,7 @@ export const TypedEdge = memo(function TypedEdge(
       : table === 'semantic'
         ? { stroke: 'var(--edge-strong)', strokeWidth: 1.8 }
         : { stroke: 'color-mix(in oklab, var(--text-3) 50%, transparent)', strokeWidth: 1.1 };
+  if (data?.dashed) Object.assign(style, { strokeDasharray: '5 4' });
   return (
     <>
       <BaseEdge id={id} path={path} style={style} {...(markerEnd ? { markerEnd } : {})} />
@@ -149,7 +183,7 @@ export const TypedEdge = memo(function TypedEdge(
   );
 });
 
-export const nodeTypes = { card: CardNode, waypoint: WaypointNode };
+export const nodeTypes = { card: CardNode, waypoint: WaypointNode, blueprint: BlueprintNode };
 export const edgeTypes = { typed: TypedEdge };
 
 // Top-left positions from dagre's centres.
