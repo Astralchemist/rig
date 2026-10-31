@@ -44,7 +44,21 @@ export interface SharedWaypoint {
 
 export type SharedLine =
   | { v: 1; id: string; version: number; op: 'put'; by: string; record: SharedWaypoint }
-  | { v: 1; id: string; version: number; op: 'tombstone'; by: string };
+  | { v: 1; id: string; version: number; op: 'tombstone'; by: string }
+  // A reviewer's verdict on the version they saw (E5's PR comment). Verdicts
+  // don't make a new version; the latest per reviewer counts.
+  | {
+      v: 1;
+      id: string;
+      version: number;
+      op: 'verdict';
+      by: string;
+      verdict: Verdict;
+      commit?: string;
+      pr?: number;
+    };
+
+export type Verdict = 'holds' | 'outdated' | 'unsure';
 
 const fileFor = (root: string, id: string): string =>
   join(root, SHARED_DIR, id.slice(0, 2), `${id}.jsonl`);
@@ -59,11 +73,18 @@ export interface SharedState {
   tombstoned: Set<string>;
   /** Problems a CI check should fail on. */
   errors: string[];
+  /** Latest verdict per reviewer, per record. */
+  verdicts: Map<string, Map<string, Verdict>>;
 }
 
 /** Read every record file. Identical duplicate lines (a union merge) are harmless; differing ones are errors. */
 export const loadShared = (root: string): SharedState => {
-  const state: SharedState = { records: new Map(), tombstoned: new Set(), errors: [] };
+  const state: SharedState = {
+    records: new Map(),
+    tombstoned: new Set(),
+    errors: [],
+    verdicts: new Map(),
+  };
   const base = join(root, SHARED_DIR);
   if (!existsSync(base)) return state;
   const latest = new Map<string, SharedLine>();
@@ -98,6 +119,16 @@ export const loadShared = (root: string): SharedState => {
           state.errors.push(`${where}: malformed record`);
           return;
         }
+        if (l.op === 'verdict') {
+          if (!['holds', 'outdated', 'unsure'].includes(l.verdict)) {
+            state.errors.push(`${where}: unknown verdict`);
+            return;
+          }
+          let byReviewer = state.verdicts.get(l.id);
+          if (!byReviewer) state.verdicts.set(l.id, (byReviewer = new Map()));
+          byReviewer.set(l.by, l.verdict); // file order: the later line wins
+          return;
+        }
         if (l.op === 'put' && hasSecret(JSON.stringify(l.record)))
           state.errors.push(`${where}: looks like a secret`);
         const key = `${l.id}@${l.version}`;
@@ -113,7 +144,8 @@ export const loadShared = (root: string): SharedState => {
   }
   for (const [id, l] of latest) {
     if (l.op === 'tombstone') state.tombstoned.add(id);
-    else state.records.set(id, { version: l.version, by: l.by, record: l.record });
+    else if (l.op === 'put')
+      state.records.set(id, { version: l.version, by: l.by, record: l.record });
   }
   return state;
 };
@@ -136,6 +168,51 @@ const append = (root: string, line: SharedLine): void => {
   const f = fileFor(root, line.id);
   mkdirSync(join(root, SHARED_DIR, line.id.slice(0, 2)), { recursive: true });
   appendFileSync(f, JSON.stringify(line) + '\n');
+};
+
+const CHECKBOX = /^\s*-\s*\[([ xX])\][^<]*<!--\s*rig:([0-9A-Za-z-]+):(holds|outdated|unsure)\s*-->/;
+
+/**
+ * Ticked boxes in rig's PR comment (`- [x] outdated <!-- rig:<id>:outdated -->`).
+ * Only explicit ticks count: an unticked memory has no verdict, never "holds".
+ */
+export const parseCommentVerdicts = (body: string): { id: string; verdict: Verdict }[] => {
+  const out = new Map<string, Verdict>();
+  for (const line of body.split('\n')) {
+    const m = CHECKBOX.exec(line);
+    if (m && m[1] !== ' ') out.set(m[2]!, m[3] as Verdict);
+  }
+  return [...out].map(([id, verdict]) => ({ id, verdict }));
+};
+
+/** Append verdicts to the shared records they judge; records not shared here are skipped. */
+export const recordVerdicts = (
+  root: string,
+  verdicts: { id: string; verdict: Verdict }[],
+  opts: { by: string; commit?: string; pr?: number },
+): { recorded: number; skipped: string[] } => {
+  const state = loadShared(root);
+  let recorded = 0;
+  const skipped: string[] = [];
+  for (const v of verdicts) {
+    const rec = state.records.get(v.id);
+    if (!rec) {
+      skipped.push(v.id);
+      continue;
+    }
+    append(root, {
+      v: 1,
+      id: v.id,
+      version: rec.version,
+      op: 'verdict',
+      by: opts.by,
+      verdict: v.verdict,
+      ...(opts.commit ? { commit: opts.commit } : {}),
+      ...(opts.pr !== undefined ? { pr: opts.pr } : {}),
+    });
+    recorded++;
+  }
+  return { recorded, skipped };
 };
 
 export class PromoteError extends Error {
