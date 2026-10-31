@@ -217,7 +217,9 @@ const runSessionStart = async (
     const handoff = await import('@rig/core/handoff/handoff.ts');
     let handoffText = '';
     const sid = input.session_id;
-    if (input.source === 'compact' && input.transcript_path && sid) {
+    // Compaction summaries are read from Claude Code's transcript format only
+    // (Codex's rollout format isn't a stable interface for hooks).
+    if (input.source === 'compact' && input.transcript_path && sid && client === 'claude') {
       let summary = handoff.latestCompactSummary(input.transcript_path);
       if (!summary) {
         // The transcript is written asynchronously; give it a moment.
@@ -235,7 +237,7 @@ const runSessionStart = async (
           files,
         });
       }
-    } else if (sid) {
+    } else if (sid && input.source !== 'compact') {
       const h = handoff.takeHandoff(root, sid);
       if (h) {
         handoffText = handoff.renderHandoff(h, root);

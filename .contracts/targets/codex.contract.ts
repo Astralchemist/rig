@@ -33,6 +33,34 @@ export default defineTargetContract({
       mode: 'write-toml',
       template: '{{GENERATED:codex.permissions.json}}',
     },
+    // SessionStart hook (Codex reads ~/.codex/hooks.json, enabled by default
+    // in current releases): delivers a handoff another session left, then
+    // the brief. Codex marks new hooks for review and skips them until the
+    // user trusts them in /hooks. User-level, so it runs in every project;
+    // `rig hook` exits silently where there is no .rig/.
+    // https://learn.chatgpt.com/docs/hooks
+    {
+      role: 'hooks',
+      path: '~/.codex/hooks.json',
+      mode: 'merge-json',
+      template: {
+        hooks: {
+          SessionStart: [
+            {
+              matcher: 'startup|resume|clear|compact',
+              hooks: [
+                {
+                  type: 'command',
+                  command: '{{RIG_BIN}} hook SessionStart --client codex',
+                  timeout: 10,
+                  statusMessage: 'rig: loading handoff',
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
     {
       role: 'instructions',
       path: '~/.codex/AGENTS.md',
