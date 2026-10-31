@@ -44,7 +44,7 @@ commands:
   query       CLI search
   impact      what a change can break, and which recorded decisions it may invalidate:
               <symbol|id> or --diff [<base>[...<head>]] (default: working tree vs HEAD)
-              [--depth <n>, default 2] [--format text|json|mermaid] [--max-nodes <n>]
+              [--depth <n>, default 2] [--format text|json|mermaid|comment] [--max-nodes <n>]
               [--no-sync]
   files       list indexed files
   overview    print the orientation map your agent gets from rig_overview

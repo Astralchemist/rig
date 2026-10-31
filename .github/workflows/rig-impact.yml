@@ -1,0 +1,53 @@
+name: rig impact
+
+# Backlog E5, part 1 of 2: compute the PR comment. This job runs the PR's
+# code with a read-only token (pull requests from forks get nothing else),
+# so it only writes an artifact; rig-impact-comment.yml posts it from a
+# trusted context. Never use pull_request_target to run PR code.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  impact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ">=1.1"
+
+      - run: bun install --frozen-lockfile
+      - run: bun run gen:wasm
+
+      - name: Index the PR head
+        # Structural graph only: impact needs no embedding model.
+        run: |
+          bun run packages/cli/src/index.ts init
+          bun run packages/cli/src/index.ts index
+        env:
+          RIG_NO_WATCH: "1"
+
+      - name: Impact of the PR
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          mkdir -p out
+          echo "$PR" > out/pr
+          bun run packages/cli/src/index.ts impact \
+            --diff "origin/$BASE...HEAD" \
+            --format comment --no-sync > out/comment.md
+          wc -c out/comment.md
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rig-impact
+          path: out/
+          retention-days: 3

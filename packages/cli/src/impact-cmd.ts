@@ -91,6 +91,76 @@ export const renderImpactText = (r: DiffImpact): string => {
   return L.join('\n') + '\n';
 };
 
+/** Marks rig's PR comment so the action edits it instead of posting another. */
+export const COMMENT_MARKER = '<!-- rig-impact -->';
+
+/**
+ * The PR comment (backlog E5): a summary line first, recorded decisions at
+ * risk as checkboxes, the drawing collapsed, and what static analysis can't
+ * see. Empty when the change touches no indexed code, so the action stays
+ * silent.
+ */
+export const renderImpactComment = (
+  r: DiffImpact,
+  opts: { commit?: string; maxNodes?: number } = {},
+): string => {
+  if (!r.changed.length && !r.memoryAtRisk.length) return '';
+  const L: string[] = [COMMENT_MARKER];
+  L.push(
+    `**rig impact** · ${plural(r.changed.length, 'changed symbol')} · ` +
+      `${plural(r.dependents.length, 'dependent')} within ${plural(r.depth, 'step')} · ` +
+      `${r.memoryAtRisk.length} recorded ${r.memoryAtRisk.length === 1 ? 'decision' : 'decisions'} at risk`,
+  );
+  if (r.memoryAtRisk.length) {
+    L.push(
+      '',
+      '**Recorded decisions anchored to the changed code.** Do they still hold? Tick one:',
+      '',
+    );
+    for (const m of r.memoryAtRisk) {
+      const id = m.waypoint.id.replace(/^waypoint:/, '');
+      L.push(
+        `- **${m.waypoint.title}** (${m.waypoint.kind}, on \`${m.anchors.join('`, `')}\`${m.via === 'file' ? ', file only' : ''})`,
+        `  - [ ] still holds <!-- rig:${id}:holds -->`,
+        `  - [ ] outdated <!-- rig:${id}:outdated -->`,
+        `  - [ ] can't tell <!-- rig:${id}:unsure -->`,
+      );
+    }
+  }
+  if (r.changed.length) {
+    L.push(
+      '',
+      `<details><summary>Blast radius: ${plural(r.dependents.length, 'dependent')}</summary>`,
+      '',
+    );
+    L.push('```mermaid', impactToMermaid(r, opts.maxNodes ?? 15), '```', '');
+    L.push(
+      'Changed: ' +
+        r.changed
+          .slice(0, 12)
+          .map((n) => `\`${n.name}\``)
+          .join(', ') +
+        (r.changed.length > 12 ? ` and ${r.changed.length - 12} more` : ''),
+    );
+    if (r.dependents.length)
+      L.push(
+        '',
+        'Nearest dependents: ' +
+          r.dependents
+            .slice(0, 12)
+            .map((n) => `\`${n.name}\``)
+            .join(', ') +
+          (r.dependents.length > 12 ? ` and ${r.dependents.length - 12} more` : ''),
+      );
+    L.push('', '</details>');
+  }
+  L.push(
+    '',
+    `<sub>Static analysis of rig's graph${opts.commit ? ` at ${opts.commit.slice(0, 7)}` : ''}. Calls through callbacks, dispatch tables and middleware aren't seen: on rig's own history it found about half of what the tests showed calling into a change.</sub>`,
+  );
+  return L.join('\n') + '\n';
+};
+
 export async function runImpact(cwd: string): Promise<void> {
   const args = process.argv.slice(3);
   const valued = new Set(['--depth', '--format', '--max-nodes', '--diff']);
@@ -102,7 +172,7 @@ export async function runImpact(cwd: string): Promise<void> {
   const target = args.find((a, i) => !a.startsWith('--') && !valued.has(args[i - 1] ?? ''));
   if (!useDiff && !target) {
     process.stderr.write(
-      'usage: rig impact <symbol|id> | --diff [<base>[...<head>]]  [--depth <n>] [--format text|json|mermaid] [--max-nodes <n>] [--no-sync]\n',
+      'usage: rig impact <symbol|id> | --diff [<base>[...<head>]]  [--depth <n>] [--format text|json|mermaid|comment] [--max-nodes <n>] [--no-sync]\n',
     );
     process.exit(2);
   }
@@ -134,7 +204,17 @@ export async function runImpact(cwd: string): Promise<void> {
     const waypoints = rig.getWaypoints({ limit: Number.MAX_SAFE_INTEGER });
     const result = diffImpact(rig.database.adapter, changes, waypoints, { depth, addedFiles });
     if (format === 'json') process.stdout.write(JSON.stringify(result, null, 2) + '\n');
-    else if (format === 'mermaid') process.stdout.write(impactToMermaid(result, maxNodes) + '\n');
+    else if (format === 'comment') {
+      let commit: string | undefined;
+      try {
+        commit = git(cwd, ['rev-parse', 'HEAD']).trim();
+      } catch {
+        commit = undefined;
+      }
+      process.stdout.write(
+        renderImpactComment(result, { ...(commit ? { commit } : {}), maxNodes }),
+      );
+    } else if (format === 'mermaid') process.stdout.write(impactToMermaid(result, maxNodes) + '\n');
     else process.stdout.write(renderImpactText(result));
   } finally {
     rig.close();
