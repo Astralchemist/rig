@@ -62,3 +62,25 @@ matches the earlier benchmark, where hybrid search helped most on
 natural-language questions about an unfamiliar codebase (next-auth). This is
 the baseline for step 3's personalised PageRank and heat: they need to beat
 86% acc@5 (or 0.732 MRR@10) on this set, under a new pre-registration.
+
+## Pre-registration v2: personalised PageRank (written 2026-10-31, before any PageRank run)
+
+> Retrieval evaluation v2: the same index, population (the same 100 commit subjects) and metric as v1, with a third arm, *hybrid+ppr*: `rig.search(query, { rerank: 'ppr' })`, personalised PageRank from the top 20 hybrid hits over dependency and containment edges, teleport 0.15, 20 iterations, hubs damped by dividing PageRank by degree, final score half the normalised search score and half the normalised PageRank. Those parameters are fixed in `packages/core/src/search/ppr.ts` before running and not tuned on this set. **Bar: hybrid+ppr acc@5 at least 3 percentage points above hybrid.** MRR@10 reported. No changes after seeing results.
+
+## Result v2 (2026-10-31): FAIL — PageRank makes ranking worse
+
+`results/2026-10-31-retrieval-v2.md`. Same 100 queries.
+
+| arm | acc@1 | acc@5 | MRR@10 |
+|---|---:|---:|---:|
+| keyword | 62.0% | 83.0% | 0.715 |
+| hybrid | 64.0% | 86.0% | 0.732 |
+| hybrid+ppr | **42.0%** | **82.0%** | **0.588** |
+
+Personalised PageRank lowered acc@5 by 4 points and acc@1 by 22 points
+against plain hybrid search. Spreading relevance through the graph lifts the
+neighbours of good hits above the hits themselves: a commit's subject usually
+names the code it changed, and the search already finds that code first. The
+re-ranker stays opt-in (`rerank: 'ppr'`) and off by default; a variant (fewer
+seeds, a smaller PageRank share, or PageRank only as a tie-breaker) would be
+a new pre-registration, not a tweak of this one.

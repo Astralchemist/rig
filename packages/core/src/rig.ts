@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { pprRerank } from './search/ppr.ts';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Database } from './db/database.ts';
@@ -33,10 +34,7 @@ import {
   type WaypointRow,
 } from './db/waypoint-queries.ts';
 import { getFiles as fqGetFiles, type FileRow } from './db/file-queries.ts';
-import {
-  getGraphSnapshot as gsGetGraphSnapshot,
-  type GraphSnapshot,
-} from './db/graph-snapshot.ts';
+import { getGraphSnapshot as gsGetGraphSnapshot, type GraphSnapshot } from './db/graph-snapshot.ts';
 import { searchNodes as sqSearchNodes, type SearchOptions } from './db/search-queries.ts';
 import { embedAndStore } from './embed/index-embeddings.ts';
 import { selectEmbedder } from './embed/select.ts';
@@ -83,12 +81,7 @@ export type { DrillResult } from './graph/hub-drill.ts';
 export type { CriticalStep } from './graph/critical-path.ts';
 export type { AliasRow } from './db/alias-queries.ts';
 export type { AnnotationRow } from './db/annotation-queries.ts';
-export type {
-  DepRow,
-  DepConflictRow,
-  UnusedDepRow,
-  PhantomImportRow,
-} from './db/dep-queries.ts';
+export type { DepRow, DepConflictRow, UnusedDepRow, PhantomImportRow } from './db/dep-queries.ts';
 export type { HotspotRow, ColdRow } from './db/activation-queries.ts';
 export type {
   WaypointRow,
@@ -171,10 +164,7 @@ export class Rig {
     this.searcher = new HybridSearcher(this.database.adapter, this.embedder);
   }
 
-  static async init(
-    projectRoot: string,
-    opts: { embedder?: Embedder } = {},
-  ): Promise<Rig> {
+  static async init(projectRoot: string, opts: { embedder?: Embedder } = {}): Promise<Rig> {
     const root = resolve(projectRoot);
     mkdirSync(rigDirOf(root), { recursive: true });
     return new Rig({
@@ -184,10 +174,7 @@ export class Rig {
     });
   }
 
-  static async open(
-    projectRoot: string,
-    opts: { embedder?: Embedder } = {},
-  ): Promise<Rig> {
+  static async open(projectRoot: string, opts: { embedder?: Embedder } = {}): Promise<Rig> {
     const root = resolve(projectRoot);
     if (!existsSync(rigDirOf(root))) {
       throw new Error(`rig: not initialized at ${root}. Run \`rig init\` first.`);
@@ -220,13 +207,15 @@ export class Rig {
     };
   }
 
-  indexAll(opts: {
-    onProgress?: (p: import('./index-all.ts').IndexProgress) => void;
-    include?: readonly string[];
-    exclude?: readonly string[];
-    // Re-extract every walked file, even unchanged ones (still in place).
-    force?: boolean;
-  } = {}): Promise<IndexResult> {
+  indexAll(
+    opts: {
+      onProgress?: (p: import('./index-all.ts').IndexProgress) => void;
+      include?: readonly string[];
+      exclude?: readonly string[];
+      // Re-extract every walked file, even unchanged ones (still in place).
+      force?: boolean;
+    } = {},
+  ): Promise<IndexResult> {
     return this.serialized(() =>
       runIndexAll(
         this.projectRoot,
@@ -341,16 +330,37 @@ export class Rig {
   // Hybrid search: exact names and aliases, keywords and vector similarity,
   // fused by reciprocal rank (search/hybrid.ts). Never throws for want of the
   // model: without it, results come from the other lists and say so.
-  async search(query: string, opts: HybridSearchOptions = {}): Promise<SearchResult> {
+  async search(
+    query: string,
+    opts: HybridSearchOptions & { rerank?: 'ppr' } = {},
+  ): Promise<SearchResult> {
     const r = await this.searcher.search(query, opts);
-    return {
-      hits: r.hits.map((h) => ({
-        node: toRigNode(h.node),
-        score: h.score,
-        matchedBy: h.matchedBy,
-      })),
-      ...(r.degraded ? { degraded: r.degraded } : {}),
-    };
+    const hits = r.hits.map((h) => ({
+      node: toRigNode(h.node),
+      score: h.score,
+      matchedBy: h.matchedBy,
+    }));
+    if (opts.rerank === 'ppr') {
+      // Step 3: personalised PageRank from the hits (search/ppr.ts).
+      const byId = new Map(hits.map((h) => [h.node.id, h]));
+      const limit = opts.limit ?? hits.length;
+      const ranked = pprRerank(
+        this.database.adapter,
+        hits.map((h) => ({ id: h.node.id, score: h.score })),
+      )
+        .map((x) => {
+          const known = byId.get(x.id);
+          if (known) return { ...known, score: x.score };
+          const n = this.getNode(x.id);
+          return n
+            ? { node: n, score: x.score, matchedBy: [] as (typeof hits)[number]['matchedBy'] }
+            : null;
+        })
+        .filter((x): x is (typeof hits)[number] => x !== null)
+        .slice(0, limit);
+      return { hits: ranked, ...(r.degraded ? { degraded: r.degraded } : {}) };
+    }
+    return { hits, ...(r.degraded ? { degraded: r.degraded } : {}) };
   }
 
   getNeighbors(id: NodeId, opts: NeighborsOptions = {}): TaggedEdge[] {
@@ -459,7 +469,13 @@ export class Rig {
   }
 
   seedSkills(
-    tools: ReadonlyArray<{ name: string; description: string; tier: string; summary?: string; records_activation?: boolean }>,
+    tools: ReadonlyArray<{
+      name: string;
+      description: string;
+      tier: string;
+      summary?: string;
+      records_activation?: boolean;
+    }>,
   ): number {
     let n = 0;
     for (const t of tools) {
@@ -543,9 +559,9 @@ export class Rig {
 
   getMagneticPull(id: NodeId, k = 10, opts: { hubBias?: number } = {}): PullResult[] {
     const candidates = (
-      this.database.adapter
-        .prepare('SELECT id FROM nodes WHERE id != ?')
-        .all(id) as { id: string }[]
+      this.database.adapter.prepare('SELECT id FROM nodes WHERE id != ?').all(id) as {
+        id: string;
+      }[]
     ).map((r) => r.id);
     // Default hubBias=0.3 so light-tier callers (rig_pull) surface hubs first.
     // Callers wanting unbiased ranking pass hubBias=0 (e.g. hub-drill).
