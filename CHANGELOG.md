@@ -26,6 +26,7 @@ All notable changes to Rig are documented here. The format follows
 - Target contracts have a `hooks` file role. Rig's hook handlers are the ones running `rig hook`, and the same install and uninstall rules apply to them as to rig's permission entries.
 
 ### Changed
+- **MCP protocol** (research roadmap, step 4). The server negotiates the protocol version: a client asking for 2025-06-18, 2025-03-26 or 2024-11-05 gets it, anything else gets 2025-06-18 (it always answered 2024-11-05). Tool results carry `structuredContent` matching each tool's declared output schema, next to the text copy older clients read. A tool failure a caller can act on (for example `NODE_NOT_FOUND`) now comes back as a result with `isError: true`, so the model sees it, instead of a JSON-RPC error; an unknown tool and `NOT_INITIALIZED` stay protocol errors. `tools/list` adds annotations: reads are read-only and idempotent, only `rig_undo` is destructive, and nothing is open-world.
 - `/api/search` ranks with the same hybrid search as `rig_search`. The body is still the `RigNode[]` it was, each hit with `score` and `matched_by` added; the `x-rig-search` header says `hybrid` or `keyword-only`, and `mode=keyword` asks for the old keyword search.
 - The map draws the top 500 nodes by default (it asked for 2,000); 300, 1,000 and 2,000 are a setting away.
 - CLI commands load on demand. Light commands such as `rig hook` start in about 20 ms instead of about 140 ms.
