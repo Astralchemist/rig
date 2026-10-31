@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { SqliteAdapter } from '../db/adapter.ts';
-import { DERIVED_EDGE_PROVENANCE, loadExtractedNodes } from '../db/extracted-nodes.ts';
+import { DERIVED_EDGE_SQL, loadExtractedNodes } from '../db/extracted-nodes.ts';
 import { loadAllFileArtifacts } from '../db/file-artifacts.ts';
 import { resolveReferences, type ResolveStats } from './resolver.ts';
 
@@ -17,15 +17,15 @@ const clearDerivedEdges = (db: SqliteAdapter): void => {
     }
   ).n;
   if (legacy === 0) {
-    db.prepare(`DELETE FROM edges WHERE provenance = ?`).run(DERIVED_EDGE_PROVENANCE);
+    db.prepare(`DELETE FROM edges WHERE ${DERIVED_EDGE_SQL()}`).run();
     db.exec('DELETE FROM unresolved_refs');
     return;
   }
   db.prepare(
-    `DELETE FROM edges WHERE provenance = ? AND src NOT IN (
+    `DELETE FROM edges WHERE ${DERIVED_EDGE_SQL()} AND src NOT IN (
        SELECT id FROM nodes WHERE json_extract(data, '$.filePath') IN (${LEGACY_PATHS_SQL})
      )`,
-  ).run(DERIVED_EDGE_PROVENANCE);
+  ).run();
   db.exec(`DELETE FROM unresolved_refs WHERE file_path NOT IN (${LEGACY_PATHS_SQL})`);
 };
 

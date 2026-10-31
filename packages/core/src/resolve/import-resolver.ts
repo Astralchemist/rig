@@ -9,10 +9,7 @@ const toPosix = (p: string): string => normalize(p).replace(/\\/g, '/');
 
 // Look up a candidate path against the file index, trying common extensions
 // and `index.<ext>` fallbacks. Returns the matched file node id, or null.
-const tryCandidate = (
-  candidate: string,
-  fileByPath: Map<string, string>,
-): string | null => {
+const tryCandidate = (candidate: string, fileByPath: Map<string, string>): string | null => {
   for (const ext of EXTENSIONS) {
     const id = fileByPath.get(candidate + ext);
     if (id) return id;

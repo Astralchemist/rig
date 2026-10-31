@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import type { SqliteAdapter } from './db/adapter.ts';
-import { EXTRACTED_NODE_SQL } from './db/extracted-nodes.ts';
+import { DERIVED_EDGE_SQL, EXTRACTED_NODE_SQL } from './db/extracted-nodes.ts';
 import { getMeta, setMeta } from './db/meta.ts';
 import { listWaypoints, type WaypointRow } from './db/waypoint-queries.ts';
 import { isSurfaceable } from './capture/trust.ts';
@@ -587,7 +587,9 @@ export const buildOverviewMap = (
     if (!s) m.set(k, (s = new Set()));
     s.add(v);
   };
-  for (const e of db.prepare(`SELECT src, dst, kind FROM edges WHERE provenance = 'ast'`).all() as {
+  for (const e of db
+    .prepare(`SELECT src, dst, kind FROM edges WHERE ${DERIVED_EDGE_SQL()}`)
+    .all() as {
     src: string;
     dst: string;
     kind: string;
