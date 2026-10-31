@@ -48,6 +48,7 @@ interface Query {
   files: string[];
   keyword: string[];
   hybrid: string[];
+  ppr: string[];
 }
 
 const rankOf = (results: string[], files: Set<string>): number => {
@@ -89,13 +90,15 @@ const main = async (): Promise<void> => {
       const keyword = code(rig.searchNodes(p.query, { limit: 20 }));
       const h = await rig.search(p.query, { limit: 20, waitMs: 120_000 });
       const hybrid = code(h.hits.map((x) => x.node));
-      queries.push({ commit: p.sha, query: p.query, files: p.files, keyword, hybrid });
+      const g = await rig.search(p.query, { limit: 20, waitMs: 120_000, rerank: 'ppr' });
+      const ppr = code(g.hits.map((x) => x.node));
+      queries.push({ commit: p.sha, query: p.query, files: p.files, keyword, hybrid, ppr });
       console.log(
         `${p.sha} kw@${rankOf(keyword, new Set(p.files))} hy@${rankOf(hybrid, new Set(p.files))}  ${p.query.slice(0, 60)}`,
       );
     }
 
-    const score = (arm: 'keyword' | 'hybrid') => {
+    const score = (arm: 'keyword' | 'hybrid' | 'ppr') => {
       const ranks = queries.map((q) => rankOf(q[arm], new Set(q.files)));
       return {
         acc1: ranks.filter((r) => r <= 1).length / ranks.length,
@@ -105,15 +108,26 @@ const main = async (): Promise<void> => {
     };
     const kw = score('keyword');
     const hy = score('hybrid');
+    const pr = score('ppr');
+    const verdictPpr =
+      queries.length < TAKE ? 'INCONCLUSIVE' : pr.acc5 - hy.acc5 >= 0.03 ? 'PASS' : 'FAIL';
     const verdict =
       queries.length < TAKE ? 'INCONCLUSIVE' : hy.acc5 - kw.acc5 >= 0.05 ? 'PASS' : 'FAIL';
     const pct = (x: number) => `${(100 * x).toFixed(1)}%`;
-    const summary = { verdict, from: FROM, queries: queries.length, keyword: kw, hybrid: hy };
+    const summary = {
+      verdict,
+      verdictPpr,
+      from: FROM,
+      queries: queries.length,
+      keyword: kw,
+      hybrid: hy,
+      ppr: pr,
+    };
     const date = new Date().toISOString().slice(0, 10);
     const out = resolve(import.meta.dir, 'results');
     mkdirSync(out, { recursive: true });
     writeFileSync(
-      join(out, `${date}-retrieval.json`),
+      join(out, `${date}-retrieval-v2.json`),
       JSON.stringify({ summary, queries }, null, 2) + '\n',
     );
     const md = [
@@ -125,10 +139,13 @@ const main = async (): Promise<void> => {
       '|---|---:|---:|---:|',
       `| keyword | ${pct(kw.acc1)} | ${pct(kw.acc5)} | ${kw.mrr10.toFixed(3)} |`,
       `| hybrid | ${pct(hy.acc1)} | ${pct(hy.acc5)} | ${hy.mrr10.toFixed(3)} |`,
+      `| hybrid+ppr | ${pct(pr.acc1)} | ${pct(pr.acc5)} | ${pr.mrr10.toFixed(3)} |`,
+      '',
+      `v2 (PageRank): ${verdictPpr}. Bar: hybrid+ppr acc@5 at least 3 pp above hybrid. Difference: ${((pr.acc5 - hy.acc5) * 100).toFixed(1)} pp.`,
       '',
       `Bar: hybrid acc@5 at least 5 pp above keyword. Difference: ${((hy.acc5 - kw.acc5) * 100).toFixed(1)} pp.`,
     ].join('\n');
-    writeFileSync(join(out, `${date}-retrieval.md`), md + '\n');
+    writeFileSync(join(out, `${date}-retrieval-v2.md`), md + '\n');
     console.log(md);
   } finally {
     rig.close();

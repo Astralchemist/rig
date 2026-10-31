@@ -62,3 +62,7 @@ matches the earlier benchmark, where hybrid search helped most on
 natural-language questions about an unfamiliar codebase (next-auth). This is
 the baseline for step 3's personalised PageRank and heat: they need to beat
 86% acc@5 (or 0.732 MRR@10) on this set, under a new pre-registration.
+
+## Pre-registration v2: personalised PageRank (written 2026-10-31, before any PageRank run)
+
+> Retrieval evaluation v2: the same index, population (the same 100 commit subjects) and metric as v1, with a third arm, *hybrid+ppr*: `rig.search(query, { rerank: 'ppr' })`, personalised PageRank from the top 20 hybrid hits over dependency and containment edges, teleport 0.15, 20 iterations, hubs damped by dividing PageRank by degree, final score half the normalised search score and half the normalised PageRank. Those parameters are fixed in `packages/core/src/search/ppr.ts` before running and not tuned on this set. **Bar: hybrid+ppr acc@5 at least 3 percentage points above hybrid.** MRR@10 reported. No changes after seeing results.

@@ -7,6 +7,7 @@ All notable changes to Rig are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Personalised PageRank re-ranking** (research roadmap, step 3), opt-in: `rig.search(query, { rerank: 'ppr' })` spreads relevance from the top 20 hybrid hits through dependency and containment edges (teleport 0.15, 20 iterations), divides by degree so hubs don't win by being connected to everything, and blends it half and half with the search score. Measured against the retrieval baseline before anything uses it by default.
 - **A rebuilt map.** A rail with four views (Map, Review, Waypoints, Overview), an inspector for the selected node, and light and dark themes that also follow the OS (`Match system` is the new default; saved themes keep working).
   - The constellation stays on canvas. Labels are placed without overlap and in priority order, node kinds are three validated colours plus neutral with shape as a second cue, the layout no longer re-runs on every database change, and a List view gives the same nodes as a sortable, keyboard-driven table.
   - Neighbourhood and Impact lenses draw the selected node's typed links, and what depends on it (or its critical path), as React Flow cards with kind, `file:line`, signature and badges for hubs, notes, waypoints and orphaned memory. They load on demand, so the first paint doesn't pay for them.
