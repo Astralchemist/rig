@@ -1,0 +1,47 @@
+name: rig impact comment
+
+# Backlog E5, part 2 of 2: post the comment computed by rig-impact.yml. It
+# runs from the default branch with a write token and never checks out or
+# runs the PR's code: it only reads the artifact. One comment per PR, edited
+# in place (found by its <!-- rig-impact --> marker); an empty comment
+# deletes rig's comment, so the PR stays quiet when nothing is at risk.
+
+on:
+  workflow_run:
+    workflows: ["rig impact"]
+    types: [completed]
+
+permissions:
+  pull-requests: write
+  actions: read
+
+jobs:
+  comment:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: rig-impact
+          path: out
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Post or update the comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          pr="$(tr -dc '0-9' < out/pr)"
+          [ -n "$pr" ] || { echo "no PR number"; exit 0; }
+          existing="$(gh api "repos/$REPO/issues/$pr/comments" --paginate \
+            --jq '.[] | select(.body | startswith("<!-- rig-impact -->")) | .id' | head -n1)"
+          if [ -s out/comment.md ]; then
+            if [ -n "$existing" ]; then
+              gh api -X PATCH "repos/$REPO/issues/comments/$existing" -F body=@out/comment.md > /dev/null
+            else
+              gh api -X POST "repos/$REPO/issues/$pr/comments" -F body=@out/comment.md > /dev/null
+            fi
+          elif [ -n "$existing" ]; then
+            gh api -X DELETE "repos/$REPO/issues/comments/$existing"
+          fi

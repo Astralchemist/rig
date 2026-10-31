@@ -134,3 +134,62 @@ describe('addedFilesInDiff', () => {
     expect([...addedFilesInDiff(diff)]).toEqual(['new.ts']);
   });
 });
+
+describe('PR comment', () => {
+  test('summary first, decisions as checkboxes, drawing collapsed, blind spots stated; empty when nothing changed', async () => {
+    const { renderImpactComment, COMMENT_MARKER } =
+      await import('../packages/cli/src/impact-cmd.ts');
+    const base = {
+      files: ['a.ts'],
+      added: [],
+      docs: [],
+      edges: [],
+      edgeCounts: { structural: 0, accepted: 0 },
+      depth: 2,
+    };
+    expect(renderImpactComment({ ...base, changed: [], dependents: [], memoryAtRisk: [] })).toBe(
+      '',
+    );
+    const md = renderImpactComment(
+      {
+        ...base,
+        changed: [
+          {
+            id: 'f',
+            type: 'function',
+            name: 'login',
+            filePath: 'a.ts',
+            startLine: 1,
+            ranges: [[1, 2]],
+          },
+        ],
+        dependents: [
+          { id: 'g', type: 'function', name: 'render', filePath: 'b.ts', startLine: 3, hops: 1 },
+        ],
+        memoryAtRisk: [
+          {
+            waypoint: {
+              id: 'waypoint:w1',
+              kind: 'decision',
+              title: 'Login stays sync',
+              summary: '',
+              ts: 0,
+            },
+            anchors: ['login'],
+            via: 'symbol',
+          },
+        ],
+      },
+      { commit: 'abcdef123' },
+    );
+    expect(md.startsWith(COMMENT_MARKER)).toBe(true);
+    expect(md.split('\n')[1]).toContain(
+      '1 changed symbol · 1 dependent within 2 steps · 1 recorded decision at risk',
+    );
+    expect(md).toContain('- [ ] still holds <!-- rig:w1:holds -->');
+    expect(md).toContain('<details><summary>Blast radius');
+    expect(md).toContain('```mermaid');
+    expect(md).toContain("aren't seen");
+    expect(md).toContain('at abcdef1');
+  });
+});
