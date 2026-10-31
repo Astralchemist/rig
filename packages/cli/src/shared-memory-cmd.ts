@@ -7,6 +7,8 @@ import {
   PromoteError,
   importShared,
   loadShared,
+  parseCommentVerdicts,
+  recordVerdicts,
   promoteWaypoint,
   unshare,
 } from '@rig/core/memory/shared.ts';
@@ -26,6 +28,8 @@ const USAGE = `usage: rig memory promote <waypoint-id> [--include-captured]
        rig memory import
        rig memory check        (exit 1 on malformed records, secrets or hidden Unicode)
        rig memory list
+       rig memory verdicts <comment-file> [--by <reviewer>] [--commit <sha>] [--pr <n>]
+                               (record the boxes ticked in rig's PR comment)
 `;
 
 export async function runMemory(cwd: string): Promise<void> {
@@ -43,10 +47,40 @@ export async function runMemory(cwd: string): Promise<void> {
     // falls through never: check exits
     case 'list': {
       const s = loadShared(cwd);
-      for (const [id, r] of s.records)
+      for (const [id, r] of s.records) {
+        const v = s.verdicts.get(id);
+        const tally = v
+          ? '  verdicts: ' +
+            (['holds', 'outdated', 'unsure'] as const)
+              .map((k) => [k, [...v.values()].filter((x) => x === k).length] as const)
+              .filter(([, n]) => n)
+              .map(([k, n]) => `${n} ${k}`)
+              .join(', ')
+          : '';
         process.stdout.write(
-          `${id}  v${r.version}  [${r.record.waypoint_kind}] ${r.record.title}  (by ${r.by})\n`,
+          `${id}  v${r.version}  [${r.record.waypoint_kind}] ${r.record.title}  (by ${r.by})${tally}\n`,
         );
+      }
+      return;
+    }
+    case 'verdicts': {
+      if (!arg) break;
+      const { readFileSync } = await import('node:fs');
+      const value = (n: string): string | undefined => {
+        const i = process.argv.indexOf(n);
+        return i >= 0 ? process.argv[i + 1] : undefined;
+      };
+      const parsed = parseCommentVerdicts(readFileSync(arg, 'utf-8'));
+      const pr = value('--pr');
+      const commit = value('--commit');
+      const r = recordVerdicts(cwd, parsed, {
+        by: value('--by') ?? author(cwd),
+        ...(commit ? { commit } : {}),
+        ...(pr ? { pr: Number(pr) } : {}),
+      });
+      process.stdout.write(
+        `${r.recorded} verdict(s) recorded${r.skipped.length ? `, ${r.skipped.length} for memories not shared here` : ''}\n`,
+      );
       return;
     }
     case 'unshare': {

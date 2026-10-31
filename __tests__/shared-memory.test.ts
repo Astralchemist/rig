@@ -20,7 +20,9 @@ import {
   SHARED_PROVENANCE,
   importShared,
   loadShared,
+  parseCommentVerdicts,
   promoteWaypoint,
+  recordVerdicts,
   unshare,
 } from '../packages/core/src/memory/shared.ts';
 
@@ -120,5 +122,35 @@ describe('shared memory', () => {
     expect(loadShared(a).errors.join()).toMatch(/two different versions 1/);
     writeFileSync(file, line.replace('synchronous', 'synchro​nous'));
     expect(loadShared(a).errors.join()).toMatch(/hidden Unicode/);
+  });
+
+  test("verdicts: only ticked boxes count, they're recorded against the version seen, the latest per reviewer wins", () => {
+    const wid = drop();
+    const id = wid.replace(/^waypoint:/, '');
+    promoteWaypoint(rigA, wid, { by: 'alice' });
+    const comment = [
+      '<!-- rig-impact -->',
+      `- **Login stays synchronous** (decision, on \`login\`)`,
+      `  - [ ] still holds <!-- rig:${id}:holds -->`,
+      `  - [x] outdated <!-- rig:${id}:outdated -->`,
+      `  - [ ] can't tell <!-- rig:${id}:unsure -->`,
+      '  - [x] outdated <!-- rig:not-shared-here:outdated -->',
+    ].join('\n');
+    const parsed = parseCommentVerdicts(comment);
+    expect(parsed).toEqual([
+      { id, verdict: 'outdated' },
+      { id: 'not-shared-here', verdict: 'outdated' },
+    ]);
+    expect(parseCommentVerdicts(comment.replace(/\[x\]/g, '[ ]'))).toEqual([]);
+    expect(recordVerdicts(a, parsed, { by: 'bob', pr: 58 })).toEqual({
+      recorded: 1,
+      skipped: ['not-shared-here'],
+    });
+    recordVerdicts(a, [{ id, verdict: 'holds' }], { by: 'bob' });
+    recordVerdicts(a, [{ id, verdict: 'outdated' }], { by: 'carol' });
+    const s = loadShared(a);
+    expect(s.errors).toEqual([]);
+    expect(Object.fromEntries(s.verdicts.get(id)!)).toEqual({ bob: 'holds', carol: 'outdated' });
+    expect(s.records.get(id)!.version).toBe(1);
   });
 });
