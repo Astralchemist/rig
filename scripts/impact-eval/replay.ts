@@ -29,7 +29,7 @@ const arg = (name: string, dflt: string): string => {
   return i >= 0 && process.argv[i + 1] ? process.argv[i + 1]! : dflt;
 };
 const FROM = arg('--from', 'fd36ac5');
-const TAKE = Number(arg('--take', '60'));
+const TAKE = Number(arg('--take', '80'));
 const MIN_SCORED = 50;
 const WORK_ARG = resolve(arg('--work', join(tmpdir(), 'rig-impact-eval')));
 mkdirSync(WORK_ARG, { recursive: true });
@@ -70,6 +70,8 @@ interface CommitResult {
   baselineHit: number;
   unbounded: { predicted: number; observed: number; hit: number };
   textLines: number;
+  /** Blind spots the impact declared (v2): a miss with one is flagged. */
+  blindSpots: number;
   missed: string[];
   /** Call edges recorded, and how many mapped to a symbol at both ends. */
   edges: number;
@@ -114,6 +116,7 @@ const replayCommit = async (sha: string, wt: string): Promise<CommitResult> => {
     baselineHit: 0,
     unbounded: { predicted: 0, observed: 0, hit: 0 },
     textLines: 0,
+    blindSpots: 0,
     missed: [],
     edges: 0,
     edgesMapped: 0,
@@ -292,6 +295,7 @@ const replayCommit = async (sha: string, wt: string): Promise<CommitResult> => {
         hit: inter(pAll.ids, oAll).length,
       },
       textLines,
+      blindSpots: p2.r.blindSpots.length,
       missed: [...o2].filter((id) => !p2.ids.has(id)).map(nameOf),
     });
   } finally {
@@ -328,6 +332,7 @@ const main = async (): Promise<void> => {
         baselineHit: 0,
         unbounded: { predicted: 0, observed: 0, hit: 0 },
         textLines: 0,
+        blindSpots: 0,
         missed: [],
         edges: 0,
         edgesMapped: 0,
@@ -347,7 +352,8 @@ const main = async (): Promise<void> => {
   const precision = sum((r) => r.hit) / sum((r) => r.predicted);
   const bRecall = sum((r) => r.baselineHit) / sum((r) => r.observed);
   const bPrecision = sum((r) => r.baselineHit) / sum((r) => r.baselinePredicted);
-  const missShare = scored.filter((r) => r.hit < r.observed).length / scored.length;
+  const missShare =
+    scored.filter((r) => r.hit < r.observed && r.blindSpots === 0).length / scored.length;
   const sortedLines = scored.map((r) => r.textLines).sort((a, b) => a - b);
   const medianLines = sortedLines.length
     ? sortedLines[Math.floor((sortedLines.length - 1) / 2)]!
@@ -379,7 +385,7 @@ const main = async (): Promise<void> => {
   const outDir = resolve(import.meta.dir, 'results');
   mkdirSync(outDir, { recursive: true });
   writeFileSync(
-    join(outDir, `${date}-impact-eval.json`),
+    join(outDir, `${date}-impact-eval-v2.json`),
     JSON.stringify({ summary, results }, null, 2) + '\n',
   );
   const md = [
@@ -403,7 +409,7 @@ const main = async (): Promise<void> => {
       sum((r) => r.baselineHit),
       sum((r) => r.baselinePredicted),
     )} | rig ≥ baseline + 10 pp |`,
-    `| commits with an unflagged miss | ${pct(scored.filter((r) => r.hit < r.observed).length, scored.length)} | | ≤ 20% |`,
+    `| commits with an unflagged miss | ${pct(scored.filter((r) => r.hit < r.observed && r.blindSpots === 0).length, scored.length)} | | ≤ 20% |`,
     `| median \`rig impact\` text lines | ${medianLines} | | ≤ 25 |`,
     '',
     `Unbounded depth: recall ${pct(
@@ -423,7 +429,7 @@ const main = async (): Promise<void> => {
           `| \`${r.commit}\` ${r.subject.replace(/\|/g, '\\|').slice(0, 60)} | ${r.status}${r.reason ? ` (${r.reason})` : ''} | ${r.changed} (${r.changedExecuted}) | ${r.predicted} | ${r.observed} | ${r.hit} | ${r.baselinePredicted} / ${r.baselineHit} | ${r.missed.slice(0, 5).join(', ')} |`,
       ),
   ].join('\n');
-  writeFileSync(join(outDir, `${date}-impact-eval.md`), md + '\n');
+  writeFileSync(join(outDir, `${date}-impact-eval-v2.md`), md + '\n');
   console.log(JSON.stringify(summary, null, 2));
 };
 

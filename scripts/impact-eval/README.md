@@ -128,3 +128,7 @@ commit failed instantly (18 scored before that, recall 43.9%; set aside, not
 reported as a result). This rerun ran from its own worktree with the rules
 unchanged; the only harness change, generating the embedded grammars in each
 replayed parent (`e307872`), turned out to be a no-op safeguard.
+
+## Pre-registration v2 (written 2026-10-31, before any v2 run)
+
+> Impact evaluation v2: the same oracle, metrics and bars as above, for the tool at `461ba8e` (extractor v3: functions used as values, such as callbacks and dispatch-table entries, get `references` edges; `rig impact` declares blind spots). Two changes, both fixed before running: the population is the first **80** qualifying commits (v1 scored 47 of 60, under the floor of 50); and a miss counts as **flagged** when the commit's `rig impact` declared at least one blind spot, so the unflagged-miss share is computed over commits with a miss and no blind spot declared. No changes after seeing results.
