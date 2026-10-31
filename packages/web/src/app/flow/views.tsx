@@ -1119,9 +1119,14 @@ export function BlueprintView(props: BlueprintProps): JSX.Element {
 }
 
 function BlueprintInner({ version }: BlueprintProps): JSX.Element {
-  const [level, setLevel] = useState<'floor' | 'site'>('floor');
+  const [level, setLevel] = useState<'floor' | 'site' | 'room'>('floor');
+  // Room plan: the package opened from the floor plan.
+  const [scope, setScope] = useState<{ dir: string; label: string } | null>(null);
   const toast = useToast();
-  const plan = useLoad<Blueprint>(() => api.blueprint(level), [level, version]);
+  const plan = useLoad<Blueprint>(
+    () => api.blueprint(level, level === 'room' ? scope?.dir : undefined),
+    [level, scope?.dir, version],
+  );
 
   const graph = useMemo(() => {
     const b = plan.data;
@@ -1150,7 +1155,7 @@ function BlueprintInner({ version }: BlueprintProps): JSX.Element {
       // where a surface or store attaches.
       data: e.inferred
         ? { table: 'structural', kind: '', label: false, dashed: true }
-        : isPkg(e.from) && isPkg(e.to)
+        : (isPkg(e.from) && isPkg(e.to)) || b.level === 'room'
           ? { table: 'semantic', kind: `${e.weight} import${e.weight === 1 ? '' : 's'}` }
           : { table: 'semantic', kind: '', label: false },
     }));
@@ -1168,7 +1173,9 @@ function BlueprintInner({ version }: BlueprintProps): JSX.Element {
 
   const copyMermaid = async (): Promise<void> => {
     try {
-      await navigator.clipboard.writeText(await api.blueprintMermaid(level));
+      await navigator.clipboard.writeText(
+        await api.blueprintMermaid(level, level === 'room' ? scope?.dir : undefined),
+      );
       toast({
         tone: 'success',
         title: 'Mermaid copied',
@@ -1201,9 +1208,23 @@ function BlueprintInner({ version }: BlueprintProps): JSX.Element {
         </div>
       ) : (
         <FlowCanvas
-          label={level === 'floor' ? 'Floor plan' : 'Site plan'}
+          label={
+            level === 'floor'
+              ? 'Floor plan'
+              : level === 'room'
+                ? `Room plan: ${scope?.label ?? ''}`
+                : 'Site plan'
+          }
           nodes={graph.nodes}
           edges={graph.edges}
+          onNodeClick={(id) => {
+            // A package on the floor plan opens its room plan.
+            const box = graph.plan.boxes.find((x) => x.id === id);
+            if (level === 'floor' && box?.kind === 'package' && box.dir !== undefined) {
+              setScope({ dir: box.dir, label: box.label });
+              setLevel('room');
+            }
+          }}
         />
       )}
       <div className="flow-toolbar">
@@ -1214,6 +1235,11 @@ function BlueprintInner({ version }: BlueprintProps): JSX.Element {
           <button aria-pressed={level === 'site'} onClick={() => setLevel('site')}>
             Site plan
           </button>
+          {scope && (
+            <button aria-pressed={level === 'room'} onClick={() => setLevel('room')}>
+              {scope.label}
+            </button>
+          )}
         </div>
         <button className="btn island" style={{ height: 32 }} onClick={() => void copyMermaid()}>
           <Copy /> Copy Mermaid
@@ -1236,7 +1262,13 @@ function BlueprintInner({ version }: BlueprintProps): JSX.Element {
           <span>dashed: inferred from a dependency</span>
           {graph.plan.commit && <span className="num">at {graph.plan.commit.slice(0, 7)}</span>}
           {graph.plan.folded.length > 0 && (
-            <span>{graph.plan.folded.length} small packages folded</span>
+            <span>
+              {graph.plan.folded.length} small{' '}
+              {graph.plan.level === 'room' ? 'files and folders' : 'packages'} folded
+            </span>
+          )}
+          {(graph.plan.hiddenEdges ?? 0) > 0 && (
+            <span>{graph.plan.hiddenEdges} weaker links hidden</span>
           )}
         </div>
       )}

@@ -36,6 +36,7 @@ export interface SnapshotPending {
 
 export interface BlueprintBox {
   id: string;
+  dir?: string;
   label: string;
   kind: 'package' | 'store' | 'external' | 'io';
   detail?: string;
@@ -44,11 +45,13 @@ export interface BlueprintBox {
 }
 
 export interface Blueprint {
-  level: 'site' | 'floor';
+  level: 'site' | 'floor' | 'room';
+  scope?: string;
   commit: string | null;
   boxes: BlueprintBox[];
   edges: { from: string; to: string; weight: number; inferred: boolean }[];
   folded: string[];
+  hiddenEdges?: number;
 }
 
 export interface Snapshot {
@@ -298,9 +301,12 @@ export const api = {
   undo: () => post<UndoResult>('/api/undo'),
   select: (id: string | null) => post<{ ok: true }>('/api/selection', { node_id: id }),
   overview: () => request<Overview>('/api/overview'),
-  blueprint: (level: 'site' | 'floor') => request<Blueprint>(`/api/blueprint?level=${level}`),
-  blueprintMermaid: async (level: 'site' | 'floor'): Promise<string> => {
-    const res = await fetch(`/api/blueprint?level=${level}&format=mermaid`);
+  blueprint: (level: 'site' | 'floor' | 'room', scope?: string) =>
+    request<Blueprint>(`/api/blueprint?level=${level}${scope ? `&scope=${enc(scope)}` : ''}`),
+  blueprintMermaid: async (level: 'site' | 'floor' | 'room', scope?: string): Promise<string> => {
+    const res = await fetch(
+      `/api/blueprint?level=${level}&format=mermaid${scope ? `&scope=${enc(scope)}` : ''}`,
+    );
     if (!res.ok) throw new Error(`blueprint: HTTP ${res.status}`);
     return res.text();
   },

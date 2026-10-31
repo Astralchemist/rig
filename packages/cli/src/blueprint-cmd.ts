@@ -14,9 +14,14 @@ const optionValue = (name: string): string | undefined => {
 export async function runBlueprint(cwd: string): Promise<void> {
   const level = (optionValue('--level') ?? 'floor') as BlueprintLevel;
   const format = optionValue('--format') ?? 'mermaid';
-  if (!['site', 'floor'].includes(level) || !['mermaid', 'json'].includes(format)) {
+  const scope = optionValue('--scope');
+  if (
+    !['site', 'floor', 'room'].includes(level) ||
+    !['mermaid', 'json'].includes(format) ||
+    (level === 'room' && !scope)
+  ) {
     process.stderr.write(
-      'usage: rig blueprint [--level site|floor] [--format mermaid|json] [--out <file>]\n',
+      'usage: rig blueprint [--level site|floor|room] [--scope <package dir> (room)] [--format mermaid|json] [--out <file>]\n',
     );
     process.exit(2);
   }
@@ -32,7 +37,11 @@ export async function runBlueprint(cwd: string): Promise<void> {
   }
   const rig = await Rig.open(cwd);
   try {
-    const b = buildBlueprint(rig.database.adapter, rig.projectRoot, { level, commit });
+    const b = buildBlueprint(rig.database.adapter, rig.projectRoot, {
+      level,
+      commit,
+      ...(scope ? { scope } : {}),
+    });
     const text = format === 'json' ? JSON.stringify(b, null, 2) : blueprintToMermaid(b);
     const out = optionValue('--out');
     if (out) {

@@ -88,4 +88,20 @@ describe('blueprint', () => {
       blueprintToMermaid(buildBlueprint(rig.database.adapter, dir, { commit: 'abcdef1234' })),
     ).toBe(m);
   });
+
+  test('room plan: a package from inside, with the packages that import it at the edge', () => {
+    const b = buildBlueprint(rig.database.adapter, dir, { level: 'room', scope: 'packages/core' });
+    expect(b.level).toBe('room');
+    expect(b.scope).toBe('packages/core');
+    expect(b.boxes.find((x) => x.label === 'db.ts')?.kind).toBe('package');
+    const api = b.boxes.find((x) => x.label === 'packages/api')!;
+    expect(api.kind).toBe('external');
+    expect(b.edges.find((e) => e.from === api.id)).toMatchObject({ weight: 1, inferred: false });
+    expect(blueprintToMermaid(b)).toContain('title: Room plan: packages/core');
+  });
+
+  test('floor plan packages carry their directory, for opening the room plan', () => {
+    const b = buildBlueprint(rig.database.adapter, dir);
+    expect(b.boxes.find((x) => x.id === 'pkg_packages_core')?.dir).toBe('packages/core');
+  });
 });
