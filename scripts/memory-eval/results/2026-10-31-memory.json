@@ -1,0 +1,26 @@
+{
+  "verdict": "FAIL",
+  "e1": {
+    "histories": 500,
+    "nonConcurrent": 135,
+    "conflicts": 0,
+    "errors": 0,
+    "resurrected": 0,
+    "converged": 135,
+    "concurrent": 365,
+    "concurrentConflicted": 365
+  },
+  "e2": {
+    "flagged": {
+      "unicode": 1,
+      "secret": 1,
+      "imperative": 0,
+      "forged": 0,
+      "benign": 0
+    },
+    "inBrief": 9,
+    "tiers": {
+      "shared": 250
+    }
+  }
+}
