@@ -1,0 +1,428 @@
+{
+  "rig:packages/core/package.json:@rig/contracts": {
+    "label": "used",
+    "rule": 1,
+    "note": "imported by every .contracts/*.contract.ts (workspace import, resolves to a file, so no unresolved ref)"
+  },
+  "rig:packages/mcp/package.json:@rig/contracts": {
+    "label": "used",
+    "rule": 1,
+    "note": "imported by .contracts/*.contract.ts (workspace)"
+  },
+  "rig:packages/web/package.json:@rig/core": {
+    "label": "used",
+    "rule": 1,
+    "note": "imported across the repo (workspace import resolves to files)"
+  },
+  "rig:packages/mcp/package.json:@rig/core": {
+    "label": "used",
+    "rule": 1,
+    "note": "imported across the repo (workspace)"
+  },
+  "rig:packages/cli/package.json:@rig/core": {
+    "label": "used",
+    "rule": 1,
+    "note": "imported in packages/cli/src/*-cmd.ts (workspace)"
+  },
+  "rig:packages/cli/package.json:@rig/mcp": {
+    "label": "used",
+    "rule": 1,
+    "note": "imported in packages/cli/src/serve-cmd.ts and generated handlers (workspace)"
+  },
+  "rig:package.json:@types/bun": {
+    "label": "used",
+    "rule": 4,
+    "note": "runtime globals; TypeScript project run on Bun"
+  },
+  "rig:package.json:@types/node": {
+    "label": "used",
+    "rule": 4,
+    "note": "runtime globals; TypeScript source"
+  },
+  "rig:packages/web/package.json:@types/react": {
+    "label": "used",
+    "rule": 4,
+    "note": "react is imported by packages/web"
+  },
+  "rig:packages/web/package.json:@types/react-dom": {
+    "label": "used",
+    "rule": 4,
+    "note": "react-dom/client imported in packages/web/src/app/main.tsx"
+  },
+  "rig:packages/web/package.json:@types/ws": {
+    "label": "used",
+    "rule": 4,
+    "note": "ws imported in __tests__/_try-ws.ts and the server"
+  },
+  "rig:package.json:prettier": {
+    "label": "used",
+    "rule": 3,
+    "note": ".prettierrc at the repo root"
+  },
+  "rig:package.json:tree-sitter-wasms": {
+    "label": "used",
+    "rule": 1,
+    "note": "require.resolve('tree-sitter-wasms/out/...') in scripts/gen-wasm.ts"
+  },
+  "rig:packages/core/package.json:tree-sitter-wasms": {
+    "label": "used",
+    "rule": 1,
+    "note": "require.resolve in scripts/gen-wasm.ts, which resolves from packages/core"
+  },
+  "rig:package.json:typescript": {
+    "label": "used",
+    "rule": 2,
+    "note": "\"typecheck\": \"tsc --noEmit -p .\""
+  },
+  "next-auth:packages/frameworks-sveltekit/package.json:@sveltejs/package": {
+    "label": "used",
+    "rule": 2,
+    "note": "svelte-package in the build script"
+  },
+  "next-auth:apps/examples/solid-start/package.json:tailwindcss": {
+    "label": "used",
+    "rule": 3,
+    "note": "postcss.config tailwindcss (solid-start: its own postcss.config.cjs; qwik: prettier-plugin-tailwindcss peer)"
+  },
+  "next-auth:apps/dev/express/package.json:@prettier/plugin-pug": {
+    "label": "used",
+    "rule": 3,
+    "note": ".prettierrc plugins"
+  },
+  "next-auth:.github/broken-link-checker/package.json:tsx": {
+    "label": "used",
+    "rule": 2,
+    "note": "tsx in dev scripts"
+  },
+  "next-auth:packages/adapter-fauna/package.json:fauna-shell": {
+    "label": "used",
+    "rule": 2,
+    "note": "\"fauna\": \"fauna\" script"
+  },
+  "next-auth:package.json:prettier": {
+    "label": "used",
+    "rule": 2,
+    "note": "prettier --write/--check in scripts"
+  },
+  "next-auth:apps/dev/qwik/package.json:prettier": {
+    "label": "used",
+    "rule": 2,
+    "note": "prettier --write/--check in scripts"
+  },
+  "next-auth:docs/package.json:@types/react": {
+    "label": "used",
+    "rule": 4,
+    "note": "react used"
+  },
+  "next-auth:packages/frameworks-sveltekit/package.json:typedoc": {
+    "label": "used",
+    "rule": 2,
+    "note": "typedoc in docs scripts"
+  },
+  "next-auth:package.json:fake-smtp-server": {
+    "label": "used",
+    "rule": 2,
+    "note": "\"email\": \"fake-smtp-server\""
+  },
+  "next-auth:apps/examples/nextjs/package.json:@radix-ui/react-collapsible": {
+    "label": "unused",
+    "note": "no import or config mention anywhere outside lockfiles"
+  },
+  "next-auth:apps/examples/nextjs/package.json:@types/react": {
+    "label": "used",
+    "rule": 4,
+    "note": "react used"
+  },
+  "next-auth:apps/examples/qwik/package.json:eslint-plugin-qwik": {
+    "label": "used",
+    "rule": 5,
+    "note": "plugin:qwik/recommended in apps/examples/qwik/.eslintrc.cjs"
+  },
+  "next-auth:apps/examples/express/package.json:tsx": {
+    "label": "used",
+    "rule": 2,
+    "note": "tsx in dev scripts"
+  },
+  "next-auth:docs/package.json:typedoc-plugin-no-inherit": {
+    "label": "used",
+    "rule": 3,
+    "note": "docs/typedoc.config.cjs plugins"
+  },
+  "next-auth:packages/adapter-typeorm/package.json:mysql": {
+    "label": "used",
+    "rule": 6,
+    "note": "optional peerDependency of the TypeORM adapter; TypeORM loads the driver for type: \"mysql\""
+  },
+  "next-auth:packages/next-auth/package.json:@types/react": {
+    "label": "used",
+    "rule": 4,
+    "note": "react used"
+  },
+  "next-auth:docs/package.json:typedoc": {
+    "label": "used",
+    "rule": 2,
+    "note": "typedoc in docs scripts"
+  },
+  "next-auth:apps/examples/solid-start/package.json:@solidjs/router": {
+    "label": "used",
+    "rule": 5,
+    "note": "peer of solid-start, which the example uses"
+  },
+  "next-auth:packages/frameworks-solid-start/package.json:@types/node": {
+    "label": "used",
+    "rule": 4,
+    "note": "runtime globals; TypeScript source"
+  },
+  "next-auth:packages/adapter-neo4j/package.json:@types/uuid": {
+    "label": "unused",
+    "note": "uuid is imported nowhere in the repo"
+  },
+  "next-auth:docs/package.json:algoliasearch": {
+    "label": "unused",
+    "note": "never imported; @docsearch/react depends on it itself (a dependency, not a peer)"
+  },
+  "next-auth:apps/examples/nextjs/package.json:@types/node": {
+    "label": "used",
+    "rule": 4,
+    "note": "runtime globals; TypeScript source"
+  },
+  "next-auth:package.json:@balazsorban/monorepo-release": {
+    "label": "used",
+    "rule": 2,
+    "note": "\"release\": \"release\", run in the release workflow"
+  },
+  "next-auth:apps/examples/nextjs-pages/package.json:react-dom": {
+    "label": "used",
+    "rule": 5,
+    "note": "peer that next renders with"
+  },
+  "next-auth:package.json:@typescript-eslint/eslint-plugin": {
+    "label": "used",
+    "rule": 3,
+    "note": "eslint configs use plugin:@typescript-eslint"
+  },
+  "next-auth:.github/broken-link-checker/package.json:tsup": {
+    "label": "used",
+    "rule": 2,
+    "note": "npx tsup in the build script"
+  },
+  "next-auth:apps/dev/express/package.json:@types/morgan": {
+    "label": "used",
+    "rule": 4,
+    "note": "morgan imported in apps/dev/express/src/app.ts"
+  },
+  "next-auth:packages/adapter-hasura/package.json:@graphql-typed-document-node/core": {
+    "label": "used",
+    "rule": 5,
+    "note": "needed by the code @graphql-codegen/client-preset generates (codegen.ts)"
+  },
+  "next-auth:apps/examples/qwik/package.json:@types/node": {
+    "label": "used",
+    "rule": 4,
+    "note": "runtime globals; TypeScript source"
+  },
+  "next-auth:apps/examples/express/package.json:@types/express": {
+    "label": "used",
+    "rule": 4,
+    "note": "express imported in apps/examples/express"
+  },
+  "next-auth:package.json:prettier-plugin-svelte": {
+    "label": "used",
+    "rule": 3,
+    "note": ".prettierrc plugins"
+  },
+  "next-auth:apps/dev/sveltekit/package.json:svelte-check": {
+    "label": "used",
+    "rule": 2,
+    "note": "svelte-check in check scripts"
+  },
+  "next-auth:apps/examples/qwik/package.json:tailwindcss": {
+    "label": "used",
+    "rule": 3,
+    "note": "postcss.config tailwindcss (solid-start: its own postcss.config.cjs; qwik: prettier-plugin-tailwindcss peer)"
+  },
+  "next-auth:package.json:@vitest/coverage-v8": {
+    "label": "used",
+    "rule": 5,
+    "note": "vitest coverage enabled (packages/utils/vitest.config.ts), default provider v8"
+  },
+  "next-auth:apps/dev/express/package.json:tsx": {
+    "label": "used",
+    "rule": 2,
+    "note": "tsx in dev scripts"
+  },
+  "next-auth:apps/examples/nextjs-pages/package.json:@types/react": {
+    "label": "used",
+    "rule": 4,
+    "note": "react used"
+  },
+  "next-auth:docs/package.json:react-dom": {
+    "label": "used",
+    "rule": 5,
+    "note": "peer that next renders with"
+  },
+  "next-auth:packages/adapter-neon/package.json:@types/ws": {
+    "label": "used",
+    "rule": 4,
+    "note": "ws imported in packages/adapter-neon/test/index.test.ts"
+  },
+  "next-auth:apps/examples/sveltekit/package.json:svelte": {
+    "label": "used",
+    "rule": 5,
+    "note": "compiled by @sveltejs/vite-plugin-svelte for the example's .svelte files"
+  },
+  "hono:benchmarks/jsx/package.json:@types/benchmark": {
+    "label": "used",
+    "rule": 4,
+    "note": "benchmark imported in benchmarks/jsx/src/benchmark.ts"
+  },
+  "hono:package.json:@types/jsdom": {
+    "label": "used",
+    "rule": 4,
+    "note": "jsdom imported in src/jsx tests"
+  },
+  "hono:adapters/deno/package.json:@types/node": {
+    "label": "used",
+    "rule": 4,
+    "note": "runtime globals; TypeScript source"
+  },
+  "hono:package.json:@types/node": {
+    "label": "used",
+    "rule": 4,
+    "note": "runtime globals; TypeScript source"
+  },
+  "hono:benchmarks/fetch/package.json:@types/node": {
+    "label": "used",
+    "rule": 4,
+    "note": "runtime globals; TypeScript source"
+  },
+  "hono:benchmarks/query-param/package.json:@types/qs": {
+    "label": "used",
+    "rule": 4,
+    "note": "qs imported in benchmarks/query-param/src/qs.mts"
+  },
+  "hono:benchmarks/jsx/package.json:@types/react": {
+    "label": "used",
+    "rule": 4,
+    "note": "react rendered in benchmarks/jsx"
+  },
+  "hono:benchmarks/jsx/package.json:@types/react-dom": {
+    "label": "used",
+    "rule": 4,
+    "note": "react-dom/server imported in benchmarks/jsx/src/react.ts"
+  },
+  "hono:adapters/cloudflare-workers/package.json:@types/ws": {
+    "label": "used",
+    "rule": 4,
+    "note": "ws imported in adapters/cloudflare-workers/test/websocket.test.ts"
+  },
+  "hono:package.json:@types/ws": {
+    "label": "used",
+    "rule": 4,
+    "note": "ws imported in adapters/cloudflare-workers tests"
+  },
+  "hono:package.json:@typescript/native-preview": {
+    "label": "used",
+    "rule": 2,
+    "note": "bun tsgo in .github/actions/perf-measures"
+  },
+  "hono:package.json:@vitest/coverage-v8": {
+    "label": "used",
+    "rule": 5,
+    "note": "vitest.config.ts coverage provider 'v8', enabled"
+  },
+  "hono:package.json:bun-types": {
+    "label": "used",
+    "rule": 3,
+    "note": "tsconfig types: bun-types"
+  },
+  "hono:package.json:editorconfig-checker": {
+    "label": "used",
+    "rule": 2,
+    "note": "pnpm run editorconfig-checker in CI"
+  },
+  "hono:package.json:np": {
+    "label": "used",
+    "rule": 2,
+    "note": "\"release\": \"np --no-publish\""
+  },
+  "hono:package.json:pkg-pr-new": {
+    "label": "used",
+    "rule": 2,
+    "note": "pnpm exec pkg-pr-new publish in .github/workflows/cr.yml"
+  },
+  "hono:package.json:publint": {
+    "label": "used",
+    "rule": 2,
+    "note": "publint in adapters' build scripts"
+  },
+  "hono:benchmarks/routers/package.json:tsx": {
+    "label": "used",
+    "rule": 2,
+    "note": "\"bench:node\": \"tsx ./src/bench.mts\""
+  },
+  "hono:benchmarks/query-param/package.json:tsx": {
+    "label": "used",
+    "rule": 2,
+    "note": "\"bench:node\": \"tsx ./src/bench.mts\""
+  },
+  "hono:package.json:typescript": {
+    "label": "used",
+    "rule": 2,
+    "note": "tsc in package scripts and CI"
+  },
+  "hono:benchmarks/jsx/package.json:typescript": {
+    "label": "used",
+    "rule": 2,
+    "note": "tsc in scripts and CI (repo-wide)"
+  },
+  "fastapi:pyproject.toml:opentelemetry-api": {
+    "label": "used",
+    "rule": 1,
+    "note": "from opentelemetry import ... in fastapi/telemetry/_api.py; the distribution installs module `opentelemetry`, which the report's rename table lacks"
+  },
+  "httpx:requirements.txt:build": {
+    "label": "used",
+    "rule": 2,
+    "note": "python -m build in scripts/build"
+  },
+  "httpx:requirements.txt:coverage": {
+    "label": "used",
+    "rule": 2,
+    "note": "coverage report in scripts/coverage (CI)"
+  },
+  "httpx:requirements.txt:mkautodoc": {
+    "label": "used",
+    "rule": 3,
+    "note": "mkdocs.yml markdown_extensions: mkautodoc"
+  },
+  "httpx:requirements.txt:mkdocs": {
+    "label": "used",
+    "rule": 2,
+    "note": "mkdocs build in scripts/build"
+  },
+  "httpx:requirements.txt:mkdocs-material": {
+    "label": "used",
+    "rule": 3,
+    "note": "mkdocs.yml theme name 'material'"
+  },
+  "httpx:requirements.txt:mypy": {
+    "label": "used",
+    "rule": 2,
+    "note": "mypy in scripts/check; [tool.mypy] in pyproject"
+  },
+  "httpx:requirements.txt:ruff": {
+    "label": "used",
+    "rule": 2,
+    "note": "ruff in scripts/check and scripts/lint"
+  },
+  "httpx:requirements.txt:trio-typing": {
+    "label": "unclear",
+    "note": "type stubs for trio, which httpx imports; mypy finds stub packages itself, but the rules only cover @types/X stubs"
+  },
+  "httpx:requirements.txt:twine": {
+    "label": "used",
+    "rule": 2,
+    "note": "twine check/upload in scripts/build and scripts/publish"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "verdict": "FAIL",
+  "pooled": {
+    "used": 82,
+    "unused": 3,
+    "unclear": 1,
+    "n": 86,
+    "precision": 0.03488372093023256
+  },
+  "byRule": {
+    "1": 9,
+    "2": 29,
+    "3": 10,
+    "4": 25,
+    "5": 8,
+    "6": 1
+  },
+  "counts": {
+    "rig": {
+      "flagged": 15,
+      "labelled": 15,
+      "declared": 48
+    },
+    "next-auth": {
+      "flagged": 109,
+      "labelled": 40,
+      "declared": 351
+    },
+    "hono": {
+      "flagged": 21,
+      "labelled": 21,
+      "declared": 66
+    },
+    "fastapi": {
+      "flagged": 1,
+      "labelled": 1,
+      "declared": 14
+    },
+    "httpx": {
+      "flagged": 9,
+      "labelled": 9,
+      "declared": 27
+    }
+  }
+}
