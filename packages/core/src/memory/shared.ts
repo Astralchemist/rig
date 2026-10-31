@@ -24,6 +24,31 @@ import type { Rig } from '../rig.ts';
 export const SHARED_DIR = '.rig-memory';
 export const SHARED_PROVENANCE = 'git:shared';
 
+/** How many reviewers said each verdict, for a shared record. */
+export interface VerdictTally {
+  holds: number;
+  outdated: number;
+  unsure: number;
+}
+
+/**
+ * How far to trust a memory (B5). local: written in this checkout. shared:
+ * from git, not reviewed. shared-reviewed: from git, more reviewers said it
+ * still holds than said it's outdated. disputed: from git, reviewers mostly
+ * said it's outdated; hidden from listings unless asked for.
+ */
+export type TrustTier = 'local' | 'shared-reviewed' | 'shared' | 'disputed';
+
+export const trustTier = (w: {
+  provenance?: string;
+  shared_verdicts?: VerdictTally;
+}): TrustTier => {
+  if (w.provenance !== SHARED_PROVENANCE) return 'local';
+  const t = w.shared_verdicts;
+  if (!t || t.holds + t.outdated === 0) return 'shared';
+  return t.outdated > t.holds ? 'disputed' : t.holds > t.outdated ? 'shared-reviewed' : 'shared';
+};
+
 /** Bidi overrides and isolates, zero-width and other invisible characters. */
 export const HIDDEN_UNICODE = /[\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/;
 
@@ -316,9 +341,21 @@ export const importShared = (rig: Rig): ImportResult => {
     `SELECT id FROM nodes WHERE type = ? AND json_extract(data, '$.filePath') = ?
        AND COALESCE(json_extract(data, '$.qualifiedName'), name) = ?`,
   );
+  const setTally = db.prepare(
+    `UPDATE nodes SET data = json_set(data, '$.shared_verdicts', json(?)) WHERE id = ?`,
+  );
+  const tallyOf = (id: string): VerdictTally => {
+    const t: VerdictTally = { holds: 0, outdated: 0, unsure: 0 };
+    for (const v of state.verdicts.get(id)?.values() ?? []) t[v]++;
+    return t;
+  };
   for (const [id, { by, record }] of state.records) {
     const wid = `waypoint:${id}`;
-    if (rig.getWaypoint(wid)) continue;
+    if (rig.getWaypoint(wid)) {
+      // Already here: keep its reviewer verdicts current.
+      setTally.run(JSON.stringify(tallyOf(id)), wid);
+      continue;
+    }
     const refs: string[] = [];
     for (const a of record.anchors) {
       const row = find.get(a.kind, a.filePath, a.qualifiedName) as { id: string } | undefined;
@@ -342,6 +379,7 @@ export const importShared = (rig: Rig): ImportResult => {
       },
       { sessionId: `shared:${by}`, actor: SHARED_PROVENANCE },
     );
+    setTally.run(JSON.stringify(tallyOf(id)), wid);
     res.added++;
   }
   for (const id of state.tombstoned) {

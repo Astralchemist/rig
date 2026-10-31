@@ -48,6 +48,8 @@ export interface WaypointRow {
   source?: WaypointSource;
   provenance?: string;
   confidence?: number;
+  // Shared records (B5): reviewer verdict counts, refreshed on each import.
+  shared_verdicts?: { holds: number; outdated: number; unsure: number };
 }
 
 interface RawNode {
@@ -71,6 +73,7 @@ interface RawData {
   source?: WaypointSource;
   provenance?: string;
   confidence?: number;
+  shared_verdicts?: { holds: number; outdated: number; unsure: number };
 }
 
 const parse = (r: RawNode): WaypointRow => {
@@ -92,6 +95,9 @@ const parse = (r: RawNode): WaypointRow => {
     ...(d.source === 'hook' || d.source === 'agent' ? { source: d.source } : {}),
     ...(typeof d.provenance === 'string' ? { provenance: d.provenance } : {}),
     ...(typeof d.confidence === 'number' ? { confidence: d.confidence } : {}),
+    ...(d.shared_verdicts && typeof d.shared_verdicts === 'object'
+      ? { shared_verdicts: d.shared_verdicts }
+      : {}),
   };
 };
 
