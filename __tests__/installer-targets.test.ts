@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { getTarget } from '../packages/cli/src/install/loader.ts';
@@ -91,8 +99,14 @@ describe('installer targets', () => {
       join(HOME, '.claude/CLAUDE.md'),
     ]);
     const claudeJson = json(join(HOME, '.claude.json'));
-    expect(claudeJson.mcpServers.rig).toEqual({ type: 'stdio', command: 'rig', args: ['serve', '--mcp'] });
-    expect(json(join(HOME, '.claude/settings.json')).permissions.allow).toContain('mcp__rig__rig_status');
+    expect(claudeJson.mcpServers.rig).toEqual({
+      type: 'stdio',
+      command: 'rig',
+      args: ['serve', '--mcp'],
+    });
+    expect(json(join(HOME, '.claude/settings.json')).permissions.allow).toContain(
+      'mcp__rig__rig_status',
+    );
     expect(readFileSync(join(HOME, '.claude/CLAUDE.md'), 'utf-8')).toContain('<!-- rig:begin -->');
     expect(readdirSync(PROJECT)).toEqual([]);
   });
@@ -147,6 +161,29 @@ describe('installer targets', () => {
     expect(toml).toContain('name = "gpt-4"');
     expect(toml).toContain('[mcp_servers.rig.tools.rig_status]\napproval_mode = "approve"');
     expect(toml).toContain('[mcp_servers.rig.tools.rig_explore]\napproval_mode = "prompt"');
+  });
+
+  test("codex gets a SessionStart hook in ~/.codex/hooks.json, next to the user's own", async () => {
+    const codexDir = join(HOME, '.codex');
+    mkdirSync(codexDir, { recursive: true });
+    const mine = { type: 'command', command: 'echo mine' };
+    writeFileSync(
+      join(codexDir, 'hooks.json'),
+      JSON.stringify({ hooks: { SessionStart: [{ matcher: 'startup', hooks: [mine] }] } }),
+    );
+    await installTarget(getTarget('codex')!, installOpts('global'));
+    const doc = JSON.parse(readFileSync(join(codexDir, 'hooks.json'), 'utf-8'));
+    const handlers = doc.hooks.SessionStart.flatMap(
+      (g: { hooks: { command: string }[] }) => g.hooks,
+    );
+    expect(handlers.map((h: { command: string }) => h.command)).toEqual([
+      'echo mine',
+      'rig hook SessionStart --client codex',
+    ]);
+    // Re-installing replaces rig's handler instead of adding a second one.
+    await installTarget(getTarget('codex')!, installOpts('global'));
+    const again = JSON.parse(readFileSync(join(codexDir, 'hooks.json'), 'utf-8'));
+    expect(again.hooks.SessionStart.flatMap((g: { hooks: unknown[] }) => g.hooks)).toHaveLength(2);
   });
 
   test('opencode merge-jsonc preserves user comments', async () => {
