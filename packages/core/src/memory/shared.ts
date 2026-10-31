@@ -206,6 +206,17 @@ export const unshare = (root: string, id: string, by: string): number => {
   return version;
 };
 
+/** A one-line report of an import, or '' when there was nothing to say. */
+export const describeImport = (r: ImportResult): string => {
+  const parts = [
+    r.added ? `${r.added} imported` : '',
+    r.removed ? `${r.removed} unshared` : '',
+    r.unanchored ? `${r.unanchored} waiting for symbols` : '',
+    r.errors.length ? `${r.errors.length} problem(s): run rig memory check` : '',
+  ].filter(Boolean);
+  return parts.length ? `shared memory: ${parts.join(', ')}` : '';
+};
+
 export interface ImportResult {
   added: number;
   /** Shared records anchored to symbols this index doesn't have (yet). */

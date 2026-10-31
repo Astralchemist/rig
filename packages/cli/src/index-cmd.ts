@@ -84,6 +84,9 @@ export const runIndex = async (cwd: string): Promise<void> => {
     if (r.orphaned > 0) console.log(`  orphaned memory:  ${r.orphaned}`);
     if (r.reattached > 0) console.log(`  re-attached:      ${r.reattached}`);
     console.log(`  elapsed:          ${r.elapsed_ms}ms`);
+    const { importShared, describeImport } = await import('@rig/core/memory/shared.ts');
+    const shared = describeImport(importShared(rig));
+    if (shared) console.log(`  ${shared}`);
   } finally {
     rig.close();
   }
