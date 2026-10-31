@@ -52,7 +52,7 @@ describe('retention across index and sync', () => {
   const edgesFromFile = (file: string): string[] =>
     all<{ k: string }>(
       `SELECT e.kind || ' ' || e.src || '->' || e.dst AS k FROM edges e JOIN nodes n ON n.id = e.src
-       WHERE json_extract(n.data, '$.filePath') = ? AND e.provenance = 'ast' ORDER BY k`,
+       WHERE json_extract(n.data, '$.filePath') = ? AND (e.provenance = 'ast' OR e.provenance LIKE 'ast:%') ORDER BY k`,
       file,
     ).map((r) => r.k);
   const countByKind = (keys: string[]): Record<string, number> => {

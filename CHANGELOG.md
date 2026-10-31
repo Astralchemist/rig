@@ -26,6 +26,7 @@ All notable changes to Rig are documented here. The format follows
 - Target contracts have a `hooks` file role. Rig's hook handlers are the ones running `rig hook`, and the same install and uninstall rules apply to them as to rig's permission entries.
 
 ### Changed
+- **Edges say how they were found** (research roadmap, step 2). Derived edges were all stored with provenance `ast`, though only some come off the syntax tree. Now: `ast` (syntax: contains, extends, implements), `ast:import` (a module path resolved to a file), `ast:name` (a call or reference matched by a name unique in the project, not by scope: a heuristic) and `ast:tests` (an import from a test-looking path). Every value stays in the `ast` family, so rebuilds, memory export and orphaned memory treat them as before; the first re-index after upgrading relabels existing edges.
 - `/api/search` ranks with the same hybrid search as `rig_search`. The body is still the `RigNode[]` it was, each hit with `score` and `matched_by` added; the `x-rig-search` header says `hybrid` or `keyword-only`, and `mode=keyword` asks for the old keyword search.
 - The map draws the top 500 nodes by default (it asked for 2,000); 300, 1,000 and 2,000 are a setting away.
 - CLI commands load on demand. Light commands such as `rig hook` start in about 20 ms instead of about 140 ms.

@@ -209,11 +209,7 @@ export function loadProjectAliases(projectRoot: string): AliasMap | null {
  * Callers still need to try each candidate with the language's
  * extension list — this function only does the alias rewrite.
  */
-export function applyAliases(
-  importPath: string,
-  aliases: AliasMap,
-  projectRoot: string
-): string[] {
+export function applyAliases(importPath: string, aliases: AliasMap, projectRoot: string): string[] {
   for (const pat of aliases.patterns) {
     if (!importPath.startsWith(pat.prefix)) continue;
     if (pat.suffix && !importPath.endsWith(pat.suffix)) continue;
