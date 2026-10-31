@@ -13,6 +13,10 @@ export interface DepRow {
   is_optional: boolean;
   is_peer: boolean;
   resolved_version: string | null;
+  /** Package URL (purl), versioned when one version is known. */
+  purl: string | null;
+  /** Files and symbols that import it (`imports_package` edges). */
+  used_by: number;
 }
 
 interface NodeRow {
@@ -29,6 +33,7 @@ interface DepData {
   isOptionalDep?: boolean;
   isPeerDep?: boolean;
   resolvedVersion?: string;
+  purl?: string;
 }
 
 export interface DepConflictRow {
@@ -255,6 +260,9 @@ export const listDependencies = (
            ORDER BY name ASC`,
         )
         .all() as NodeRow[]);
+  const usedBy = db.prepare(
+    `SELECT COUNT(DISTINCT src) AS n FROM edges WHERE dst = ? AND kind = 'imports_package'`,
+  );
   return rows.map((r) => {
     const d = JSON.parse(r.data) as DepData;
     return {
@@ -267,6 +275,8 @@ export const listDependencies = (
       is_optional: d.isOptionalDep === true,
       is_peer: d.isPeerDep === true,
       resolved_version: d.resolvedVersion ?? null,
+      purl: d.purl ?? null,
+      used_by: (usedBy.get(r.id) as { n: number }).n,
     };
   });
 };
