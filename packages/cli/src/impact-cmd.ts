@@ -84,6 +84,10 @@ export const renderImpactText = (r: DiffImpact): string => {
         `  [${m.waypoint.kind}] ${m.waypoint.title}  (on ${m.anchors.join(', ')}${m.via === 'file' ? ', file only' : ''})`,
       );
   }
+  if (r.blindSpots.length) {
+    L.push('', 'Blind spots (passed as a value; calls through these are not traced):');
+    for (const b of r.blindSpots) L.push(`  ${b.symbol}  by ${b.passedBy.join(', ')}`);
+  }
   L.push(
     '',
     `Edges: ${r.edgeCounts.structural} from the code, ${r.edgeCounts.accepted} accepted links (dashed in --format mermaid).`,
@@ -153,6 +157,23 @@ export const renderImpactComment = (
           (r.dependents.length > 12 ? ` and ${r.dependents.length - 12} more` : ''),
       );
     L.push('', '</details>');
+  }
+  if (r.blindSpots.length) {
+    L.push(
+      '',
+      "**Blind spots.** Passed around as a value, so calls made through these aren't traced: " +
+        r.blindSpots
+          .slice(0, 6)
+          .map(
+            (b) =>
+              `\`${b.symbol}\` (by ${b.passedBy
+                .slice(0, 3)
+                .map((x) => `\`${x}\``)
+                .join(', ')}${b.passedBy.length > 3 ? '…' : ''})`,
+          )
+          .join('; ') +
+        (r.blindSpots.length > 6 ? ` and ${r.blindSpots.length - 6} more` : ''),
+    );
   }
   L.push(
     '',

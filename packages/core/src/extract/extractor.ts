@@ -21,7 +21,9 @@ import type {
 // match, so bump this whenever an extractor change would produce different
 // rows for the same source; otherwise unchanged files keep stale extraction.
 // 2: markdown sections carry a body excerpt.
-export const EXTRACTOR_VERSION = 2;
+// 3: a function used as a value (argument, object or array entry) is a
+//    'references' ref, so callbacks and dispatch tables link to it.
+export const EXTRACTOR_VERSION = 3;
 
 export async function extractFromSource(
   filePath: string,
