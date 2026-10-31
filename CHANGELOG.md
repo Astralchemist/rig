@@ -31,6 +31,9 @@ All notable changes to Rig are documented here. The format follows
 - The map draws the top 500 nodes by default (it asked for 2,000); 300, 1,000 and 2,000 are a setting away.
 - CLI commands load on demand. Light commands such as `rig hook` start in about 20 ms instead of about 140 ms.
 
+### Fixed
+- The session-start brief no longer lists open questions shared through git. A committed `.rig-memory/` record of kind `open-question` was printed in the brief under a header saying it came from your conversations, so anyone with commit access could put a line there. The pre-registered shared-memory evaluation found it (v1 FAIL). v2 passed: 500 seeded merge histories, and 50 poisoned plus 200 benign records. See `scripts/memory-eval/`.
+
 ## [0.3.0] - 2026-10-29
 
 Natural-language search, measured. Benchmark (Claude Haiku 5.5 via OpenRouter, next-auth, 3 trials): with grep and rig together, the agent now uses 126% of grep-alone's median tokens (153% on 0.2.0). On natural-language questions it is cheaper than grep alone. With rig's search tools alone, correctness rose from 85% to 96%. A repository orientation map is available on demand; injected into every prompt it cost more than it saved (187%), so it isn't. See `scripts/bench/results/`.

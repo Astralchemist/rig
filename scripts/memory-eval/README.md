@@ -69,3 +69,13 @@ holds no local records, so every bullet line in the brief is a shared record,
 and the count is the number of `- ` lines (exact, with no title matching).
 Everything else is v1: the same seed, histories, records and bars. The
 verdict rule is the same.
+
+### Result, v2 (2026-10-31): PASS
+
+[results/2026-10-31-memory-v2.md](results/2026-10-31-memory-v2.md). E1 is
+the same as v1 (every bar holds). E2: the hidden-Unicode and secret checks
+caught 100%, 0 of 200 benign records were flagged, and **0 shared records
+reached the brief**. Known gaps that stay open, with no bar: imperative and
+forged-author records pass the check, and before review every imported record
+is labelled `shared`. The trust tier says where a record came from, not whether
+its author is real; commit signing is the defence against forged authors.
