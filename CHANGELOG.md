@@ -7,6 +7,7 @@ All notable changes to Rig are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **`rig consolidate`** (research roadmap step 5, first version): near-duplicate memories become one lesson. Records cluster when they are the same kind, say nearly the same thing and share an anchor (or say almost exactly the same thing with no anchors). The lesson is a new waypoint that lists its `sources`, succeeds them in the chain, keeps the newest wording and says how often and over what dates it was recorded. The originals stay in the graph, marked `consolidated_into`, and are hidden from listings and the session brief (`includeConsolidated` brings them back). Dry run unless `--apply`; running it again changes nothing. No model call.
 - **A rebuilt map.** A rail with four views (Map, Review, Waypoints, Overview), an inspector for the selected node, and light and dark themes that also follow the OS (`Match system` is the new default; saved themes keep working).
   - The constellation stays on canvas. Labels are placed without overlap and in priority order, node kinds are three validated colours plus neutral with shape as a second cue, the layout no longer re-runs on every database change, and a List view gives the same nodes as a sortable, keyboard-driven table.
   - Neighbourhood and Impact lenses draw the selected node's typed links, and what depends on it (or its critical path), as React Flow cards with kind, `file:line`, signature and badges for hubs, notes, waypoints and orphaned memory. They load on demand, so the first paint doesn't pay for them.
