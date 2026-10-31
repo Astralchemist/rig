@@ -316,7 +316,18 @@ const main = async (): Promise<void> => {
     if (qualifying >= TAKE) break;
     let r: CommitResult;
     try {
-      r = await replayCommit(sha, wt);
+      // A fresh process per commit (v3): tree-sitter's WebAssembly can abort
+      // and keep aborting once it has in a process, which skipped 23 commits
+      // in v2.
+      const child = spawnSync(
+        'bun',
+        ['run', import.meta.path, '--one', sha, '--work', WORK, '--from', FROM],
+        { encoding: 'utf-8', maxBuffer: 256 * 1024 * 1024, timeout: 2 * TEST_TIMEOUT_MS },
+      );
+      const last = (child.stdout ?? '').trim().split('\n').pop() ?? '';
+      if (!last.startsWith('{'))
+        throw new Error(`child exited ${child.status}: ${(child.stderr ?? '').slice(-200)}`);
+      r = JSON.parse(last) as CommitResult;
     } catch (e) {
       r = {
         commit: sha.slice(0, 7),
@@ -385,7 +396,7 @@ const main = async (): Promise<void> => {
   const outDir = resolve(import.meta.dir, 'results');
   mkdirSync(outDir, { recursive: true });
   writeFileSync(
-    join(outDir, `${date}-impact-eval-v2.json`),
+    join(outDir, `${date}-impact-eval-v3.json`),
     JSON.stringify({ summary, results }, null, 2) + '\n',
   );
   const md = [
@@ -429,8 +440,39 @@ const main = async (): Promise<void> => {
           `| \`${r.commit}\` ${r.subject.replace(/\|/g, '\\|').slice(0, 60)} | ${r.status}${r.reason ? ` (${r.reason})` : ''} | ${r.changed} (${r.changedExecuted}) | ${r.predicted} | ${r.observed} | ${r.hit} | ${r.baselinePredicted} / ${r.baselineHit} | ${r.missed.slice(0, 5).join(', ')} |`,
       ),
   ].join('\n');
-  writeFileSync(join(outDir, `${date}-impact-eval-v2.md`), md + '\n');
+  writeFileSync(join(outDir, `${date}-impact-eval-v3.md`), md + '\n');
   console.log(JSON.stringify(summary, null, 2));
 };
 
-await main();
+const one = process.argv.indexOf('--one');
+if (one >= 0) {
+  const sha = process.argv[one + 1]!;
+  let r: CommitResult;
+  try {
+    r = await replayCommit(sha, join(WORK, 'wt'));
+  } catch (e) {
+    r = {
+      commit: sha.slice(0, 7),
+      subject: '',
+      status: 'skipped',
+      reason: String(e).slice(0, 200),
+      changed: 0,
+      changedExecuted: 0,
+      predicted: 0,
+      observed: 0,
+      hit: 0,
+      baselinePredicted: 0,
+      baselineHit: 0,
+      unbounded: { predicted: 0, observed: 0, hit: 0 },
+      textLines: 0,
+      blindSpots: 0,
+      missed: [],
+      edges: 0,
+      edgesMapped: 0,
+      ms: 0,
+    };
+  }
+  process.stdout.write(`\n${JSON.stringify(r)}\n`);
+} else {
+  await main();
+}

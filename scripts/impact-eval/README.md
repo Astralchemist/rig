@@ -147,3 +147,7 @@ replayed parent (`e307872`), turned out to be a no-op safeguard.
 **Value references didn't raise recall.** They link the code that *passes* a function along; the dependents rig misses are the code that *receives and calls* it. The top misses are unchanged: `retryWhenBusy` (calls the callback it's given), the generated tool dispatch (`run`), and `runSync` / `runIndexAll`, reached through the CLI's lazy `(await import('./x.ts')).runX` command table. Blind spots were declared on 5 of 47 commits, which is all that moved the unflagged-miss share.
 
 **Next, each needing its own pre-registration:** a "may call" edge from a function to the callback passed into it (`retry(save)` → retry may call save), and resolving members of dynamic `import()` results. Separately, a fresh process per commit in the harness to remove the WebAssembly skips.
+
+## Pre-registration v3 (written 2026-10-31, before any v3 run)
+
+> Impact evaluation v3: the v2 rules unchanged (oracle, metrics, bars, first 80 qualifying commits, blind-spot-flagged misses) for the tool at the commit that adds this text (extractor v4: a function handed a callback may call it, as `ast:callback` edges, and members of dynamic `import()` results are references). One harness change, fixed before running: each commit is replayed in a fresh process, so tree-sitter's WebAssembly abort can't carry over between commits. No changes after seeing results.
