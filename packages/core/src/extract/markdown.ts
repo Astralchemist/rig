@@ -1,6 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createHash } from 'node:crypto';
-import type { ExtractionResult, Node } from './upstream-types.ts';
+import { posix } from 'node:path';
+import type { ExtractionResult, Node, UnresolvedReference } from './upstream-types.ts';
+
+// [text](target) with a relative target: not a URL, not a pure #anchor.
+const LINK = /!?\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g;
+// `name`, `name()`, `obj.name()`: code-like only (camelCase, PascalCase,
+// snake_case, or called), so prose words in backticks don't match.
+const CODE = /`([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)(\(\))?`/g;
+const codeLike = (name: string, called: boolean): boolean =>
+  called || /[a-z][A-Z]|_|^[A-Z][a-z]+[A-Z]/.test(name);
+
+/** A link target as a project-relative path, or null for URLs, anchors and paths leaving the repo. */
+export const linkTarget = (fromFile: string, target: string): string | null => {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith('#') || target.startsWith('/'))
+    return null;
+  const path = decodeURIComponent(target.split('#')[0]!.split('?')[0]!);
+  if (!path) return null;
+  const joined = posix.normalize(posix.join(posix.dirname(fromFile), path));
+  return joined.startsWith('..') ? null : joined.replace(/^\.\//, '');
+};
 
 const idOf = (filePath: string, line: number, name: string): string => {
   const hash = createHash('sha256')
@@ -61,6 +80,42 @@ export function extractMarkdown(
 ): Omit<ExtractionResult, 'durationMs'> {
   const lines = source.split('\n');
   const nodes: Node[] = [];
+  const refs: UnresolvedReference[] = [];
+  // Links and code names in a section's prose belong to that section.
+  const scanProse = (line: string, i: number): void => {
+    const owner = nodes[nodes.length - 1];
+    if (!owner) return;
+    const seen = new Set<string>();
+    for (const m of line.matchAll(LINK)) {
+      const target = linkTarget(filePath, m[1]!);
+      if (!target || seen.has(target)) continue;
+      seen.add(target);
+      refs.push({
+        fromNodeId: owner.id,
+        referenceName: target,
+        referenceKind: 'references',
+        line: i + 1,
+        column: m.index ?? 0,
+        filePath,
+        language: 'markdown',
+        targetPath: target,
+      });
+    }
+    for (const m of line.replace(LINK, '').matchAll(CODE)) {
+      const name = m[1]!.split('.').pop()!;
+      if (!codeLike(name, !!m[2]) || seen.has(name)) continue;
+      seen.add(name);
+      refs.push({
+        fromNodeId: owner.id,
+        referenceName: name,
+        referenceKind: 'references',
+        line: i + 1,
+        column: m.index ?? 0,
+        filePath,
+        language: 'markdown',
+      });
+    }
+  };
   const stack: { level: number; name: string }[] = [];
   let inFence = false;
 
@@ -72,7 +127,10 @@ export function extractMarkdown(
     }
     if (inFence) continue;
     const m = line.match(HEADING);
-    if (!m) continue;
+    if (!m) {
+      scanProse(line, i);
+      continue;
+    }
     const level = m[1]!.length;
     const name = m[2]!.trim();
     while (stack.length && stack[stack.length - 1]!.level >= level) stack.pop();
@@ -94,5 +152,5 @@ export function extractMarkdown(
     });
     stack.push({ level, name });
   }
-  return { nodes, edges: [], unresolvedReferences: [], errors: [] };
+  return { nodes, edges: [], unresolvedReferences: refs, errors: [] };
 }

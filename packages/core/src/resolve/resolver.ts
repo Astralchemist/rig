@@ -103,6 +103,24 @@ export const resolveReferences = (
       }
       continue;
     }
+    if (ref.targetPath !== undefined) {
+      // A doc linking to a file in the repo.
+      const fileId = fileByPath.get(ref.targetPath);
+      if (fileId && fileId !== ref.fromNodeId) {
+        insertEdge.run(ref.fromNodeId, fileId, 'references', EDGE_ORIGIN.link, now);
+        edges++;
+      } else {
+        insertUnresolved.run(
+          ref.fromNodeId,
+          ref.referenceName,
+          ref.filePath ?? '',
+          ref.line,
+          ref.referenceKind,
+        );
+        unresolved++;
+      }
+      continue;
+    }
     const cands = byName.get(ref.referenceName);
     if (cands && cands.length === 1 && cands[0] !== ref.fromNodeId) {
       insertEdge.run(ref.fromNodeId, cands[0]!, ref.referenceKind, EDGE_ORIGIN.name, now);

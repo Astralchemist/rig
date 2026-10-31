@@ -21,7 +21,8 @@ import type {
 // match, so bump this whenever an extractor change would produce different
 // rows for the same source; otherwise unchanged files keep stale extraction.
 // 2: markdown sections carry a body excerpt.
-export const EXTRACTOR_VERSION = 2;
+// 3: markdown links to repo files and code-like backticked names become refs.
+export const EXTRACTOR_VERSION = 3;
 
 export async function extractFromSource(
   filePath: string,
@@ -47,7 +48,12 @@ export async function extractFromSource(
     if (base === 'package.json') {
       return { ...extractPackageJson(filePath, source), durationMs: Date.now() - start };
     }
-    if (base.endsWith('requirements.txt') || base.endsWith('requirements-dev.txt') || base.endsWith('dev-requirements.txt') || base.endsWith('requirements-test.txt')) {
+    if (
+      base.endsWith('requirements.txt') ||
+      base.endsWith('requirements-dev.txt') ||
+      base.endsWith('dev-requirements.txt') ||
+      base.endsWith('requirements-test.txt')
+    ) {
       return { ...extractRequirementsTxt(filePath, source), durationMs: Date.now() - start };
     }
     if (base === 'pyproject.toml') {

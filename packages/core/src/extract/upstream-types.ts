@@ -123,6 +123,9 @@ export interface UnresolvedReference {
   // Imports only: the names `from pkg import a, b` pulls in, which may be
   // submodules of pkg.
   importedNames?: string[];
+  // Docs: a link to a file in the repo, as a project-relative path. The
+  // resolver links straight to that file node.
+  targetPath?: string;
 }
 
 export interface ExtractionError {
