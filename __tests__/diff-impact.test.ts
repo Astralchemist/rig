@@ -245,3 +245,31 @@ describe('callbacks and dispatch tables', () => {
     expect(refs.map((r) => r.src)).toContain('watch');
   });
 });
+
+describe('old side and the shared line-to-symbol mapping', () => {
+  test("side 'old' reads the removed paths and ranges", () => {
+    const diff = ['--- a/src/a.ts', '+++ b/src/a.ts', '@@ -10,3 +12,5 @@', '@@ -30 +31,0 @@'].join(
+      '\n',
+    );
+    expect(parseUnifiedDiff(diff, 'old').get('src/a.ts')).toEqual([
+      [10, 12],
+      [30, 30],
+    ]);
+  });
+
+  test('innermostSymbolAt picks the smallest enclosing symbol', async () => {
+    const { innermostSymbolAt } = await import('../packages/core/src/graph/diff-impact.ts');
+    const sym = (name: string, startLine: number, endLine: number) => ({
+      id: name,
+      type: 'function',
+      name,
+      filePath: 'a.ts',
+      startLine,
+      endLine,
+    });
+    const syms = [sym('Outer', 1, 50), sym('inner', 10, 20), sym('other', 30, 40)];
+    expect(innermostSymbolAt(syms, 15)?.name).toBe('inner');
+    expect(innermostSymbolAt(syms, 25)?.name).toBe('Outer');
+    expect(innermostSymbolAt(syms, 60)).toBeNull();
+  });
+});
