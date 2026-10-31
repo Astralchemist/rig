@@ -37,20 +37,23 @@ export interface VisitCtx {
 
 const TYPE_IDENT_NODE_TYPES = new Set(['type_identifier']);
 // extends_clause: `class C extends B`. extends_type_clause: `interface I extends J`.
-const HERITAGE_NODE_TYPES = new Set([
-  'extends_clause',
-  'extends_type_clause',
-  'implements_clause',
-]);
+const HERITAGE_NODE_TYPES = new Set(['extends_clause', 'extends_type_clause', 'implements_clause']);
 // Inside heritage, tree-sitter uses plain `identifier` for class extends and
 // `type_identifier` for interface extends / implements. Walk both.
 const HERITAGE_TARGET_TYPES = new Set(['type_identifier', 'identifier']);
 
-const pushReference = (
-  node: SyntaxNode,
-  ctx: VisitCtx,
-  kind: EdgeKind,
-): void => {
+// Nodes whose children are values: call arguments (TS/JS `arguments`,
+// Python `argument_list`), object pairs and arrays.
+const VALUE_HOLDER_TYPES = new Set(['arguments', 'argument_list', 'pair', 'array', 'list']);
+const WRAPPER_TYPES = new Set([
+  'as_expression',
+  'satisfies_expression',
+  'non_null_expression',
+  'parenthesized_expression',
+  'type_assertion',
+]);
+
+const pushReference = (node: SyntaxNode, ctx: VisitCtx, kind: EdgeKind): void => {
   const owner = ctx.scope[ctx.scope.length - 1];
   if (!owner) return;
   ctx.refs.push({
@@ -64,11 +67,7 @@ const pushReference = (
   });
 };
 
-const pushHeritageRefs = (
-  node: SyntaxNode,
-  ctx: VisitCtx,
-  kind: EdgeKind,
-): void => {
+const pushHeritageRefs = (node: SyntaxNode, ctx: VisitCtx, kind: EdgeKind): void => {
   if (HERITAGE_TARGET_TYPES.has(node.type)) {
     pushReference(node, ctx, kind);
     return;
@@ -118,11 +117,32 @@ export function visit(node: SyntaxNode, ctx: VisitCtx): void {
   // identifier or type_identifier and return early so they don't double-count
   // as plain 'references'.
   if (HERITAGE_NODE_TYPES.has(node.type)) {
-    const heritageKind: EdgeKind =
-      node.type === 'implements_clause' ? 'implements' : 'extends';
+    const heritageKind: EdgeKind = node.type === 'implements_clause' ? 'implements' : 'extends';
     pushHeritageRefs(node, ctx, heritageKind);
     return;
   }
+
+  // A name used as a value: a function passed as an argument (`retry(save)`,
+  // `on('change', this.sync)`), placed in a dispatch table (`{ save }`,
+  // `{ x: save }`, `[save, load]`). The call happens elsewhere, so without
+  // this the graph has no link between the two; resolution is by name, like
+  // calls. Traversal continues below.
+  if (VALUE_HOLDER_TYPES.has(node.type)) {
+    for (let i = 0; i < node.namedChildCount; i++) {
+      const c = node.namedChild(i);
+      if (!c) continue;
+      let v = node.type === 'pair' ? (c === node.childForFieldName('value') ? c : null) : c;
+      // Look through casts and wrappers: `save as Handler`, `save!`, `(save)`.
+      while (v && WRAPPER_TYPES.has(v.type)) v = v.namedChild(0);
+      if (!v) continue;
+      if (v.type === 'identifier') pushReference(v, ctx, 'references');
+      else if (v.type === 'member_expression' && v.childForFieldName('object')?.type === 'this') {
+        const prop = v.childForFieldName('property');
+        if (prop) pushReference(prop, ctx, 'references');
+      }
+    }
+  }
+  if (node.type === 'shorthand_property_identifier') pushReference(node, ctx, 'references');
 
   // Type identifiers anywhere else (parameter types, return types, generics).
   if (TYPE_IDENT_NODE_TYPES.has(node.type)) {
@@ -138,7 +158,11 @@ export function visit(node: SyntaxNode, ctx: VisitCtx): void {
       // A bound function (`const f = () => {}`) spans its declarator, `f = …`.
       const span = functionBindingOf(node) ?? node;
       const id = generateNodeId(ctx.filePath, kind, name, span.startPosition.row + 1);
-      const qn = ctx.scope.slice(1).map((s) => s.name).concat(name).join('.');
+      const qn = ctx.scope
+        .slice(1)
+        .map((s) => s.name)
+        .concat(name)
+        .join('.');
       const signature = ctx.extractor.getSignature?.(node, ctx.source);
       const docstring = getPrecedingDocstring(docAnchorOf(span), ctx.source);
       ctx.nodes.push({

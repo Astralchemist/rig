@@ -146,6 +146,7 @@ describe('PR comment', () => {
       edges: [],
       edgeCounts: { structural: 0, accepted: 0 },
       depth: 2,
+      blindSpots: [{ symbol: 'login', passedBy: ['retryWhenBusy'] }],
     };
     expect(renderImpactComment({ ...base, changed: [], dependents: [], memoryAtRisk: [] })).toBe(
       '',
@@ -191,5 +192,56 @@ describe('PR comment', () => {
     expect(md).toContain('```mermaid');
     expect(md).toContain("aren't seen");
     expect(md).toContain('at abcdef1');
+    expect(md).toContain('**Blind spots.**');
+    expect(md).toContain('`login` (by `retryWhenBusy`)');
+  });
+});
+
+describe('callbacks and dispatch tables', () => {
+  let dir: string;
+  let rig: Rig;
+  beforeAll(async () => {
+    dir = mkdtempSync(join(tmpdir(), 'rig-callbacks-'));
+    writeFileSync(
+      join(dir, 'a.ts'),
+      [
+        'export function retry<T>(fn: () => T): T { return fn(); }',
+        'export function save(x: number): number {',
+        '  return x + 1;',
+        '}',
+        'export function passer(): number { return retry(save as never); }',
+        'export const handlers = { save };',
+        'export class Store { sync() { return 1; } watch() { return retry(this.sync); } }',
+        '',
+      ].join('\n'),
+    );
+    rig = await Rig.init(dir, { embedder: new DeterministicEmbedder() });
+    await rig.indexAll();
+  });
+  afterAll(() => {
+    rig.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test('a function passed as a value is a dependent, and is reported as a blind spot', () => {
+    const r = diffImpact(
+      rig.database.adapter,
+      new Map([['a.ts', [[3, 3]] as [number, number][]]]),
+      [],
+      { depth: 1 },
+    );
+    expect(r.changed.map((n) => n.name)).toEqual(['save']);
+    expect(r.dependents.map((d) => d.name)).toContain('passer');
+    expect(r.blindSpots).toEqual([{ symbol: 'save', passedBy: ['a.ts', 'passer'] }]);
+  });
+
+  test('`this.method` passed along links the method too', () => {
+    const refs = rig.database.adapter
+      .prepare(
+        `SELECT (SELECT name FROM nodes WHERE id = e.src) AS src FROM edges e
+         WHERE e.kind = 'references' AND e.dst = (SELECT id FROM nodes WHERE name = 'sync')`,
+      )
+      .all() as { src: string }[];
+    expect(refs.map((r) => r.src)).toContain('watch');
   });
 });

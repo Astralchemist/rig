@@ -27,6 +27,7 @@ All notable changes to Rig are documented here. The format follows
 - Target contracts have a `hooks` file role. Rig's hook handlers are the ones running `rig hook`, and the same install and uninstall rules apply to them as to rig's permission entries.
 
 ### Changed
+- **Callbacks and dispatch tables are linked.** A function used as a value (an argument such as `retry(save)` or `on('change', this.sync)`, an entry in `{ save }`, `{ x: save }` or `[save, load]`, through casts and `!`) now gets a `references` edge from where it is used, so it reaches `rig impact`, `rig_callers` and the rest. The extractor version is bumped, so the first index after upgrading re-extracts every file once. `rig impact` and the PR comment list **blind spots**: changed functions passed around as values, with who passes them, because calls made through those aren't traced.
 - `/api/search` ranks with the same hybrid search as `rig_search`. The body is still the `RigNode[]` it was, each hit with `score` and `matched_by` added; the `x-rig-search` header says `hybrid` or `keyword-only`, and `mode=keyword` asks for the old keyword search.
 - The map draws the top 500 nodes by default (it asked for 2,000); 300, 1,000 and 2,000 are a setting away.
 - CLI commands load on demand. Light commands such as `rig hook` start in about 20 ms instead of about 140 ms.

@@ -99,8 +99,19 @@ export interface MemoryAtRisk {
   via: 'symbol' | 'file';
 }
 
+/**
+ * A changed function the graph sees being passed around as a value
+ * (callback, dispatch table): whatever calls it from there isn't traced.
+ */
+export interface BlindSpot {
+  symbol: string;
+  /** Who passes it on: the enclosing symbols or files of each value use. */
+  passedBy: string[];
+}
+
 export interface DiffImpact {
   files: string[];
+  blindSpots: BlindSpot[];
   changed: ChangedSymbol[];
   /** Symbols in files the change creates: reported, not walked. */
   added: ImpactNode[];
@@ -280,8 +291,21 @@ export const diffImpact = (
     });
   }
 
+  // Blind spots: changed functions referenced (not called) by something.
+  const valueUses = db.prepare(
+    `SELECT DISTINCT n.name AS name FROM edges e JOIN nodes n ON n.id = e.src
+     WHERE e.dst = ? AND e.kind = 'references'`,
+  );
+  const blindSpots: BlindSpot[] = [];
+  for (const c of changed.values()) {
+    if (c.type !== 'function' && c.type !== 'method') continue;
+    const by = (valueUses.all(c.id) as { name: string }[]).map((r) => r.name);
+    if (by.length) blindSpots.push({ symbol: c.name, passedBy: by.sort() });
+  }
+
   return {
     files: [...changes.keys()],
+    blindSpots,
     changed: [...changed.values()],
     added,
     docs: [...docs.values()],
