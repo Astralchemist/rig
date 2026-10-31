@@ -132,3 +132,18 @@ replayed parent (`e307872`), turned out to be a no-op safeguard.
 ## Pre-registration v2 (written 2026-10-31, before any v2 run)
 
 > Impact evaluation v2: the same oracle, metrics and bars as above, for the tool at `461ba8e` (extractor v3: functions used as values, such as callbacks and dispatch-table entries, get `references` edges; `rig impact` declares blind spots). Two changes, both fixed before running: the population is the first **80** qualifying commits (v1 scored 47 of 60, under the floor of 50); and a miss counts as **flagged** when the commit's `rig impact` declared at least one blind spot, so the unflagged-miss share is computed over commits with a miss and no blind spot declared. No changes after seeing results.
+
+## Result v2 (2026-10-31): INCONCLUSIVE, recall unchanged
+
+`results/2026-10-31-impact-eval-v2.md`. 147 commits examined: 47 scored (the same 47 as v1), 10 whose changed symbols the suite never runs, 23 skipped by a tree-sitter WebAssembly `Aborted()` in the harness, which repeats once it starts in a process and used up most of the extra 20 commits. 47 is under the floor of 50.
+
+| measure | v1 | v2 | bar |
+|---|---:|---:|---:|
+| micro recall | 52.7% | 52.7% | ≥ 80% |
+| micro precision | 27.3% | 26.7% | ≥ baseline (2.1%) + 10 pp |
+| commits with an unflagged miss | 46.8% | 38.3% | ≤ 20% |
+| median text lines | 15 | 15 | ≤ 25 |
+
+**Value references didn't raise recall.** They link the code that *passes* a function along; the dependents rig misses are the code that *receives and calls* it. The top misses are unchanged: `retryWhenBusy` (calls the callback it's given), the generated tool dispatch (`run`), and `runSync` / `runIndexAll`, reached through the CLI's lazy `(await import('./x.ts')).runX` command table. Blind spots were declared on 5 of 47 commits, which is all that moved the unflagged-miss share.
+
+**Next, each needing its own pre-registration:** a "may call" edge from a function to the callback passed into it (`retry(save)` → retry may call save), and resolving members of dynamic `import()` results. Separately, a fresh process per commit in the harness to remove the WebAssembly skips.
