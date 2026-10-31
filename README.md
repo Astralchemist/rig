@@ -247,6 +247,16 @@ in `.rig/config.json`, to switch capture off without touching the hooks.
 
 ---
 
+### Sharing memory with your team
+
+`rig memory promote <waypoint-id>` shares one memory through git, in `.rig-memory/` (one small file per record, so merges don't conflict). Nothing is shared unless someone promotes it; conversation captures need `--include-captured`. Teammates get it with their next `rig index`, `sync` or `start`.
+
+Shared memory is text that reaches other people's agents, so review it like code:
+
+- Require review on it: add `.rig-memory/ @your-team` to `CODEOWNERS` and turn on "Require review from Code Owners".
+- Check it in CI: `rig memory check` fails on malformed records, conflicting versions, text that looks like a secret, and hidden Unicode (bidi and zero-width characters).
+- Agents see how far to trust each memory: `rig_waypoints` labels it `local`, `shared`, `shared-reviewed` (reviewers said it still holds) or `disputed` (reviewers mostly said it's outdated; hidden unless asked for). Reviewer verdicts come from the PR comment's checkboxes (`rig memory verdicts`).
+
 ## Commands
 
 | Command | What it does |

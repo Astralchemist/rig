@@ -23,6 +23,7 @@ import {
   parseCommentVerdicts,
   promoteWaypoint,
   recordVerdicts,
+  trustTier,
   unshare,
 } from '../packages/core/src/memory/shared.ts';
 
@@ -152,5 +153,43 @@ describe('shared memory', () => {
     expect(s.errors).toEqual([]);
     expect(Object.fromEntries(s.verdicts.get(id)!)).toEqual({ bob: 'holds', carol: 'outdated' });
     expect(s.records.get(id)!.version).toBe(1);
+  });
+
+  test('trust tiers follow reviewer verdicts; disputed records are hidden from rig_waypoints unless asked', async () => {
+    const { run } = await import('../packages/mcp/src/tool-impls/rig_waypoints.ts');
+    const { makeActivationRecorder } = await import('../packages/mcp/src/dispatch.ts');
+    const wid = drop();
+    const id = wid.replace(/^waypoint:/, '');
+    promoteWaypoint(rigA, wid, { by: 'alice' });
+    cpSync(join(a, SHARED_DIR), join(b, SHARED_DIR), { recursive: true });
+    const rigB = await Rig.init(b, { embedder: new DeterministicEmbedder() });
+    try {
+      await rigB.indexAll();
+      importShared(rigB);
+      expect(trustTier(rigB.getWaypoint(wid)!)).toBe('shared');
+      expect(trustTier(rigA.getWaypoint(wid)!)).toBe('local');
+
+      recordVerdicts(b, [{ id, verdict: 'holds' }], { by: 'bob' });
+      importShared(rigB);
+      expect(trustTier(rigB.getWaypoint(wid)!)).toBe('shared-reviewed');
+
+      recordVerdicts(b, [{ id, verdict: 'outdated' }], { by: 'carol' });
+      recordVerdicts(b, [{ id, verdict: 'outdated' }], { by: 'dan' });
+      importShared(rigB);
+      expect(trustTier(rigB.getWaypoint(wid)!)).toBe('disputed');
+
+      const ctx = {
+        rig: rigB,
+        sessionId: 'x',
+        provenance: null,
+        recordActivation: makeActivationRecorder(rigB, 'x'),
+      };
+      expect((await run({ limit: 50 } as never, ctx as never)).waypoints).toEqual([]);
+      const shown = (await run({ limit: 50, include_disputed: true } as never, ctx as never))
+        .waypoints;
+      expect(shown.map((w: { trust?: string }) => w.trust)).toEqual(['disputed']);
+    } finally {
+      rigB.close();
+    }
   });
 });
