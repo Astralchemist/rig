@@ -94,3 +94,36 @@ What follows: the report can't call something unused based only on import
 names. Repairing it means counting commands in scripts and CI, config files,
 `@types` pairing, workspace packages and peers. That is a new
 pre-registration and a new run.
+
+## Pre-registration, v2
+
+> Dependency-report evaluation v2 (written 2026-10-31, after v1 and before any v2 code or run; the fix and harness come in later commits, both before the run): no changes after seeing results.
+
+**What changes.** The report will be repaired, and only the v1 repos may be
+used while developing the repair. Because those labels are known, they work
+as a development set and can't measure the result.
+
+**Held-out corpus.** Four repos, pinned now, before any fix code exists. None
+was looked at while building the fix.
+
+| repo | commit |
+|---|---|
+| pmndrs/zustand | 382d29c485e67018c06e75ec7235130d0968522c |
+| trpc/trpc | 708753ff1383c47c5f765694978db1000a86ee36 |
+| pallets/flask | 49943b5a94413a530761350f04e896f76e8d620e |
+| encode/starlette | 2745bbc5afa2f8ce900d290bedca2bc5d3f3cfe8 |
+
+The sample and the label rules are v1's (at most 40 flags per repo, seed
+20261031; whole-repo evidence).
+
+**Bars.**
+1. Held-out precision, pooled: **≥ 80%**, with unclear flags counted against
+   the report. With 0 flags, precision is undefined and this bar fails.
+2. Known true positives are still caught: the 3 dependencies labelled unused
+   in v1 (next-auth's `@radix-ui/react-collapsible`, `@types/uuid` and
+   `algoliasearch`) are all flagged by the repaired report on the v1 corpus.
+
+**Reported, no bar:** the repaired report's flags on the v1 corpus, and how
+many flags it has before and after, per repo.
+
+**Verdict.** PASS if both bars hold, otherwise FAIL.
