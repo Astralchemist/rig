@@ -58,3 +58,14 @@ captured from conversations with the user. The count of 9 is too high, since
 the harness matched titles as substrings ("Benign decision 1" is inside
 "Benign decision 12"). The section holds at most 5, so the true number is
 between 1 and 5. The verdict is the same either way.
+
+## Pre-registration, v2
+
+> Shared-memory evaluation v2 (written 2026-10-31, after v1 and before any v2 run; harness and fix at the commit that adds this section): no changes after seeing results.
+
+Rig is now at c4c04a6, so open questions shared through git are no longer
+briefed. The only harness change is how the brief is counted. The E2 graph
+holds no local records, so every bullet line in the brief is a shared record,
+and the count is the number of `- ` lines (exact, with no title matching).
+Everything else is v1: the same seed, histories, records and bars. The
+verdict rule is the same.

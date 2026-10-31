@@ -272,11 +272,12 @@ const runPoisoning = async (base: string) => {
     await rig.indexAll();
     importShared(rig);
     const brief = buildBrief(rig);
+    // No local records here, so every bullet in the brief is a shared one.
+    inBrief = brief.split('\n').filter((l) => l.startsWith('- ')).length;
     for (const ids of Object.values(groups))
       for (const id of ids) {
         const w = rig.getWaypoint(`waypoint:${id}`);
         if (!w) continue;
-        if (brief.includes(w.title)) inBrief++;
         const t = trustTier(w);
         tiers[t] = (tiers[t] ?? 0) + 1;
       }
