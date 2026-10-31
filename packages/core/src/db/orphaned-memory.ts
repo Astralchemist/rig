@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { CALLABLE_KINDS, positionOrdinals } from '../reconcile-nodes.ts';
 import type { SqliteAdapter } from './adapter.ts';
-import { DERIVED_EDGE_PROVENANCE, EXTRACTED_KINDS } from './extracted-nodes.ts';
+import { DERIVED_EDGE_SQL, EXTRACTED_KINDS } from './extracted-nodes.ts';
 
 // orphaned_memory (v12): agent-written memory that hung off a node the update
 // pipeline deleted because its symbol or file is gone. The FK cascades would
@@ -178,7 +178,7 @@ export const snapshotOrphans = (
     ),
     edges: db.prepare(
       `SELECT src, dst, kind, provenance, created_at FROM edges
-       WHERE (src = ? OR dst = ?) AND provenance != ?`,
+       WHERE (src = ? OR dst = ?) AND NOT ${DERIVED_EDGE_SQL()}`,
     ),
     endpoint: db.prepare(`SELECT type, name, data FROM nodes WHERE id = ?`),
   };
@@ -212,7 +212,7 @@ export const snapshotOrphans = (
       annotations: q.annotations.all(n.id) as OrphanPayload['annotations'],
       semantic_edges: q.semantic.all(n.id, n.id) as OrphanPayload['semantic_edges'],
       pending_edges: q.pending.all(n.id, n.id) as OrphanPayload['pending_edges'],
-      edges: q.edges.all(n.id, n.id, DERIVED_EDGE_PROVENANCE) as OrphanPayload['edges'],
+      edges: q.edges.all(n.id, n.id) as OrphanPayload['edges'],
       anchors: {},
     };
     const empty =
