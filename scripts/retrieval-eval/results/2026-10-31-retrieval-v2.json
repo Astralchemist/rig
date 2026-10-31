@@ -1,0 +1,4308 @@
+{
+  "summary": {
+    "verdict": "FAIL",
+    "verdictPpr": "FAIL",
+    "from": "fd36ac5",
+    "queries": 100,
+    "keyword": {
+      "acc1": 0.62,
+      "acc5": 0.83,
+      "mrr10": 0.714718253968254
+    },
+    "hybrid": {
+      "acc1": 0.64,
+      "acc5": 0.86,
+      "mrr10": 0.7320952380952384
+    },
+    "ppr": {
+      "acc1": 0.42,
+      "acc5": 0.82,
+      "mrr10": 0.5884841269841271
+    }
+  },
+  "queries": [
+    {
+      "commit": "da71cf2",
+      "query": "canvas finish for the constellation, and say when a selection is off the map",
+      "files": [
+        "packages/web/src/app/App.tsx",
+        "packages/web/src/app/Map.tsx",
+        "packages/web/src/app/themes.ts"
+      ],
+      "keyword": [
+        "packages/web/src/app/themes.ts",
+        "packages/web/src/app/Map.tsx",
+        "packages/web/src/app/Map.tsx",
+        "packages/web/src/app/NodeList.tsx",
+        "packages/core/src/rig-writes.ts",
+        "scripts/bench/providers.ts",
+        "scripts/bench/providers.ts",
+        ".contracts/events/selection-changed.contract.ts",
+        "packages/web/src/app/flow/views.tsx",
+        "packages/cli/src/ui.ts"
+      ],
+      "hybrid": [
+        "packages/web/src/app/Map.tsx",
+        "packages/web/src/app/NodeList.tsx",
+        "scripts/bench/providers.ts",
+        "packages/web/src/app/themes.ts",
+        "packages/web/src/app/Map.tsx",
+        "packages/web/src/app/Map.tsx",
+        "packages/core/src/rig-writes.ts",
+        "scripts/bench/matrix.ts",
+        "packages/web/src/app/themes.ts",
+        "packages/web/src/app/flow/views.tsx"
+      ],
+      "ppr": [
+        "packages/web/src/app/NodeList.tsx",
+        "packages/web/src/app/Map.tsx",
+        "packages/web/src/app/themes.ts",
+        "packages/web/src/app/themes.ts",
+        "scripts/bench/providers.ts",
+        "packages/web/src/app/Map.tsx",
+        ".contracts/events/selection-changed.contract.ts",
+        "packages/core/src/orientation.ts",
+        "packages/web/src/app/Map.tsx",
+        "packages/web/src/app/flow/views.tsx"
+      ]
+    },
+    {
+      "commit": "91961a1",
+      "query": "REST endpoints for the map's focused views",
+      "files": [
+        "packages/core/src/db/graph-snapshot.ts",
+        "packages/web/src/routes.ts",
+        "packages/web/src/views.ts"
+      ],
+      "keyword": [
+        "packages/web/src/app/flow/views.tsx",
+        "packages/web/src/app/api.ts",
+        "packages/web/src/views.ts",
+        "packages/web/src/app/App.tsx",
+        "packages/web/src/app/Map.tsx",
+        "packages/web/src/app/Map.tsx",
+        "packages/web/src/app/flow/parts.tsx",
+        "packages/core/src/db/pending-edges.ts",
+        "__tests__/web-rest.test.ts",
+        "packages/web/src/app/flow/views.tsx"
+      ],
+      "hybrid": [
+        "packages/web/src/views.ts",
+        "packages/core/src/orientation.ts",
+        "packages/web/src/app/api.ts",
+        "packages/web/src/app/flow/views.tsx",
+        "scripts/gen/types.ts",
+        "e2e/map-ui.spec.ts",
+        "packages/core/src/orientation.ts",
+        "packages/web/src/views.ts",
+        "packages/web/src/app/Map.tsx",
+        "packages/web/src/app/flow/views.tsx"
+      ],
+      "ppr": [
+        "packages/web/src/views.ts",
+        "packages/web/src/app/api.ts",
+        "packages/web/src/app/flow/views.tsx",
+        "packages/web/src/views.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/orientation.ts",
+        "packages/web/src/app/flow/views.tsx",
+        "packages/web/src/views.ts",
+        "e2e/map-ui.spec.ts",
+        "packages/web/src/app/Map.tsx"
+      ]
+    },
+    {
+      "commit": "9cb1f2a",
+      "query": "deterministic extractor for settled conversation moments",
+      "files": [
+        "packages/core/src/capture/extractor.ts",
+        "packages/core/src/capture/text.ts",
+        "packages/core/src/capture/types.ts"
+      ],
+      "keyword": [
+        "packages/core/src/capture/types.ts",
+        "__tests__/support/capture-fixtures.ts",
+        "packages/core/src/capture/types.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/capture/text.ts",
+        "packages/core/src/capture/pipeline.ts",
+        "packages/core/src/capture/types.ts",
+        "packages/core/src/capture/types.ts",
+        "packages/core/src/embed/deterministic-embedder.ts",
+        "packages/core/src/embed/deterministic-embedder.ts"
+      ],
+      "hybrid": [
+        "__tests__/support/capture-fixtures.ts",
+        "packages/core/src/capture/types.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/capture/extractor.ts",
+        "packages/core/src/capture/pipeline.ts",
+        "packages/core/src/extract/tree-sitter-types.ts",
+        "packages/core/src/capture/types.ts",
+        "scripts/bench/providers.ts",
+        "packages/core/src/embed/deterministic-embedder.ts",
+        "packages/core/src/capture/text.ts"
+      ],
+      "ppr": [
+        "packages/core/src/embed/deterministic-embedder.ts",
+        "__tests__/support/capture-fixtures.ts",
+        "__tests__/support/capture-heldout.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/capture/text.ts",
+        "__tests__/support/capture-heldout.ts",
+        "packages/contracts/src/kinds/anchor.ts",
+        "packages/core/src/capture/pipeline.ts",
+        "__tests__/support/capture-fixtures.ts",
+        "packages/core/src/embed/deterministic-embedder.ts"
+      ]
+    },
+    {
+      "commit": "69364b0",
+      "query": "rig_overview tool, rig://overview resource and `rig overview`",
+      "files": [
+        "packages/cli/src/index.ts",
+        "packages/cli/src/overview-cmd.ts",
+        "packages/mcp/src/server-handlers.ts",
+        "packages/mcp/src/tool-impls/rig_overview.ts",
+        "packages/mcp/src/transport.ts"
+      ],
+      "keyword": [
+        ".contracts/tools/rig_overview.contract.ts",
+        "packages/mcp/src/tool-impls/rig_overview.ts",
+        "packages/mcp/src/server-handlers.ts",
+        "generated/mcp/handlers/rig_overview.handler.ts",
+        "scripts/bench/types.ts",
+        "packages/core/src/rig.ts",
+        "packages/cli/src/overview-cmd.ts",
+        "scripts/bench/plan.ts",
+        "packages/core/src/orientation.ts",
+        "packages/web/src/app/api.ts"
+      ],
+      "hybrid": [
+        ".contracts/tools/rig_overview.contract.ts",
+        "packages/mcp/src/tool-impls/rig_overview.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/orientation.ts",
+        "generated/mcp/handlers/rig_overview.handler.ts",
+        "scripts/bench/types.ts",
+        "packages/cli/src/overview-cmd.ts",
+        "scripts/bench/arms.ts",
+        "scripts/bench/tools-rig.ts"
+      ],
+      "ppr": [
+        "packages/mcp/src/tool-impls/rig_overview.ts",
+        ".contracts/tools/rig_overview.contract.ts",
+        "packages/cli/src/overview-cmd.ts",
+        "generated/mcp/handlers/rig_overview.handler.ts",
+        "scripts/bench/types.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/orientation.ts",
+        "scripts/bench/arms.ts",
+        "scripts/bench/tools-rig.ts"
+      ]
+    },
+    {
+      "commit": "d5b8d33",
+      "query": "orientation map of the repository, cached and kept fresh",
+      "files": [
+        "packages/core/src/index.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/update.ts"
+      ],
+      "keyword": [
+        "packages/core/src/rig.ts",
+        "scripts/bench/types.ts",
+        "packages/web/src/app/Overview.tsx",
+        "packages/cli/src/overview-cmd.ts",
+        "__tests__/orientation.test.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/search/query-embedder.ts",
+        "packages/core/src/search/query-embedder.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/rig.ts",
+        "scripts/bench/types.ts",
+        "packages/web/src/app/Overview.tsx",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/orientation.ts",
+        "packages/web/src/app/Overview.tsx",
+        "packages/core/src/search/query-embedder.ts",
+        "packages/cli/src/overview-cmd.ts",
+        "__tests__/orientation.test.ts"
+      ],
+      "ppr": [
+        "packages/core/src/search/query-embedder.ts",
+        "packages/web/src/app/Overview.tsx",
+        "packages/web/src/app/Overview.tsx",
+        "scripts/bench/types.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/orientation.ts",
+        "packages/cli/src/overview-cmd.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/resolve/path-aliases.ts"
+      ]
+    },
+    {
+      "commit": "caf60a6",
+      "query": "hybrid search in rig_search, rig_context, rig_explore, rig_relevant_skills, rig_waypoints",
+      "files": [
+        "packages/core/src/index.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/index.ts",
+        "packages/mcp/src/tool-impls/rig_context.ts",
+        "packages/mcp/src/tool-impls/rig_explore.ts",
+        "packages/mcp/src/tool-impls/rig_relevant_skills.ts",
+        "packages/mcp/src/tool-impls/rig_search.ts",
+        "packages/mcp/src/tool-impls/rig_waypoints.ts"
+      ],
+      "keyword": [
+        "packages/core/src/rig.ts",
+        "packages/core/src/db/search-queries.ts",
+        "packages/core/src/rig.ts",
+        ".contracts/tools/rig_relevant_skills.contract.ts",
+        "generated/mcp/handlers/rig_relevant_skills.handler.ts",
+        "packages/mcp/src/tool-impls/rig_relevant_skills.ts",
+        "packages/core/src/rig.ts",
+        "__tests__/relevant-skills.test.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/db/search-queries.ts"
+      ],
+      "ppr": [
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/db/search-queries.ts"
+      ]
+    },
+    {
+      "commit": "c25b116",
+      "query": "hybrid search — query embedding, in-memory vector index, RRF fusion",
+      "files": [
+        "packages/cli/src/bench-cmd.ts",
+        "packages/core/src/embed/local-embedder.ts",
+        "packages/core/src/embed/types.ts",
+        "packages/core/src/index.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/search/hybrid.ts",
+        "packages/core/src/search/query-embedder.ts",
+        "packages/core/src/search/vector-index.ts"
+      ],
+      "keyword": [
+        "packages/core/src/search/hybrid.ts",
+        "packages/core/src/search/hybrid.ts",
+        "packages/core/src/search/vector-index.ts",
+        "packages/core/src/search/hybrid.ts",
+        "packages/core/src/db/search-queries.ts",
+        "packages/core/src/search/query-embedder.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/search/vector-index.ts",
+        "packages/core/src/search/hybrid.ts",
+        "packages/core/src/rig.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/search/hybrid.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/search/vector-index.ts",
+        "packages/core/src/search/query-embedder.ts",
+        "packages/core/src/search/hybrid.ts",
+        "packages/core/src/db/search-queries.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/search/hybrid.ts",
+        "packages/core/src/search/hybrid.ts",
+        "packages/core/src/search/hybrid.ts"
+      ],
+      "ppr": [
+        "packages/core/src/search/hybrid.ts",
+        "packages/core/src/search/hybrid.ts",
+        "packages/core/src/search/vector-index.ts",
+        "packages/core/src/search/vector-index.ts",
+        "packages/core/src/search/hybrid.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/search/query-embedder.ts",
+        "packages/core/src/search/hybrid.ts",
+        "packages/core/src/search/hybrid.ts"
+      ]
+    },
+    {
+      "commit": "31ca103",
+      "query": "embed waypoints, skills and markdown excerpts; version the embedding text",
+      "files": [
+        "packages/core/src/db/node-queries.ts",
+        "packages/core/src/embed/index-embeddings.ts",
+        "packages/core/src/extract/extractor.ts",
+        "packages/core/src/extract/markdown.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/update.ts"
+      ],
+      "keyword": [
+        "packages/core/src/rig.ts",
+        "__tests__/embedding-text.test.ts",
+        "packages/core/src/embed/index-embeddings.ts",
+        "packages/core/src/embed/index-embeddings.ts",
+        "__tests__/retention.test.ts",
+        "__tests__/_search-fixture.ts",
+        "__tests__/_search-fixture.ts",
+        "packages/core/src/embed/deterministic-embedder.ts",
+        "packages/core/src/embed/local-embedder.ts",
+        "packages/core/src/embed/deterministic-embedder.ts"
+      ],
+      "hybrid": [
+        "__tests__/embedding-text.test.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/embed/index-embeddings.ts",
+        "packages/core/src/embed/select.ts",
+        "__tests__/_search-fixture.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/extract/markdown.ts",
+        "__tests__/retention.test.ts",
+        "packages/core/src/embed/deterministic-embedder.ts",
+        "packages/core/src/embed/index-embeddings.ts"
+      ],
+      "ppr": [
+        "__tests__/retention.test.ts",
+        "packages/core/src/rig.ts",
+        "__tests__/_search-fixture.ts",
+        "packages/core/src/embed/deterministic-embedder.ts",
+        "packages/core/src/embed/select.ts",
+        "__tests__/_search-fixture.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/embed/local-embedder.ts",
+        "__tests__/embedding-text.test.ts",
+        "packages/core/src/embed/select.ts"
+      ]
+    },
+    {
+      "commit": "d971db3",
+      "query": "v14 keyword index with identifier words and natural-language queries",
+      "files": [
+        "packages/core/src/db/embed-queries.ts",
+        "packages/core/src/db/search-queries.ts",
+        "packages/core/src/search/fuse.ts",
+        "packages/core/src/search/query.ts"
+      ],
+      "keyword": [
+        "packages/core/src/search/query.ts",
+        "packages/core/src/db/search-queries.ts",
+        "packages/core/src/search/query.ts",
+        "__tests__/keyword-index.test.ts",
+        "packages/core/src/extract/languages/index.ts",
+        "packages/core/src/search/query.ts",
+        "packages/core/src/search/query.ts",
+        ".contracts/migrations/v14.contract.ts",
+        "packages/core/src/db/search-queries.ts",
+        "packages/core/src/capture/store.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/search/query.ts",
+        "packages/core/src/db/search-queries.ts",
+        "packages/core/src/db/search-queries.ts",
+        "__tests__/keyword-index.test.ts",
+        "packages/core/src/db/search-queries.ts"
+      ],
+      "ppr": [
+        "packages/core/src/search/query.ts",
+        "packages/core/src/db/search-queries.ts",
+        "packages/core/src/db/search-queries.ts",
+        "__tests__/keyword-index.test.ts",
+        "packages/core/src/db/search-queries.ts"
+      ]
+    },
+    {
+      "commit": "2f0bb5a",
+      "query": "add rig export-memory and rig import-memory",
+      "files": [
+        "packages/cli/src/index.ts",
+        "packages/cli/src/memory-cmd.ts",
+        "packages/cli/src/suggest.ts",
+        "packages/core/src/db/orphaned-memory.ts",
+        "packages/core/src/index.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/rig.ts"
+      ],
+      "keyword": [
+        "packages/core/src/rig.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/cli/src/memory-cmd.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/memory-file.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/cli/src/memory-cmd.ts",
+        "__tests__/memory-file.test.ts",
+        "packages/cli/src/memory-cmd.ts",
+        "packages/core/src/rig-writes.ts"
+      ],
+      "ppr": [
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/cli/src/memory-cmd.ts",
+        "packages/cli/src/memory-cmd.ts",
+        "packages/core/src/memory-file.ts",
+        "__tests__/memory-file.test.ts",
+        "packages/core/src/rig-writes.ts"
+      ]
+    },
+    {
+      "commit": "1c7838a",
+      "query": "report the real last index and sync time in status",
+      "files": [
+        "packages/cli/src/status.ts",
+        "packages/core/src/db/counts.ts",
+        "packages/core/src/db/meta.ts",
+        "packages/core/src/rig-types.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/update.ts",
+        "packages/mcp/src/tool-impls/rig_status.ts"
+      ],
+      "keyword": [
+        "__tests__/status-timestamps.test.ts",
+        "packages/core/src/update.ts",
+        "packages/mcp/src/tool-impls/rig_status.ts",
+        "packages/core/src/search/hybrid.ts",
+        "packages/cli/src/start.ts",
+        "packages/core/src/rig.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/cli/src/index-cmd.ts",
+        "scripts/bench/report.ts",
+        "packages/core/src/db/waypoint-queries.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/update.ts",
+        "packages/cli/src/index-cmd.ts",
+        "__tests__/status-timestamps.test.ts",
+        "packages/core/src/rig-types.ts",
+        "packages/core/src/sync.ts",
+        "packages/core/src/watch.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/watch.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/rig.ts"
+      ],
+      "ppr": [
+        "packages/core/src/watch.ts",
+        "packages/core/src/rig.ts",
+        "packages/cli/src/index-cmd.ts",
+        "packages/core/src/rig-types.ts",
+        "packages/core/src/watch.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/sync.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/core/src/watch.ts",
+        "packages/core/src/memory-file.ts"
+      ]
+    },
+    {
+      "commit": "359a5cf",
+      "query": "broadcast waypoint:dropped and node:annotated to the live map",
+      "files": [
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/rig.ts",
+        "packages/web/src/ws-derive.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/annotation-queries.ts",
+        "scripts/bench/types.ts",
+        ".contracts/events/waypoint-dropped.contract.ts",
+        "packages/core/src/orientation.ts",
+        "scripts/bench/sessions.ts",
+        ".contracts/events/node-annotated.contract.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/web/src/ws-derive.ts",
+        "packages/core/src/db/annotation-queries.ts",
+        "packages/core/src/rig.ts"
+      ],
+      "hybrid": [
+        "scripts/bench/types.ts",
+        ".contracts/events/waypoint-dropped.contract.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/orientation.ts",
+        ".contracts/events/node-annotated.contract.ts",
+        "packages/web/src/app/flow/parts.tsx",
+        "packages/web/src/ws-derive.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/capture/trust.ts",
+        "generated/web/ws-events.ts"
+      ],
+      "ppr": [
+        "generated/web/ws-events.ts",
+        "scripts/bench/types.ts",
+        ".contracts/events/waypoint-dropped.contract.ts",
+        "scripts/bench/sessions.ts",
+        ".contracts/events/node-annotated.contract.ts",
+        "packages/web/src/app/flow/parts.tsx",
+        "packages/core/src/orientation.ts",
+        "packages/web/src/ws-derive.ts",
+        "packages/core/src/capture/trust.ts",
+        "generated/web/ws-events.ts"
+      ]
+    },
+    {
+      "commit": "1481c28",
+      "query": "resolve session_id=\"last\" to the latest other session",
+      "files": [
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/mcp/src/tool-impls/rig_waypoints.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/cli/src/update-cmd.ts",
+        "packages/web/src/app/themes.ts",
+        "packages/core/src/db/mutation-log.ts",
+        "packages/core/src/db/alias-queries.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/import-resolver.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/db/mutation-log.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/web/src/app/themes.ts",
+        "packages/core/src/capture/extractor.ts",
+        "packages/core/src/capture/pipeline.ts",
+        "__tests__/bench-sessions.test.ts",
+        "__tests__/bench-memory-auto.test.ts"
+      ],
+      "ppr": [
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/web/src/app/themes.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/capture/extractor.ts",
+        "packages/core/src/db/mutation-log.ts",
+        "packages/cli/src/update-cmd.ts",
+        "__tests__/bench-sessions.test.ts",
+        "__tests__/bench-memory-auto.test.ts",
+        "scripts/bench/sessions.ts"
+      ]
+    },
+    {
+      "commit": "6ab3075",
+      "query": "keep a waypoint's rationale and check its references first",
+      "files": [
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/index.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/tool-impls/rig_drop_waypoint.ts"
+      ],
+      "keyword": [
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/capture/extractor.ts",
+        "scripts/gen/emitters/tool.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/watch-policy.ts",
+        "packages/core/src/extract/upstream-types.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/web/src/app/api.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/memory-file.ts",
+        "scripts/gen/emitters/tool.ts",
+        "packages/web/src/routes.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/extract/ast-visitor.ts",
+        "packages/web/src/app/flow/views.tsx"
+      ],
+      "ppr": [
+        "packages/web/src/routes.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/memory-file.ts",
+        "scripts/gen/emitters/tool.ts",
+        "packages/web/src/app/api.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/web/src/app/flow/views.tsx",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/extract/ast-visitor.ts",
+        "packages/core/src/db/waypoint-queries.ts"
+      ]
+    },
+    {
+      "commit": "784ca80",
+      "query": "give every write a real inverse and never fake an undo",
+      "files": [
+        "packages/core/src/index.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/tool-impls/rig_undo.ts",
+        "packages/web/src/routes.ts",
+        "packages/web/src/ws-derive.ts"
+      ],
+      "keyword": [
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig-writes.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/rig-writes.ts",
+        "__tests__/db-concurrency.test.ts",
+        "__tests__/db-concurrency.test.ts",
+        "__tests__/db-concurrency.test.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/rig-writes.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/web/src/app/api.ts",
+        "e2e/propose-accept-undo.spec.ts",
+        "__tests__/undo.test.ts",
+        "packages/core/src/rig-writes.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/db/embed-queries.ts"
+      ],
+      "ppr": [
+        "packages/core/src/types.ts",
+        "packages/core/src/types.ts",
+        "packages/web/src/app/api.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig-writes.ts",
+        "e2e/propose-accept-undo.spec.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/rig-writes.ts"
+      ]
+    },
+    {
+      "commit": "abd0316",
+      "query": "step undo back through the session's history",
+      "files": [
+        "packages/core/src/db/mutation-log.ts",
+        "packages/core/src/rig-writes.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/mutation-log.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/web/src/app/api.ts",
+        "__tests__/undo.test.ts",
+        "packages/core/src/rig-writes.ts",
+        "e2e/propose-accept-undo.spec.ts",
+        ".contracts/tools/rig_undo.contract.ts",
+        "generated/mcp/handlers/rig_undo.handler.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/rig-writes.ts",
+        "packages/web/src/app/api.ts",
+        "packages/core/src/rig-writes.ts",
+        "__tests__/undo.test.ts",
+        "packages/core/src/rig-writes.ts",
+        "e2e/propose-accept-undo.spec.ts",
+        "packages/core/src/db/mutation-log.ts",
+        ".contracts/tools/rig_undo.contract.ts",
+        "packages/mcp/src/tool-impls/rig_undo.ts",
+        "generated/mcp/handlers/rig_undo.handler.ts"
+      ],
+      "ppr": [
+        "packages/web/src/app/api.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig-writes.ts",
+        ".contracts/tools/rig_undo.contract.ts",
+        "e2e/propose-accept-undo.spec.ts",
+        "packages/core/src/db/mutation-log.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/mcp/src/tool-impls/rig_undo.ts",
+        "__tests__/undo.test.ts",
+        "generated/mcp/handlers/rig_undo.handler.ts"
+      ]
+    },
+    {
+      "commit": "59da414",
+      "query": "count accepted edges as one hop in magnetic pull",
+      "files": [
+        "packages/core/src/pull.ts"
+      ],
+      "keyword": [
+        "packages/core/src/pull.ts",
+        "packages/core/src/pull.ts",
+        "packages/web/src/views.ts",
+        "packages/core/src/rig.ts",
+        "__tests__/accepted-edges.test.ts",
+        ".contracts/events/edge-accepted.contract.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/pending-edges.ts",
+        "packages/core/src/graph/hub-drill.ts",
+        "packages/core/src/db/embed-queries.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/pull.ts",
+        "packages/core/src/pull.ts",
+        "packages/core/src/rig.ts",
+        "__tests__/accepted-edges.test.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/pending-edges.ts",
+        "packages/core/src/db/embed-queries.ts",
+        "packages/core/src/graph/hub-drill.ts",
+        "packages/web/src/views.ts"
+      ],
+      "ppr": [
+        "packages/core/src/pull.ts",
+        "packages/core/src/pull.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/db/pending-edges.ts",
+        "packages/core/src/db/embed-queries.ts",
+        "packages/core/src/graph/hub-drill.ts",
+        "__tests__/accepted-edges.test.ts",
+        "packages/web/src/views.ts"
+      ]
+    },
+    {
+      "commit": "24eb1e4",
+      "query": "keep an accepted edge's kind and evidence URLs",
+      "files": [
+        "packages/core/src/db/edge-queries.ts",
+        "packages/core/src/db/graph-snapshot.ts",
+        "packages/core/src/db/orphaned-memory.ts",
+        "packages/core/src/db/pending-edges.ts",
+        "packages/core/src/types.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/pending-edges.ts",
+        "__tests__/accepted-edges.test.ts",
+        ".contracts/events/edge-accepted.contract.ts",
+        "packages/web/src/app/flow/parts.tsx",
+        "packages/core/src/db/pending-edges.ts",
+        "packages/core/src/types.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/pull.ts",
+        "packages/core/src/memory-file.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/pending-edges.ts",
+        "__tests__/accepted-edges.test.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/types.ts",
+        "packages/core/src/extract/ast-visitor.ts",
+        ".contracts/events/edge-accepted.contract.ts",
+        "packages/core/src/db/pending-edges.ts",
+        "packages/core/src/pull.ts",
+        "__tests__/source-urls.test.ts"
+      ],
+      "ppr": [
+        "packages/core/src/types.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/db/pending-edges.ts",
+        ".contracts/events/edge-accepted.contract.ts",
+        "packages/core/src/extract/ast-visitor.ts",
+        "__tests__/accepted-edges.test.ts",
+        "packages/core/src/pull.ts",
+        "packages/core/src/db/pending-edges.ts",
+        "__tests__/source-urls.test.ts"
+      ]
+    },
+    {
+      "commit": "3279619",
+      "query": "match a def re-typed from method to function as the same symbol",
+      "files": [
+        "packages/core/src/db/orphaned-memory.ts",
+        "packages/core/src/reconcile-nodes.ts"
+      ],
+      "keyword": [
+        "packages/core/src/extract/node-builders.ts",
+        "packages/core/src/db/orphaned-memory.ts",
+        "packages/core/src/reconcile-nodes.ts",
+        "packages/core/src/db/search-queries.ts",
+        "__tests__/memory-file.test.ts",
+        "packages/core/src/resolve/path-aliases.ts",
+        "scripts/bench/types.ts",
+        "packages/core/src/db/search-queries.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/orientation.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/extract/node-builders.ts",
+        "packages/core/src/reconcile-nodes.ts",
+        "packages/core/src/db/search-queries.ts",
+        "packages/core/src/extract/node-builders.ts",
+        "__tests__/memory-file.test.ts",
+        "scripts/bench/criteria.ts",
+        "packages/core/src/db/orphaned-memory.ts",
+        "__tests__/extract-type-refs.test.ts",
+        "packages/core/src/extract/walker.ts",
+        "packages/core/src/db/search-queries.ts"
+      ],
+      "ppr": [
+        "__tests__/memory-file.test.ts",
+        "packages/core/src/db/search-queries.ts",
+        "packages/core/src/extract/node-builders.ts",
+        "packages/core/src/reconcile-nodes.ts",
+        "packages/core/src/extract/node-builders.ts",
+        "packages/core/src/extract/walker.ts",
+        "packages/core/src/search/query.ts",
+        "__tests__/extract-type-refs.test.ts",
+        "packages/core/src/db/orphaned-memory.ts",
+        "scripts/bench/criteria.ts"
+      ]
+    },
+    {
+      "commit": "204d5b1",
+      "query": "harden the watch lock and watcher against races and errors",
+      "files": [
+        "packages/core/src/rig.ts",
+        "packages/core/src/watch-lock.ts",
+        "packages/core/src/watch.ts"
+      ],
+      "keyword": [
+        "packages/core/src/watch-lock.ts",
+        "packages/core/src/watch-lock.ts",
+        "packages/core/src/watch-lock.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/watch-lock.ts",
+        "packages/core/src/watch.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/watch-lock.ts",
+        "packages/core/src/watch-lock.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/watch-lock.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/watch-lock.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/watch-lock.ts",
+        "packages/core/src/watch.ts",
+        "packages/core/src/watch.ts",
+        "packages/core/src/watch-lock.ts",
+        "packages/core/src/rig.ts"
+      ],
+      "ppr": [
+        "packages/core/src/watch.ts",
+        "packages/core/src/watch-lock.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/watch-lock.ts",
+        "packages/core/src/watch.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/watch-lock.ts",
+        "packages/core/src/watch.ts",
+        "packages/core/src/watch-lock.ts"
+      ]
+    },
+    {
+      "commit": "8594a72",
+      "query": "heal a sync whose embedding failed after the graph committed",
+      "files": [
+        "packages/core/src/update.ts"
+      ],
+      "keyword": [
+        "packages/core/src/sync.ts",
+        "__tests__/retention.test.ts",
+        "packages/core/src/search/query-embedder.ts",
+        "packages/core/src/db/embed-queries.ts",
+        "packages/core/src/embed/local-embedder.ts",
+        "__tests__/_search-fixture.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/capture/redact.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/embed/index-embeddings.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/sync.ts",
+        "packages/core/src/update.ts",
+        "__tests__/retention.test.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/sync.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/watch.ts",
+        "packages/core/src/watch.ts",
+        "packages/cli/src/sync-cmd.ts",
+        "packages/core/src/watch.ts"
+      ],
+      "ppr": [
+        "__tests__/retention.test.ts",
+        "packages/core/src/watch.ts",
+        "packages/core/src/sync.ts",
+        "packages/core/src/sync.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/watch.ts",
+        "packages/core/src/watch.ts",
+        "packages/cli/src/sync-cmd.ts",
+        "packages/core/src/watch.ts",
+        "packages/core/src/rig.ts"
+      ]
+    },
+    {
+      "commit": "ef57b1c",
+      "query": "re-attach memory edges whose other end moved or comes back later",
+      "files": [
+        "packages/core/src/db/orphaned-memory.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/orphaned-memory.ts",
+        "packages/core/src/db/orphaned-memory.ts",
+        "__tests__/memory-file.test.ts",
+        "packages/web/src/ws.ts",
+        "packages/core/src/update.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/orphaned-memory.ts",
+        "__tests__/memory-file.test.ts",
+        "packages/core/src/db/orphaned-memory.ts",
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/memory-file.ts",
+        "scripts/bench/charts.ts",
+        "packages/core/src/extract/parser-types.ts"
+      ],
+      "ppr": [
+        "packages/core/src/db/orphaned-memory.ts",
+        "packages/core/src/db/orphaned-memory.ts",
+        "__tests__/memory-file.test.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/core/src/extract/parser-types.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/memory-file.ts",
+        "scripts/bench/charts.ts"
+      ]
+    },
+    {
+      "commit": "025e2e3",
+      "query": "store extraction artifacts losslessly as JSON",
+      "files": [
+        "packages/core/src/db/file-artifacts.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/core/src/extract/manifests/package-json.ts",
+        "__tests__/file-artifacts.test.ts",
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "scripts/gen/emitters/target.ts",
+        "packages/core/src/memory-file.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/core/src/extract/manifests/package-json.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/extract/extractor.ts",
+        "packages/core/src/capture/store.ts",
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/core/src/capture/store.ts",
+        "__tests__/bench-harness.test.ts"
+      ],
+      "ppr": [
+        "packages/core/src/extract/upstream-types.ts",
+        "__tests__/support/mcp.ts",
+        "packages/web/package.json",
+        "packages/core/src/extract/manifests/package-json.ts",
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/core/src/capture/store.ts"
+      ]
+    },
+    {
+      "commit": "86c8ce3",
+      "query": "collapse duplicate ids within one extraction",
+      "files": [
+        "packages/core/src/reconcile-nodes.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/install/json-merge.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "packages/core/src/extract/markdown.ts",
+        "packages/core/src/capture/store.ts",
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/update.ts",
+        "scripts/bench/providers.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/capture/store.ts",
+        "packages/core/src/reconcile-nodes.ts",
+        "packages/core/src/search/vector-index.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "__tests__/keyword-index.test.ts",
+        "packages/core/src/update.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "packages/core/src/graph/tests-edges.ts"
+      ],
+      "ppr": [
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/core/src/search/vector-index.ts",
+        "packages/core/src/reconcile-nodes.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "__tests__/keyword-index.test.ts",
+        "__tests__/installer-permission-targets.test.ts",
+        "packages/core/src/capture/store.ts"
+      ]
+    },
+    {
+      "commit": "566590e",
+      "query": "update re-extracted files in place and skip unchanged ones",
+      "files": [
+        "packages/cli/src/index-cmd.ts",
+        "packages/cli/src/index.ts",
+        "packages/core/src/index-all.ts",
+        "packages/core/src/reconcile-nodes.ts",
+        "packages/core/src/rig-types.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/update.ts"
+      ],
+      "keyword": [
+        "packages/core/src/index-all.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/sync.ts",
+        "packages/core/src/extract/markdown.ts",
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/core/src/resolve/rebuild-edges.ts",
+        "packages/core/src/embed/index-embeddings.ts",
+        "packages/cli/src/install/toml.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/index-all.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/core/src/sync.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/embed/index-embeddings.ts",
+        "packages/core/src/extract/manifests/requirements-txt.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/core/src/update.ts"
+      ],
+      "ppr": [
+        "packages/core/src/update.ts",
+        "packages/core/src/index-all.ts",
+        "packages/core/src/sync.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/extract/walker.ts",
+        "packages/core/src/db/node-queries.ts",
+        "packages/cli/src/install/toml.ts"
+      ]
+    },
+    {
+      "commit": "faa78cf",
+      "query": "store rig_annotate notes in the annotations table",
+      "files": [
+        "packages/core/src/db/annotation-queries.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/annotation-queries.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/db/annotation-queries.ts",
+        "packages/core/src/rig.ts",
+        "packages/web/src/app/api.ts",
+        "packages/core/src/memory-file.ts",
+        "__tests__/annotations.test.ts",
+        "packages/core/src/db/annotation-queries.ts",
+        "packages/core/src/db/annotation-queries.ts",
+        "packages/cli/src/install/toml.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/annotation-queries.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/web/src/app/api.ts",
+        "packages/core/src/rig.ts",
+        ".contracts/tools/rig_annotate.contract.ts",
+        "packages/core/src/db/annotation-queries.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/mcp/src/tool-impls/rig_annotate.ts",
+        "packages/core/src/db/annotation-queries.ts",
+        "generated/mcp/handlers/rig_annotate.handler.ts"
+      ],
+      "ppr": [
+        "packages/core/src/db/annotation-queries.ts",
+        "packages/web/src/app/api.ts",
+        ".contracts/tools/rig_annotate.contract.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/mcp/src/tool-impls/rig_annotate.ts",
+        "packages/core/src/db/annotation-queries.ts",
+        "generated/mcp/handlers/rig_annotate.handler.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/db/annotation-queries.ts",
+        "packages/core/src/rig.ts"
+      ]
+    },
+    {
+      "commit": "cdc30b3",
+      "query": "drop isMainSession from the uninitialised tool context",
+      "files": [
+        "packages/mcp/src/uninitialized.ts"
+      ],
+      "keyword": [
+        "scripts/bench/sessions-run.ts",
+        "scripts/gen/emitters/tool.ts",
+        ".contracts/tools/rig_context.contract.ts",
+        "packages/mcp/src/dispatch.ts",
+        "packages/mcp/src/tool-impls/rig_context.ts",
+        "scripts/bench/sessions.ts",
+        ".contracts/tools/rig_drop_waypoint.contract.ts",
+        "packages/mcp/src/tool-impls/rig_drop_waypoint.ts"
+      ],
+      "hybrid": [
+        "packages/mcp/src/dispatch.ts",
+        "scripts/bench/sessions.ts",
+        ".contracts/tools/rig_drop_waypoint.contract.ts",
+        ".contracts/tools/rig_context.contract.ts",
+        "packages/mcp/src/uninitialized.ts",
+        "scripts/bench/sessions.ts",
+        "scripts/bench/sessions-run.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/extract/tree-sitter-types.ts",
+        "scripts/bench/types.ts"
+      ],
+      "ppr": [
+        "scripts/bench/sessions.ts",
+        "packages/mcp/src/uninitialized.ts",
+        ".contracts/tools/rig_drop_waypoint.contract.ts",
+        ".contracts/tools/rig_context.contract.ts",
+        "scripts/bench/sessions.ts",
+        "scripts/bench/types.ts",
+        ".contracts/events/waypoint-dropped.contract.ts",
+        "packages/mcp/src/dispatch.ts",
+        "packages/cli/src/install/jsonc-merge.ts",
+        "packages/core/src/pull.ts"
+      ]
+    },
+    {
+      "commit": "6aeb79f",
+      "query": "compare the home directory by real path",
+      "files": [
+        "packages/cli/src/install-cmd.ts",
+        "packages/cli/src/install/paths.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/uninstall-cmd.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/install/paths.ts",
+        "packages/cli/src/install/paths.ts",
+        "__tests__/capture-hooks.test.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/install/paths.ts",
+        "__tests__/support/cli.ts",
+        "packages/core/src/orientation.ts",
+        "packages/cli/src/install/wire.ts",
+        "__tests__/support/cli.ts",
+        "packages/cli/src/install/paths.ts"
+      ],
+      "hybrid": [
+        "packages/cli/src/install/paths.ts",
+        "packages/cli/src/install/paths.ts",
+        "packages/cli/src/install/paths.ts",
+        "packages/core/src/orientation.ts",
+        "packages/cli/src/install/jsonc-merge.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "scripts/verify-phase16-fixes.ts",
+        "packages/core/src/utils.ts"
+      ],
+      "ppr": [
+        "packages/cli/src/install/paths.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/cli/src/install/jsonc-merge.ts",
+        "scripts/verify-phase16-fixes.ts",
+        "packages/cli/src/install/paths.ts",
+        "packages/core/src/orientation.ts",
+        "packages/cli/src/install/paths.ts",
+        "packages/core/src/utils.ts",
+        "packages/mcp/src/project-root.ts",
+        "packages/core/src/web-address.ts"
+      ]
+    },
+    {
+      "commit": "cb7a238",
+      "query": "point out leftover user-wide wiring after a project install",
+      "files": [
+        "packages/cli/src/install-cmd.ts",
+        "packages/cli/src/install/wire.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/doctor.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install-cmd.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/web/src/listen.ts",
+        "packages/cli/src/uninstall-cmd.ts",
+        "packages/cli/src/update-cmd.ts",
+        "packages/cli/src/install/wire.ts"
+      ],
+      "hybrid": [
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/install-cmd.ts",
+        "__tests__/start-wiring.test.ts",
+        "packages/cli/src/uninstall-cmd.ts",
+        "packages/cli/src/install/wire.ts"
+      ],
+      "ppr": [
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/wire.ts",
+        "__tests__/start-wiring.test.ts",
+        "__tests__/capture-hooks.test.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/install-cmd.ts"
+      ]
+    },
+    {
+      "commit": "dddd6b4",
+      "query": "uninstall finds TOML tables whose header carries a comment",
+      "files": [
+        "packages/cli/src/install/json-merge.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/uninstall.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts"
+      ],
+      "hybrid": [
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts"
+      ],
+      "ppr": [
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/cli/src/install/toml.ts"
+      ]
+    },
+    {
+      "commit": "11931a5",
+      "query": "rig doctor finds project- and user-level agent wiring",
+      "files": [
+        "packages/cli/src/doctor.ts",
+        "packages/cli/src/install/uninstall.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/doctor.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "__tests__/doctor-agents.test.ts",
+        "packages/core/src/capture/state.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/paths.ts",
+        "packages/core/src/capture/extractor.ts",
+        "packages/cli/src/uninstall-cmd.ts",
+        "packages/cli/src/install/toml.ts"
+      ],
+      "hybrid": [
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/doctor.ts",
+        "packages/core/src/rig.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "__tests__/doctor-agents.test.ts",
+        "packages/core/src/types.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/capture/state.ts",
+        "packages/cli/src/install/wire.ts"
+      ],
+      "ppr": [
+        "packages/core/src/rig.ts",
+        "packages/cli/src/doctor.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/core/src/capture/state.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "__tests__/doctor-agents.test.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/core/src/types.ts",
+        "packages/core/src/rig.ts"
+      ]
+    },
+    {
+      "commit": "e9db2a9",
+      "query": "add `rig uninstall [target…|--all] [--global] [--dry-run]`",
+      "files": [
+        "packages/cli/src/index.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/suggest.ts",
+        "packages/cli/src/uninstall-cmd.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/uninstall-cmd.ts",
+        "packages/cli/src/install-cmd.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "scripts/bench/matrix.ts",
+        "packages/cli/src/install/modes.ts",
+        "packages/cli/src/install/args.ts",
+        "scripts/bench/report-sessions.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "__tests__/uninstall.test.ts"
+      ],
+      "hybrid": [
+        "packages/cli/src/uninstall-cmd.ts",
+        "packages/cli/src/install-cmd.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/install/args.ts",
+        "scripts/bench/matrix.ts",
+        "scripts/demo-phase1.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "__tests__/uninstall.test.ts",
+        "packages/cli/src/install/uninstall.ts"
+      ],
+      "ppr": [
+        "scripts/demo-phase1.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/uninstall-cmd.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/install-cmd.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/install/args.ts",
+        "scripts/bench/matrix.ts",
+        "__tests__/uninstall.test.ts",
+        "packages/cli/src/install/uninstall.ts"
+      ]
+    },
+    {
+      "commit": "3e04003",
+      "query": "rig's policy decides where its own permission entries go (#8)",
+      "files": [
+        "packages/cli/src/install/json-merge.ts",
+        "packages/cli/src/install/jsonc-merge.ts",
+        "packages/cli/src/install/modes.ts",
+        "packages/cli/src/install/ownership.ts",
+        "packages/cli/src/install/toml.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/install/json-merge.ts",
+        "__tests__/permissions-policy.test.ts",
+        "packages/cli/src/uninstall-cmd.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "scripts/gen/emitters/target.ts",
+        "__tests__/bench-sessions.test.ts",
+        "packages/contracts/src/shared.ts",
+        "packages/core/src/watch-policy.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "__tests__/installer-permissions-merge.test.ts"
+      ],
+      "hybrid": [
+        "packages/cli/src/install/json-merge.ts",
+        "packages/contracts/src/shared.ts",
+        "packages/cli/src/uninstall-cmd.ts",
+        "__tests__/permissions-policy.test.ts",
+        "scripts/gen/emitters/target.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/core/src/embed/select.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/core/src/rig-writes.ts",
+        "__tests__/bench-sessions.test.ts"
+      ],
+      "ppr": [
+        "__tests__/permissions-policy.test.ts",
+        "packages/contracts/src/shared.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "scripts/gen/emitters/target.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/uninstall-cmd.ts",
+        "packages/core/src/embed/select.ts",
+        "__tests__/bench-sessions.test.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/core/src/rig-types.ts"
+      ]
+    },
+    {
+      "commit": "c0dd0c0",
+      "query": "never auto-wire OpenRouter; label its install a reference config (#1)",
+      "files": [
+        "packages/cli/src/index.ts",
+        "packages/cli/src/install-cmd.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/web/src/config-route.ts",
+        "packages/web/src/config-route.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/install-cmd.ts",
+        "packages/cli/src/doctor.ts",
+        "scripts/bench/providers.ts",
+        "scripts/bench/providers.ts",
+        "scripts/bench/providers.ts"
+      ],
+      "hybrid": [
+        "packages/cli/src/install/wire.ts",
+        "packages/web/src/config-route.ts",
+        "packages/web/src/config-route.ts",
+        "scripts/bench/providers.ts",
+        "packages/cli/src/install/wire.ts",
+        "scripts/bench/providers.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "scripts/bench/providers.ts",
+        "scripts/bench/providers.ts",
+        "packages/cli/src/install-cmd.ts"
+      ],
+      "ppr": [
+        "scripts/bench/providers.ts",
+        "packages/web/src/config-route.ts",
+        "packages/web/src/config-route.ts",
+        "scripts/bench/providers.ts",
+        "packages/cli/src/install/wire.ts",
+        "scripts/bench/providers.ts",
+        "packages/cli/src/install/wire.ts",
+        "scripts/bench/providers.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "scripts/bench/pricing.ts"
+      ]
+    },
+    {
+      "commit": "0ee9d45",
+      "query": "write rig's tool policy for Codex, opencode and the Cursor CLI",
+      "files": [
+        "packages/cli/src/install-cmd.ts",
+        "packages/cli/src/install/jsonc-merge.ts",
+        "packages/cli/src/install/modes.ts",
+        "packages/cli/src/install/toml.ts"
+      ],
+      "keyword": [],
+      "hybrid": [],
+      "ppr": []
+    },
+    {
+      "commit": "1ef571e",
+      "query": "serve outside an initialised project instead of failing to start",
+      "files": [
+        "packages/mcp/src/dispatch.ts",
+        "packages/mcp/src/index.ts",
+        "packages/mcp/src/server-handlers.ts",
+        "packages/mcp/src/uninitialized.ts"
+      ],
+      "keyword": [
+        "packages/mcp/src/uninitialized.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/web-address.ts",
+        "__tests__/mcp-request-path.test.ts",
+        "packages/web/src/listen.ts",
+        "packages/mcp/src/project-root.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/core/src/embed/local-embedder.ts",
+        "packages/core/src/capture/state.ts",
+        "__tests__/web-ws.test.ts"
+      ],
+      "hybrid": [
+        "packages/mcp/src/uninitialized.ts",
+        "packages/mcp/src/project-root.ts",
+        "packages/web/src/listen.ts",
+        "packages/core/src/capture/state.ts",
+        "packages/cli/src/start.ts",
+        "packages/core/src/rig.ts",
+        "__tests__/serve-path.test.ts",
+        "packages/web/src/server.ts",
+        "packages/cli/src/serve-cmd.ts",
+        "packages/core/src/embed/local-embedder.ts"
+      ],
+      "ppr": [
+        "packages/web/src/app/flow/views.tsx",
+        "packages/web/src/listen.ts",
+        "packages/core/src/capture/state.ts",
+        "packages/mcp/src/project-root.ts",
+        "packages/mcp/src/uninitialized.ts",
+        "packages/web/src/server.ts",
+        "packages/core/src/embed/local-embedder.ts",
+        "packages/cli/src/serve-cmd.ts",
+        "packages/cli/src/serve-cmd.ts",
+        "packages/cli/src/start.ts"
+      ]
+    },
+    {
+      "commit": "3341352",
+      "query": "honour --path in rig serve; Cursor passes ${workspaceFolder}",
+      "files": [
+        "packages/cli/src/install-cmd.ts",
+        "packages/cli/src/install/tokens.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/serve-cmd.ts",
+        "packages/cli/src/start.ts",
+        "packages/mcp/src/index.ts",
+        "packages/mcp/src/project-root.ts"
+      ],
+      "keyword": [
+        "packages/mcp/src/project-root.ts",
+        "packages/mcp/src/project-root.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "__tests__/serve-path.test.ts",
+        "packages/core/src/capture/state.ts",
+        "packages/mcp/src/transport.ts",
+        "packages/cli/src/install/uninstall.ts"
+      ],
+      "hybrid": [
+        "packages/mcp/src/project-root.ts",
+        "packages/core/src/capture/state.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/mcp/src/project-root.ts",
+        ".contracts/tools/rig_critical_path.contract.ts"
+      ],
+      "ppr": [
+        "packages/mcp/src/project-root.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/core/src/capture/state.ts",
+        "packages/mcp/src/project-root.ts",
+        ".contracts/tools/rig_critical_path.contract.ts"
+      ]
+    },
+    {
+      "commit": "90052d5",
+      "query": "rig start wires agents at project scope and lists each file",
+      "files": [
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/start.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/doctor.ts",
+        "packages/cli/src/start.ts",
+        "__tests__/start-wiring.test.ts",
+        "packages/cli/src/install/paths.ts",
+        "packages/web/src/listen.ts",
+        "packages/cli/src/install/paths.ts",
+        "packages/cli/src/install-cmd.ts"
+      ],
+      "hybrid": [
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/doctor.ts",
+        "packages/cli/src/start.ts",
+        "__tests__/start-wiring.test.ts",
+        "packages/cli/src/install-cmd.ts",
+        "packages/core/src/capture/state.ts",
+        "packages/core/src/rig.ts",
+        "packages/cli/src/install/wire.ts"
+      ],
+      "ppr": [
+        "packages/core/src/rig.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/core/src/capture/state.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/doctor.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "__tests__/start-wiring.test.ts",
+        "packages/cli/src/start.ts",
+        "packages/cli/src/install-cmd.ts",
+        "packages/cli/src/install/paths.ts"
+      ]
+    },
+    {
+      "commit": "d01f341",
+      "query": "wire Claude Code at project scope by default; --global keeps user config",
+      "files": [
+        "packages/cli/src/index.ts",
+        "packages/cli/src/install-cmd.ts",
+        "packages/cli/src/install/args.ts",
+        "packages/cli/src/install/modes.ts",
+        "packages/cli/src/install/paths.ts",
+        "packages/cli/src/install/runner.ts",
+        "packages/cli/src/start.ts",
+        "packages/contracts/src/kinds/target.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/install/paths.ts",
+        "packages/cli/src/install-cmd.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/doctor.ts",
+        "__tests__/capture-hooks.test.ts",
+        "packages/cli/src/uninstall-cmd.ts",
+        "packages/cli/src/install/paths.ts",
+        "__tests__/capture-hooks.test.ts",
+        "packages/web/src/listen.ts"
+      ],
+      "hybrid": [
+        "packages/cli/src/install/paths.ts",
+        "packages/cli/src/install-cmd.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/init.ts",
+        "packages/cli/src/install/paths.ts",
+        "__tests__/capture-hooks.test.ts",
+        "__tests__/capture-hooks.test.ts",
+        "packages/cli/src/doctor.ts",
+        "packages/cli/src/install-cmd.ts"
+      ],
+      "ppr": [
+        "packages/cli/src/install/paths.ts",
+        "packages/cli/src/install/paths.ts",
+        "__tests__/capture-hooks.test.ts",
+        "__tests__/capture-hooks.test.ts",
+        "packages/cli/src/init.ts",
+        "packages/cli/src/install-cmd.ts",
+        "packages/web/src/config-route.ts",
+        "packages/cli/src/install/wire.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/install-cmd.ts"
+      ]
+    },
+    {
+      "commit": "9898f7a",
+      "query": "union-merge permission lists on re-install (#8)",
+      "files": [
+        "packages/cli/src/install/json-merge.ts",
+        "packages/cli/src/install/modes.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/install/json-merge.ts",
+        "__tests__/installer-permissions-merge.test.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "__tests__/installer-permission-targets.test.ts",
+        "packages/cli/src/install/modes.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "packages/cli/src/install/jsonc-merge.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "packages/cli/src/install/uninstall.ts"
+      ],
+      "hybrid": [
+        "packages/cli/src/install/json-merge.ts",
+        "__tests__/installer-permissions-merge.test.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/contracts/src/shared.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "packages/cli/src/install/jsonc-merge.ts",
+        "scripts/gen/emitters/target.ts"
+      ],
+      "ppr": [
+        "packages/cli/src/install/json-merge.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "__tests__/installer-permissions-merge.test.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "packages/contracts/src/shared.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "e2e/propose-accept-undo.spec.ts"
+      ]
+    },
+    {
+      "commit": "0c117a3",
+      "query": "mark Python async defs as async",
+      "files": [
+        "packages/core/src/extract/languages/python.ts"
+      ],
+      "keyword": [
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "__tests__/python-packages.test.ts",
+        "__tests__/resolve-python.test.ts",
+        "__tests__/extract-python.test.ts",
+        "__tests__/deps-python.test.ts",
+        "packages/core/src/db/python-stdlib.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/extract/languages/python.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/resolve/python-modules.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/factory.ts",
+        "packages/core/src/db/python-stdlib.ts",
+        "packages/mcp/src/tool-impls/rig_context.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "__tests__/deps-python.test.ts",
+        "packages/core/src/extract/markdown.ts",
+        "scripts/bench/report.ts",
+        "packages/contracts/src/kinds/target.ts",
+        "packages/core/src/extract/markdown.ts",
+        "scripts/bench/report-models.ts"
+      ],
+      "ppr": [
+        "packages/core/src/db/python-stdlib.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/mcp/src/tool-impls/rig_context.ts",
+        "packages/core/src/db/factory.ts",
+        "scripts/demo-phase3.ts",
+        "packages/cli/src/sync-cmd.ts",
+        "packages/cli/src/sync-cmd.ts",
+        "packages/core/src/extract/markdown.ts",
+        "scripts/bench/report.ts",
+        "__tests__/deps-python.test.ts"
+      ]
+    },
+    {
+      "commit": "29d4be0",
+      "query": "cap rig_context and rig_explore responses under the client limit",
+      "files": [
+        "packages/mcp/src/tool-impls/_budget.ts",
+        "packages/mcp/src/tool-impls/rig_context.ts",
+        "packages/mcp/src/tool-impls/rig_explore.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/hook-cmd.ts",
+        "packages/mcp/src/transport.ts",
+        "packages/mcp/src/transport.ts",
+        "packages/mcp/src/transport.ts",
+        "packages/core/src/db/search-queries.ts",
+        ".contracts/tools/rig_explore.contract.ts",
+        "generated/mcp/handlers/rig_explore.handler.ts",
+        "packages/mcp/src/tool-impls/rig_explore.ts",
+        "scripts/bench/tools-rig-search.ts",
+        ".contracts/tools/rig_context.contract.ts"
+      ],
+      "hybrid": [
+        ".contracts/tools/rig_explore.contract.ts",
+        ".contracts/tools/rig_context.contract.ts",
+        "packages/mcp/src/uninitialized.ts",
+        "generated/mcp/handlers/rig_context.handler.ts",
+        "packages/cli/src/hook-cmd.ts"
+      ],
+      "ppr": [
+        "packages/mcp/src/uninitialized.ts",
+        ".contracts/tools/rig_context.contract.ts",
+        ".contracts/tools/rig_explore.contract.ts",
+        "generated/mcp/handlers/rig_context.handler.ts",
+        "packages/cli/src/hook-cmd.ts"
+      ]
+    },
+    {
+      "commit": "286c3bc",
+      "query": "match PyPI distributions to their import names (PEP 503 + common renames)",
+      "files": [
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/db/pypi-names.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/pypi-names.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/extract/manifests/requirements-txt.ts",
+        "packages/core/src/resolve/python-modules.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/pypi-names.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/extract/languages/python.ts",
+        "__tests__/extract-python.test.ts"
+      ],
+      "ppr": [
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "packages/core/src/extract/languages/python.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/orientation.ts"
+      ]
+    },
+    {
+      "commit": "1b3f0a5",
+      "query": "let rig_context and rig_explore run over MCP",
+      "files": [
+        "packages/contracts/src/kinds/tool.ts",
+        "packages/mcp/src/dispatch.ts",
+        "packages/mcp/src/index.ts"
+      ],
+      "keyword": [
+        "generated/mcp/handlers/rig_explore.handler.ts",
+        "packages/mcp/src/tool-impls/rig_explore.ts",
+        "generated/mcp/handlers/rig_context.handler.ts",
+        "packages/mcp/src/tool-impls/rig_context.ts",
+        "packages/core/src/db/search-queries.ts",
+        ".contracts/tools/rig_explore.contract.ts"
+      ],
+      "hybrid": [
+        "generated/mcp/handlers/rig_explore.handler.ts",
+        "generated/mcp/handlers/rig_context.handler.ts",
+        "packages/mcp/src/tool-impls/rig_explore.ts",
+        "packages/mcp/src/tool-impls/rig_context.ts",
+        ".contracts/tools/rig_explore.contract.ts"
+      ],
+      "ppr": [
+        "generated/mcp/handlers/rig_explore.handler.ts",
+        "generated/mcp/handlers/rig_context.handler.ts",
+        "packages/mcp/src/tool-impls/rig_explore.ts",
+        "packages/mcp/src/tool-impls/rig_context.ts",
+        ".contracts/tools/rig_explore.contract.ts"
+      ]
+    },
+    {
+      "commit": "0997737",
+      "query": "sign in when a pasted token is valid",
+      "files": [
+        "packages/web/src/app/TokenGate.tsx"
+      ],
+      "keyword": [
+        "scripts/bench/sessions.ts",
+        "scripts/bench/criteria.ts",
+        "scripts/bench/criteria.ts",
+        "packages/web/src/app/TokenGate.tsx",
+        "packages/mcp/src/transport.ts",
+        "e2e/map-ui.spec.ts",
+        "packages/core/src/orientation.ts",
+        "__tests__/_search-fixture.ts",
+        "__tests__/records-activation.test.ts",
+        "scripts/bench/chart-svg.ts"
+      ],
+      "hybrid": [
+        "packages/web/src/app/TokenGate.tsx",
+        "e2e/map-ui.spec.ts",
+        "packages/cli/src/install/tokens.ts",
+        "packages/web/src/auth.ts",
+        "packages/web/src/auth.ts",
+        "packages/mcp/src/transport.ts",
+        "scripts/bench/charts.ts",
+        "scripts/bench/criteria.ts",
+        "scripts/bench/report-sessions.ts",
+        "__tests__/session-token.test.ts"
+      ],
+      "ppr": [
+        "e2e/map-ui.spec.ts",
+        "packages/web/src/app/TokenGate.tsx",
+        "packages/mcp/src/transport.ts",
+        "scripts/bench/charts.ts",
+        "packages/web/src/auth.ts",
+        "scripts/bench/report.ts",
+        "packages/core/src/orientation.ts",
+        "scripts/bench/report-sessions.ts",
+        "__tests__/bench-memory-auto.test.ts",
+        "packages/web/src/auth.ts"
+      ]
+    },
+    {
+      "commit": "2240892",
+      "query": "never report Python standard-library imports as phantoms",
+      "files": [
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/db/python-stdlib.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/dep-queries.ts",
+        "__tests__/phantom-imports.test.ts",
+        "packages/core/src/db/dep-queries.ts",
+        ".contracts/tools/rig_phantom_imports.contract.ts",
+        "generated/mcp/handlers/rig_phantom_imports.handler.ts",
+        "packages/mcp/src/tool-impls/rig_phantom_imports.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/db/dep-queries.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/dep-queries.ts",
+        "__tests__/phantom-imports.test.ts",
+        "packages/core/src/db/dep-queries.ts",
+        ".contracts/tools/rig_phantom_imports.contract.ts",
+        "generated/mcp/handlers/rig_phantom_imports.handler.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/tool-impls/rig_phantom_imports.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/db/dep-queries.ts"
+      ],
+      "ppr": [
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/db/python-stdlib.ts",
+        ".contracts/tools/rig_phantom_imports.contract.ts",
+        "generated/mcp/handlers/rig_phantom_imports.handler.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/mcp/src/tool-impls/rig_phantom_imports.ts",
+        "__tests__/phantom-imports.test.ts"
+      ]
+    },
+    {
+      "commit": "42b426b",
+      "query": "build rig_session_token's login URL from the bound web address",
+      "files": [
+        "packages/core/src/web-address.ts",
+        "packages/mcp/src/tool-impls/rig_session_token.ts",
+        "packages/web/src/server.ts"
+      ],
+      "keyword": [
+        "packages/core/src/web-address.ts",
+        "packages/core/src/web-address.ts",
+        "packages/core/src/web-address.ts",
+        "packages/core/src/web-address.ts",
+        "packages/web/src/auth.ts",
+        "packages/mcp/src/dispatch.ts",
+        "packages/web/src/app/TokenGate.tsx",
+        ".contracts/tools/rig_session_token.contract.ts",
+        "generated/mcp/handlers/rig_session_token.handler.ts",
+        "packages/mcp/src/tool-impls/rig_session_token.ts"
+      ],
+      "hybrid": [
+        ".contracts/tools/rig_session_token.contract.ts",
+        "packages/mcp/src/tool-impls/rig_session_token.ts",
+        "generated/mcp/handlers/rig_session_token.handler.ts",
+        "packages/core/src/capture/brief.ts",
+        "__tests__/bench-memory-auto.test.ts",
+        "packages/web/src/auth.ts",
+        "packages/web/src/auth.ts",
+        "packages/mcp/src/tool-impls/rig_session_token.ts",
+        "packages/core/src/web-address.ts",
+        "packages/core/src/web-address.ts"
+      ],
+      "ppr": [
+        "packages/mcp/src/tool-impls/rig_session_token.ts",
+        "packages/mcp/src/tool-impls/rig_session_token.ts",
+        ".contracts/tools/rig_session_token.contract.ts",
+        "generated/mcp/handlers/rig_session_token.handler.ts",
+        "packages/web/src/auth.ts",
+        "__tests__/bench-memory-auto.test.ts",
+        "packages/core/src/capture/brief.ts",
+        "packages/web/src/auth.ts",
+        "packages/core/src/web-address.ts",
+        "packages/core/src/web-address.ts"
+      ]
+    },
+    {
+      "commit": "f7888fa",
+      "query": "capture top-level arrow and function-expression bindings as functions",
+      "files": [
+        "packages/core/src/extract/ast-visitor.ts",
+        "packages/core/src/extract/languages/javascript.ts",
+        "packages/core/src/extract/languages/typescript.ts",
+        "packages/core/src/extract/node-builders.ts"
+      ],
+      "keyword": [
+        "packages/core/src/extract/node-builders.ts",
+        "packages/core/src/extract/node-builders.ts",
+        "packages/core/src/capture/pipeline.ts",
+        "scripts/bench/tools-rig-search.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/cli/src/install/jsonc-merge.ts",
+        "packages/core/src/resolve/import-resolver.ts",
+        "packages/contracts/src/shared.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/extract/node-builders.ts",
+        "packages/core/src/capture/pipeline.ts",
+        "packages/core/src/extract/node-builders.ts",
+        "packages/core/src/capture/state.ts",
+        "__tests__/support/capture-fixtures.ts",
+        "packages/core/src/capture/pipeline.ts",
+        "packages/core/src/capture/text.ts",
+        "__tests__/capture-hooks.test.ts",
+        "packages/core/src/capture/pipeline.ts",
+        "__tests__/capture-extractor.test.ts"
+      ],
+      "ppr": [
+        "packages/core/src/capture/pipeline.ts",
+        "packages/core/src/extract/node-builders.ts",
+        "packages/core/src/capture/index.ts",
+        "packages/core/src/extract/node-builders.ts",
+        "packages/core/src/capture/pipeline.ts",
+        "packages/core/src/capture/state.ts",
+        "__tests__/support/capture-fixtures.ts",
+        "packages/core/src/capture/pipeline.ts",
+        "packages/core/src/capture/pipeline.ts",
+        "__tests__/support/capture-heldout.ts"
+      ]
+    },
+    {
+      "commit": "cec4098",
+      "query": "refuse foreign Host and Origin on HTTP and /ws (DNS rebinding, CSRF)",
+      "files": [
+        "packages/web/src/request-guard.ts",
+        "packages/web/src/server.ts",
+        "packages/web/src/ws.ts",
+        "packages/web/vite.config.ts"
+      ],
+      "keyword": [
+        "packages/web/src/request-guard.ts",
+        "__tests__/_try-ws.ts",
+        "packages/web/src/ws.ts",
+        "packages/web/src/ws.ts",
+        "packages/web/src/ws.ts",
+        "packages/web/src/ws.ts",
+        "generated/web/ws-events.ts",
+        "scripts/bench/providers.ts",
+        "packages/mcp/src/tool-impls/rig_session_token.ts",
+        "packages/web/src/request-guard.ts"
+      ],
+      "hybrid": [
+        "packages/web/src/ws.ts",
+        "packages/mcp/src/tool-impls/rig_session_token.ts",
+        "scripts/bench/providers.ts",
+        "packages/web/src/ws.ts",
+        "__tests__/_try-ws.ts",
+        "packages/web/src/request-guard.ts",
+        "packages/web/src/ws.ts",
+        "packages/web/src/request-guard.ts",
+        "__tests__/web-ws.test.ts",
+        "packages/web/src/ws.ts"
+      ],
+      "ppr": [
+        "generated/web/ws-events.ts",
+        "packages/web/src/ws.ts",
+        "packages/mcp/src/tool-impls/rig_session_token.ts",
+        "packages/web/src/ws.ts",
+        "__tests__/_try-ws.ts",
+        "packages/web/src/request-guard.ts",
+        "scripts/bench/providers.ts",
+        "packages/web/src/request-guard.ts",
+        "packages/web/src/ws.ts",
+        "packages/web/src/ws.ts"
+      ]
+    },
+    {
+      "commit": "bc32f9f",
+      "query": "keep doc comments that sit above an export statement",
+      "files": [
+        "packages/core/src/extract/ast-visitor.ts",
+        "packages/core/src/extract/node-builders.ts"
+      ],
+      "keyword": [
+        "packages/core/src/extract/node-builders.ts",
+        "__tests__/export-docs.test.ts",
+        "packages/cli/src/export-docs-cmd.ts",
+        "packages/cli/src/export-docs-cmd.ts",
+        "packages/core/src/extract/tree-sitter-helpers.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/db/adapter.ts",
+        "packages/cli/src/install/modes.ts",
+        "packages/core/src/extract/tree-sitter-types.ts",
+        "packages/core/src/extract/tree-sitter-helpers.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/extract/node-builders.ts",
+        "__tests__/export-docs.test.ts",
+        "packages/core/src/extract/tree-sitter-helpers.ts",
+        "packages/cli/src/export-docs-cmd.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/rig.ts",
+        "packages/cli/src/export-docs-cmd.ts",
+        "packages/core/src/memory-file.ts",
+        "scripts/bench/chart-svg.ts",
+        "packages/cli/src/install/toml.ts"
+      ],
+      "ppr": [
+        "packages/core/src/extract/node-builders.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/extract/tree-sitter-helpers.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/orientation.ts",
+        "packages/cli/src/export-docs-cmd.ts",
+        "__tests__/export-docs.test.ts",
+        "packages/cli/src/export-docs-cmd.ts",
+        "packages/web/src/app/Overview.tsx",
+        "packages/core/src/resolve/path-aliases.ts"
+      ]
+    },
+    {
+      "commit": "af95850",
+      "query": "resolve Python imports to module files",
+      "files": [
+        "packages/core/src/extract/ast-visitor.ts",
+        "packages/core/src/extract/languages/python.ts",
+        "packages/core/src/extract/tree-sitter-types.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/resolver.ts"
+      ],
+      "keyword": [
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/import-resolver.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "__tests__/resolve-python.test.ts",
+        "packages/core/src/db/dep-queries.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/import-resolver.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/import-resolver.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "__tests__/resolve-python.test.ts",
+        "packages/core/src/resolve/import-resolver.ts"
+      ],
+      "ppr": [
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/import-resolver.ts",
+        "packages/core/src/resolve/import-resolver.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/resolve/import-resolver.ts"
+      ]
+    },
+    {
+      "commit": "0be0cf3",
+      "query": "don't let Database.close() wait out another writer's lock",
+      "files": [
+        "packages/core/src/db/database.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/database.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/capture/brief.ts",
+        "packages/core/src/watch-lock.ts",
+        "packages/core/src/capture/state.ts",
+        "packages/core/src/update.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "__tests__/db-concurrency.test.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/database.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/rig.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/update.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/rig-writes.ts",
+        "__tests__/web-ws.test.ts"
+      ],
+      "ppr": [
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/db/database.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig-writes.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/db/dep-resolution.ts"
+      ]
+    },
+    {
+      "commit": "6dce84d",
+      "query": "count dotted Python imports toward their top-level package",
+      "files": [
+        "packages/core/src/db/dep-queries.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "__tests__/python-packages.test.ts",
+        "packages/core/src/db/python-stdlib.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/extract/languages/python.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "packages/core/src/db/dep-queries.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/extract/languages/python.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/db/counts.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "__tests__/python-packages.test.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/db/python-stdlib.ts"
+      ],
+      "ppr": [
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/search/vector-index.ts",
+        "packages/core/src/db/python-stdlib.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "e2e/multi-tab-sync.spec.ts",
+        "__tests__/python-packages.test.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/resolve/python-modules.ts"
+      ]
+    },
+    {
+      "commit": "0d84ef9",
+      "query": "open adapter transactions with BEGIN IMMEDIATE",
+      "files": [
+        "packages/core/src/db/adapter.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/bun-adapter.ts"
+      ],
+      "keyword": [
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "packages/core/src/db/adapter.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/bun-adapter.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/db/adapter.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "packages/core/src/db/adapter.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts"
+      ],
+      "ppr": [
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "__tests__/db-concurrency.test.ts",
+        "__tests__/bench-sessions.test.ts",
+        "__tests__/bench-memory-auto.test.ts"
+      ]
+    },
+    {
+      "commit": "048c288",
+      "query": "record plain and aliased Python imports as import refs",
+      "files": [
+        "packages/core/src/extract/ast-visitor.ts",
+        "packages/core/src/extract/languages/python.ts",
+        "packages/core/src/extract/tree-sitter-types.ts",
+        "packages/core/src/extract/upstream-types.ts"
+      ],
+      "keyword": [
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/cli/src/install/jsonc-merge.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/web/src/ws.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/extract/languages/python.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/resolve/path-aliases.ts",
+        "packages/core/src/memory-file.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/extract/languages/python.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/resolve/path-aliases.ts",
+        "packages/core/src/resolve/resolver.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/extract/tree-sitter-types.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/memory-file.ts"
+      ],
+      "ppr": [
+        "packages/core/src/extract/languages/python.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/extract/tree-sitter-types.ts",
+        "packages/core/src/resolve/path-aliases.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/db/dep-queries.ts"
+      ]
+    },
+    {
+      "commit": "601384e",
+      "query": "wait up to 5s for SQLite locks instead of failing SQLITE_BUSY",
+      "files": [
+        "packages/core/src/db/adapter.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/bun-adapter.ts"
+      ],
+      "keyword": [
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/db/embed-queries.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/embed/local-embedder.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/db/embed-queries.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/db/adapter.ts",
+        "packages/core/src/db/adapter.ts"
+      ],
+      "hybrid": [
+        "__tests__/db-concurrency.test.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/db/adapter.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/factory.ts",
+        "packages/core/src/db/embed-queries.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "__tests__/db-concurrency.test.ts"
+      ],
+      "ppr": [
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/adapter.ts",
+        "packages/core/src/db/factory.ts",
+        "__tests__/db-concurrency.test.ts"
+      ]
+    },
+    {
+      "commit": "106b986",
+      "query": "type Python defs as functions unless directly in a class body",
+      "files": [
+        "packages/core/src/extract/ast-visitor.ts",
+        "packages/core/src/extract/extractor.ts",
+        "packages/core/src/extract/node-builders.ts"
+      ],
+      "keyword": [
+        "packages/core/src/extract/node-builders.ts",
+        "packages/core/src/reconcile-nodes.ts",
+        "__tests__/memory-file.test.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/db/orphaned-memory.ts",
+        "scripts/bench/types.ts",
+        "scripts/gen/compat.ts",
+        "packages/core/src/capture/extractor.ts",
+        "__tests__/python-packages.test.ts",
+        "__tests__/resolve-python.test.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/extract/node-builders.ts",
+        "__tests__/deps-python.test.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "__tests__/memory-file.test.ts",
+        "packages/core/src/db/python-stdlib.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/extract/languages/python.ts",
+        "packages/core/src/extract/node-builders.ts",
+        "packages/core/src/resolve/python-modules.ts"
+      ],
+      "ppr": [
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/db/python-stdlib.ts",
+        "__tests__/memory-file.test.ts",
+        "packages/core/src/extract/node-builders.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "__tests__/deps-python.test.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/extract/node-builders.ts"
+      ]
+    },
+    {
+      "commit": "9daa4b2",
+      "query": "only flag hubs with a positive hubness score",
+      "files": [
+        "packages/core/src/graph/hubness.ts"
+      ],
+      "keyword": [
+        "__tests__/heat-hubness.test.ts",
+        "packages/core/src/graph/hubness.ts",
+        "__tests__/zero-score-hubs.test.ts",
+        "packages/core/src/graph/hubness.ts",
+        "packages/core/src/db/node-queries.ts",
+        "packages/core/src/graph/hubness.ts",
+        "packages/core/src/graph/critical-path.ts",
+        "packages/core/src/rig-writes.ts"
+      ],
+      "hybrid": [
+        "__tests__/zero-score-hubs.test.ts",
+        "packages/core/src/db/node-queries.ts",
+        "packages/core/src/graph/hubness.ts",
+        "__tests__/heat-hubness.test.ts",
+        "packages/core/src/rig-writes.ts",
+        "__tests__/hub-bias.test.ts",
+        "__tests__/support/capture-score.ts",
+        "__tests__/hubs.test.ts",
+        "packages/core/src/graph/hubness.ts",
+        "__tests__/zero-score-hubs.test.ts"
+      ],
+      "ppr": [
+        "packages/core/src/rig-writes.ts",
+        "__tests__/zero-score-hubs.test.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/db/node-queries.ts",
+        "__tests__/zero-score-hubs.test.ts",
+        "packages/core/src/graph/hubness.ts",
+        "packages/core/src/graph/hubness.ts",
+        "__tests__/support/capture-score.ts",
+        "__tests__/heat-hubness.test.ts",
+        "packages/core/src/graph/hubness.ts"
+      ]
+    },
+    {
+      "commit": "299cb1a",
+      "query": "stat-poll the WAL so live WS events flow after the first write",
+      "files": [
+        "packages/web/src/ws.ts"
+      ],
+      "keyword": [
+        "packages/web/src/app/live.ts",
+        "packages/web/src/ws.ts",
+        "generated/web/ws-events.ts",
+        "packages/web/src/app/live.ts",
+        "packages/web/src/ws-derive.ts",
+        "e2e/propose-accept-undo.spec.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/watch-policy.ts",
+        "__tests__/_try-ws.ts",
+        "packages/cli/src/index-cmd.ts"
+      ],
+      "hybrid": [
+        "packages/web/src/app/live.ts",
+        "packages/web/src/ws.ts",
+        "generated/web/ws-events.ts",
+        "e2e/propose-accept-undo.spec.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/web/src/ws-derive.ts",
+        "packages/cli/src/index-cmd.ts",
+        "generated/web/ws-events.ts",
+        "packages/web/src/ws.ts",
+        "packages/core/src/db/activation-queries.ts"
+      ],
+      "ppr": [
+        "generated/web/ws-events.ts",
+        "generated/web/ws-events.ts",
+        "packages/web/src/ws.ts",
+        "packages/web/src/app/live.ts",
+        "e2e/propose-accept-undo.spec.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/cli/src/index-cmd.ts",
+        "packages/web/src/ws-derive.ts",
+        "packages/web/src/app/live.ts",
+        "packages/web/src/ws.ts"
+      ]
+    },
+    {
+      "commit": "792a7c5",
+      "query": "WebHandle.close() no longer hangs on open connections (#3)",
+      "files": [
+        "packages/web/src/server.ts"
+      ],
+      "keyword": [
+        "__tests__/web-ws.test.ts",
+        "__tests__/web-ws.test.ts",
+        "packages/web/src/server.ts",
+        "packages/web/src/app/live.ts",
+        "__tests__/live-watch.test.ts",
+        "packages/core/src/capture/brief.ts",
+        "packages/core/src/db/database.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/bun-adapter.ts"
+      ],
+      "hybrid": [
+        "__tests__/web-ws.test.ts",
+        "packages/web/src/server.ts",
+        "__tests__/web-ws.test.ts",
+        "packages/core/src/db/database.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/web/src/app/live.ts",
+        "__tests__/_try-ws.ts"
+      ],
+      "ppr": [
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/database.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "__tests__/web-ws.test.ts",
+        "packages/core/src/rig.ts",
+        "__tests__/web-ws.test.ts",
+        "packages/web/src/app/live.ts",
+        "packages/web/src/server.ts",
+        "__tests__/db-concurrency.test.ts"
+      ]
+    },
+    {
+      "commit": "fd43aa8",
+      "query": "typecheck the React app's .tsx files",
+      "files": [
+        "packages/web/src/app/App.tsx",
+        "packages/web/src/app/Map.tsx",
+        "packages/web/src/app/NodeDetail.tsx",
+        "packages/web/src/app/SearchPalette.tsx",
+        "packages/web/src/app/Settings.tsx",
+        "packages/web/src/app/TokenGate.tsx",
+        "packages/web/src/app/theme.tsx"
+      ],
+      "keyword": [
+        "packages/cli/src/install/modes.ts",
+        "packages/web/src/app/App.tsx",
+        "packages/web/src/app/theme.tsx",
+        "packages/web/src/app/Overview.tsx",
+        "packages/web/src/app/main.tsx",
+        "packages/web/src/app/Settings.tsx",
+        "packages/web/src/app/Toasts.tsx",
+        "packages/web/src/app/Map.tsx",
+        "packages/web/src/app/SearchPalette.tsx",
+        "packages/web/src/app/NodeDetail.tsx"
+      ],
+      "hybrid": [
+        "packages/web/src/app/App.tsx",
+        "packages/web/src/app/Toasts.tsx",
+        "packages/web/src/app/Overview.tsx",
+        "packages/web/src/app/Map.tsx",
+        "packages/web/src/app/Settings.tsx",
+        "packages/web/src/app/main.tsx",
+        "packages/web/src/app/SearchPalette.tsx",
+        "packages/cli/src/install/modes.ts",
+        "packages/web/src/app/theme.tsx",
+        "packages/web/src/app/NodeList.tsx"
+      ],
+      "ppr": [
+        "packages/web/src/app/main.tsx",
+        "packages/web/src/app/App.tsx",
+        "packages/web/src/app/Settings.tsx",
+        "packages/web/src/app/Toasts.tsx",
+        "packages/web/src/app/Overview.tsx",
+        "packages/web/src/app/TokenGate.tsx",
+        "packages/web/src/app/SearchPalette.tsx",
+        "packages/web/src/app/Map.tsx",
+        "packages/web/src/app/NodeList.tsx",
+        "packages/web/src/app/theme.tsx"
+      ]
+    },
+    {
+      "commit": "0c2936c",
+      "query": "clear the noUncheckedIndexedAccess errors in cli and scripts",
+      "files": [
+        "packages/cli/src/suggest.ts",
+        "packages/cli/src/update-cmd.ts"
+      ],
+      "keyword": [
+        "scripts/build-cli.ts",
+        "packages/cli/src/ui.ts",
+        "packages/cli/src/index.ts",
+        "packages/cli/src/index-cmd.ts",
+        "packages/cli/src/ui.ts",
+        "packages/core/src/resolve/rebuild-edges.ts",
+        "__tests__/bench-providers.test.ts",
+        "packages/core/src/capture/extractor.ts",
+        "scripts/gen.ts",
+        "scripts/test-preload.ts"
+      ],
+      "hybrid": [
+        "packages/cli/src/index.ts",
+        "packages/cli/src/index-cmd.ts",
+        "packages/cli/src/ui.ts",
+        "packages/core/src/resolve/rebuild-edges.ts",
+        "scripts/build-cli.ts",
+        "__tests__/bench-providers.test.ts",
+        "scripts/compat-check.ts",
+        "scripts/gen-check.ts",
+        "scripts/verify-phase16-fixes.ts",
+        "scripts/gen.ts"
+      ],
+      "ppr": [
+        "scripts/build-cli.ts",
+        "__tests__/bench-providers.test.ts",
+        "scripts/gen-wasm.ts",
+        "packages/cli/src/ui.ts",
+        "packages/cli/src/index-cmd.ts",
+        "packages/core/src/resolve/rebuild-edges.ts",
+        "packages/cli/src/index.ts",
+        "scripts/smoke-mcp-entry.ts",
+        "scripts/compat-check.ts",
+        "packages/web/src/app/api.ts"
+      ]
+    },
+    {
+      "commit": "7086807",
+      "query": "reconcile optional and readonly types at the contract boundary",
+      "files": [
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/extract/walker.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/mcp/src/tool-impls/rig_drill.ts",
+        "packages/mcp/src/tool-impls/rig_hubs.ts"
+      ],
+      "keyword": [
+        "packages/core/src/reconcile-nodes.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/reconcile-nodes.ts",
+        "packages/core/src/reconcile-nodes.ts",
+        "__tests__/reconcile-nodes.test.ts",
+        "__tests__/reconcile-nodes.test.ts",
+        "packages/core/src/reconcile-nodes.ts",
+        "generated/core/anchors-registry.ts",
+        "generated/web/ws-events.ts",
+        "packages/core/src/extract/markdown.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/graph/hubness.ts",
+        "__tests__/reconcile-nodes.test.ts",
+        ".contracts/migrations/v11.contract.ts",
+        ".contracts/migrations/v7.contract.ts",
+        "scripts/bench/types.ts",
+        ".contracts/migrations/v5.contract.ts",
+        ".contracts/migrations/v1.contract.ts",
+        ".contracts/migrations/v4.contract.ts",
+        ".contracts/migrations/v3.contract.ts",
+        ".contracts/migrations/v12.contract.ts"
+      ],
+      "ppr": [
+        ".contracts/migrations/v11.contract.ts",
+        ".contracts/migrations/v7.contract.ts",
+        ".contracts/migrations/v5.contract.ts",
+        ".contracts/migrations/v1.contract.ts",
+        ".contracts/migrations/v4.contract.ts",
+        ".contracts/migrations/v3.contract.ts",
+        ".contracts/migrations/v12.contract.ts",
+        ".contracts/migrations/v13.contract.ts",
+        ".contracts/migrations/v10.contract.ts",
+        ".contracts/migrations/v9.contract.ts"
+      ]
+    },
+    {
+      "commit": "15c942c",
+      "query": "export the waypoint types from @rig/core",
+      "files": [
+        "packages/core/src/index.ts"
+      ],
+      "keyword": [
+        "packages/core/src/rig-types.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/types.ts",
+        "packages/core/src/embed/types.ts",
+        "packages/core/src/capture/types.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/extract/languages/typescript.ts",
+        "packages/core/src/extract/parser-types.ts",
+        "packages/core/src/extract/tree-sitter-types.ts",
+        "packages/core/src/db/waypoint-queries.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/rig-types.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/embed/types.ts",
+        "packages/core/src/types.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/capture/types.ts",
+        "packages/core/src/rig-shape.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/extract/parser-types.ts",
+        "packages/core/src/db/waypoint-queries.ts"
+      ],
+      "ppr": [
+        "packages/core/src/extract/parser-types.ts",
+        "packages/core/src/rig-types.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/tool-impls/rig_waypoints.ts",
+        "packages/core/src/types.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        ".contracts/tools/rig_waypoints.contract.ts",
+        "packages/core/src/rig-shape.ts",
+        "packages/core/src/embed/types.ts"
+      ]
+    },
+    {
+      "commit": "1caceb1",
+      "query": "add add_alias and promote_hub to MutationKind",
+      "files": [
+        "packages/core/src/db/mutation-log.ts"
+      ],
+      "keyword": [
+        "packages/core/src/graph/hubness.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/db/mutation-log.ts",
+        ".contracts/events/alias-added.contract.ts",
+        ".contracts/tools/rig_add_alias.contract.ts",
+        "generated/mcp/handlers/rig_add_alias.handler.ts",
+        "packages/mcp/src/tool-impls/rig_add_alias.ts",
+        "packages/core/src/db/alias-queries.ts",
+        "packages/core/src/rig-writes.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/graph/hubness.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/db/mutation-log.ts",
+        "packages/core/src/db/alias-queries.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig-writes.ts",
+        ".contracts/tools/rig_add_alias.contract.ts",
+        "generated/mcp/handlers/rig_add_alias.handler.ts",
+        "packages/mcp/src/tool-impls/rig_add_alias.ts",
+        ".contracts/events/alias-added.contract.ts"
+      ],
+      "ppr": [
+        "packages/core/src/graph/hubness.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/db/alias-queries.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig-writes.ts",
+        ".contracts/events/alias-added.contract.ts",
+        "packages/core/src/db/mutation-log.ts",
+        ".contracts/tools/rig_add_alias.contract.ts",
+        "generated/mcp/handlers/rig_add_alias.handler.ts",
+        "packages/mcp/src/tool-impls/rig_add_alias.ts"
+      ]
+    },
+    {
+      "commit": "b6d522f",
+      "query": "suggest the nearest command on unknown input — 'rig server' → serve, 'rig claude' → install claude",
+      "files": [
+        "packages/cli/src/index.ts",
+        "packages/cli/src/suggest.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/suggest.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/core/src/capture/text.ts",
+        "packages/core/src/capture/state.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "scripts/bench/tools-rig.ts",
+        "scripts/bench/providers.ts",
+        "__tests__/suggest.test.ts",
+        "packages/cli/src/suggest.ts"
+      ],
+      "hybrid": [
+        "packages/cli/src/suggest.ts",
+        "scripts/bench/tools-rig.ts",
+        "packages/cli/src/index.ts",
+        "packages/cli/src/install/args.ts",
+        "packages/core/src/capture/state.ts",
+        "packages/cli/src/hook-cmd.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/core/src/capture/text.ts",
+        "packages/cli/src/install/uninstall.ts"
+      ],
+      "ppr": [
+        "packages/cli/src/index.ts",
+        "packages/cli/src/suggest.ts",
+        "scripts/bench/tools-rig.ts",
+        "packages/core/src/capture/state.ts",
+        "packages/cli/src/install/args.ts",
+        "packages/cli/src/hook-cmd.ts",
+        "packages/cli/src/install/toml.ts",
+        "packages/core/src/capture/text.ts",
+        "packages/cli/src/install/uninstall.ts"
+      ]
+    },
+    {
+      "commit": "21aa05c",
+      "query": "add 'rig update' command — self-update to the latest npm release (--check to report only)",
+      "files": [
+        "packages/cli/src/index.ts",
+        "packages/cli/src/update-cmd.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/update-cmd.ts",
+        "packages/cli/src/init.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "__tests__/_search-fixture.ts",
+        "scripts/bench/criteria.ts",
+        "scripts/bench/sessions.ts",
+        "packages/cli/src/index.ts",
+        "packages/core/src/rig.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/rig.ts",
+        "packages/core/src/update.ts",
+        ".contracts/tools/rig_add_node.contract.ts",
+        "packages/core/src/rig-writes.ts",
+        "__tests__/update-cmd.test.ts",
+        "packages/core/src/update.ts"
+      ],
+      "ppr": [
+        "packages/core/src/rig.ts",
+        "packages/core/src/update.ts",
+        "__tests__/update-cmd.test.ts",
+        ".contracts/tools/rig_add_node.contract.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/update.ts"
+      ]
+    },
+    {
+      "commit": "543c5f0",
+      "query": "check the resolved per-project port instead of hardcoded 7474 (#17)",
+      "files": [
+        "packages/cli/src/doctor.ts",
+        "packages/web/src/index.ts"
+      ],
+      "keyword": [
+        "packages/web/src/listen.ts",
+        "packages/cli/src/doctor.ts",
+        "packages/web/src/auth.ts",
+        "packages/mcp/src/project-root.ts",
+        "packages/web/src/listen.ts",
+        "packages/web/src/listen.ts",
+        "packages/web/src/request-guard.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/resolve/import-resolver.ts",
+        "packages/cli/src/ui.ts"
+      ],
+      "hybrid": [
+        "packages/web/src/listen.ts",
+        "packages/mcp/src/project-root.ts",
+        "packages/cli/src/doctor.ts",
+        "packages/core/src/resolve/import-resolver.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/web/src/listen.ts",
+        "__tests__/port-resolution.test.ts",
+        "packages/cli/src/init.ts",
+        "packages/core/src/resolve/resolver.ts",
+        "packages/core/src/resolve/import-resolver.ts"
+      ],
+      "ppr": [
+        "packages/web/src/listen.ts",
+        "packages/core/src/resolve/import-resolver.ts",
+        "packages/core/src/resolve/import-resolver.ts",
+        "packages/cli/src/doctor.ts",
+        "packages/web/src/listen.ts",
+        "packages/cli/src/init.ts",
+        "packages/mcp/src/project-root.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "__tests__/port-resolution.test.ts",
+        "packages/core/src/resolve/resolver.ts"
+      ]
+    },
+    {
+      "commit": "5d66e62",
+      "query": "multi-instance awareness — per-project port + fallback, project name in map/health, richer start UI, rig-constellation bin alias, MCP version fix",
+      "files": [
+        "packages/cli/src/init.ts",
+        "packages/cli/src/start.ts",
+        "packages/cli/src/ui.ts",
+        "packages/mcp/src/server-handlers.ts",
+        "packages/web/src/app/App.tsx",
+        "packages/web/src/listen.ts",
+        "packages/web/src/server.ts"
+      ],
+      "keyword": [
+        "packages/web/src/listen.ts",
+        "packages/mcp/src/uninitialized.ts",
+        "packages/cli/src/doctor.ts",
+        "packages/cli/src/init.ts",
+        "packages/web/src/request-guard.ts",
+        "packages/web/src/listen.ts",
+        "packages/web/src/auth.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/resolve/path-aliases.ts",
+        "packages/core/src/rig.ts"
+      ],
+      "hybrid": [
+        "packages/web/src/listen.ts",
+        "packages/cli/src/start.ts",
+        "packages/mcp/src/tool-impls/rig_aliases.ts",
+        "packages/mcp/src/uninitialized.ts",
+        "packages/cli/src/doctor.ts",
+        "packages/cli/src/init.ts",
+        "packages/web/src/request-guard.ts",
+        "packages/web/src/listen.ts",
+        "packages/web/src/auth.ts"
+      ],
+      "ppr": [
+        "packages/web/src/listen.ts",
+        "packages/mcp/src/tool-impls/rig_aliases.ts",
+        "packages/cli/src/start.ts",
+        "packages/cli/src/init.ts",
+        "packages/cli/src/doctor.ts",
+        "packages/web/src/listen.ts",
+        "packages/mcp/src/uninitialized.ts",
+        "packages/web/src/auth.ts",
+        "packages/web/src/request-guard.ts"
+      ]
+    },
+    {
+      "commit": "8538378",
+      "query": "recognize rig's own map server instead of flagging a port conflict (#13)",
+      "files": [
+        "packages/cli/src/doctor.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/doctor.ts",
+        ".contracts/tools/rig_dep_conflicts.contract.ts",
+        "packages/web/src/listen.ts",
+        "generated/mcp/handlers/rig_dep_conflicts.handler.ts",
+        "packages/mcp/src/tool-impls/rig_dep_conflicts.ts",
+        "packages/core/src/rig.ts",
+        "packages/web/src/app/Map.tsx",
+        "packages/web/src/listen.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/db/embed-queries.ts"
+      ],
+      "hybrid": [
+        "packages/cli/src/doctor.ts",
+        "packages/web/src/listen.ts",
+        ".contracts/tools/rig_dep_conflicts.contract.ts",
+        "packages/mcp/src/tool-impls/rig_dep_conflicts.ts",
+        "packages/cli/src/install/ownership.ts",
+        "generated/mcp/handlers/rig_dep_conflicts.handler.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/web/src/listen.ts"
+      ],
+      "ppr": [
+        "packages/cli/src/doctor.ts",
+        ".contracts/tools/rig_dep_conflicts.contract.ts",
+        "packages/mcp/src/tool-impls/rig_dep_conflicts.ts",
+        "packages/cli/src/install/ownership.ts",
+        "packages/web/src/listen.ts",
+        "generated/mcp/handlers/rig_dep_conflicts.handler.ts",
+        "packages/cli/src/install/uninstall.ts",
+        "packages/web/src/listen.ts"
+      ]
+    },
+    {
+      "commit": "10b9069",
+      "query": "serve real package version from /health, correct optionalDeps note",
+      "files": [
+        "packages/web/src/server.ts"
+      ],
+      "keyword": [
+        "packages/mcp/src/uninitialized.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/cli/src/doctor.ts",
+        "packages/core/src/db/factory.ts",
+        "packages/cli/src/suggest.ts",
+        "packages/web/src/server.ts",
+        "packages/mcp/src/server-handlers.ts",
+        "packages/cli/src/serve-cmd.ts",
+        "packages/cli/src/start.ts",
+        "packages/core/src/watch-policy.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/cli/src/serve-cmd.ts",
+        "packages/mcp/src/uninitialized.ts",
+        "packages/mcp/src/server-handlers.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/web/src/server.ts",
+        "packages/mcp/src/tool-impls/rig_deps.ts",
+        "packages/mcp/src/index.ts",
+        "packages/mcp/src/index.ts",
+        "packages/core/src/db/dep-queries.ts"
+      ],
+      "ppr": [
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/cli/src/serve-cmd.ts",
+        "packages/mcp/src/index.ts",
+        "packages/mcp/src/uninitialized.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/web/src/server.ts",
+        "packages/mcp/src/tool-impls/rig_deps.ts",
+        "packages/web/src/server.ts",
+        "packages/mcp/src/tool-impls/rig_unused_deps.ts",
+        "packages/mcp/src/server-handlers.ts"
+      ]
+    },
+    {
+      "commit": "adb63e2",
+      "query": "one-command rig start onboarding, index:progress event, single-package distribution",
+      "files": [
+        "packages/cli/src/index.ts",
+        "packages/cli/src/init.ts",
+        "packages/cli/src/install-cmd.ts",
+        "packages/cli/src/open-url.ts",
+        "packages/cli/src/start.ts",
+        "packages/core/src/asset-root.ts",
+        "packages/core/src/db/bun-adapter.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/start.ts",
+        ".contracts/events/index-progress.contract.ts",
+        "packages/cli/src/ui.ts",
+        "packages/cli/src/ui.ts",
+        "packages/cli/src/ui.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/update.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "packages/cli/src/suggest.ts",
+        "packages/contracts/src/kinds/event.ts"
+      ],
+      "hybrid": [
+        "packages/cli/src/start.ts",
+        "packages/core/src/update.ts",
+        ".contracts/events/index-progress.contract.ts",
+        "packages/cli/src/ui.ts",
+        "packages/cli/src/ui.ts",
+        "packages/cli/src/ui.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/rig-types.ts"
+      ],
+      "ppr": [
+        "packages/cli/src/start.ts",
+        "packages/core/src/update.ts",
+        "packages/cli/src/ui.ts",
+        "packages/cli/src/ui.ts",
+        ".contracts/events/index-progress.contract.ts",
+        "packages/cli/src/ui.ts",
+        "packages/core/src/rig-types.ts",
+        "scripts/bench/sessions.ts"
+      ]
+    },
+    {
+      "commit": "329dc0c",
+      "query": "tool-surface stability gate, migration lock, mark 20 tools stable",
+      "files": [
+        "packages/contracts/src/index.ts",
+        "packages/contracts/src/kinds/tool.ts"
+      ],
+      "keyword": [
+        "scripts/gen/compat.ts",
+        "scripts/migration-lock.ts",
+        "__tests__/migration-lock.test.ts",
+        "packages/contracts/src/kinds/tool.ts",
+        "__tests__/heavy-tool-gate.test.ts",
+        "scripts/migration-lock.ts",
+        "packages/cli/src/init.ts"
+      ],
+      "hybrid": [
+        "packages/contracts/src/kinds/tool.ts",
+        "scripts/gen/compat.ts",
+        "scripts/migration-lock.ts",
+        "__tests__/migration-lock.test.ts",
+        "__tests__/heavy-tool-gate.test.ts",
+        "packages/core/src/watch-lock.ts"
+      ],
+      "ppr": [
+        "packages/contracts/src/kinds/tool.ts",
+        "__tests__/migration-lock.test.ts",
+        "scripts/gen/compat.ts",
+        "scripts/migration-lock.ts",
+        "__tests__/heavy-tool-gate.test.ts",
+        "packages/core/src/watch-lock.ts"
+      ]
+    },
+    {
+      "commit": "49bef1e",
+      "query": "A2 — Python lockfile resolution (uv.lock + poetry.lock, pyproject.toml only)",
+      "files": [
+        "packages/core/src/db/dep-resolution.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "__tests__/deps-lockfile.test.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "__tests__/port-resolution.test.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "__tests__/deps-lockfile.test.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/cli/src/install/modes.ts"
+      ],
+      "ppr": [
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/resolve/python-modules.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "__tests__/deps-lockfile.test.ts"
+      ]
+    },
+    {
+      "commit": "b1a12e9",
+      "query": "E1 (backend) — source_urls evidence on pending_edges (v11) + rig_propose_edge",
+      "files": [
+        "packages/core/src/db/pending-edges.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/mcp/src/tool-impls/rig_propose_edge.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/pending-edges.ts",
+        "packages/core/src/db/pending-edges.ts",
+        "__tests__/source-urls.test.ts",
+        ".contracts/tools/rig_propose_edge.contract.ts",
+        "generated/mcp/handlers/rig_propose_edge.handler.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/mcp/src/tool-impls/rig_propose_edge.ts",
+        "packages/web/src/ws-derive.ts"
+      ],
+      "hybrid": [
+        ".contracts/tools/rig_propose_edge.contract.ts",
+        "packages/core/src/db/pending-edges.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/mcp/src/tool-impls/rig_propose_edge.ts",
+        "packages/core/src/rig-writes.ts",
+        "generated/mcp/handlers/rig_propose_edge.handler.ts",
+        "packages/web/src/app/api.ts",
+        "packages/core/src/db/pending-edges.ts"
+      ],
+      "ppr": [
+        ".contracts/tools/rig_propose_edge.contract.ts",
+        "packages/mcp/src/tool-impls/rig_propose_edge.ts",
+        "generated/mcp/handlers/rig_propose_edge.handler.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/web/src/app/api.ts",
+        "packages/core/src/db/pending-edges.ts",
+        "packages/core/src/db/pending-edges.ts"
+      ]
+    },
+    {
+      "commit": "2da260d",
+      "query": "A2 — package-lock.json resolution attaches installed versions to declared-deps",
+      "files": [
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/db/node-queries.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/index-all.ts",
+        "packages/core/src/sync.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "packages/cli/src/install/jsonc-merge.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "__tests__/deps-lockfile.test.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        ".contracts/anchors/declared-dependency.contract.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/cli/src/install/jsonc-merge.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "__tests__/deps-lockfile.test.ts",
+        "packages/contracts/package.json",
+        "package.json",
+        "packages/core/src/db/dep-queries.ts"
+      ],
+      "ppr": [
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/contracts/package.json",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/cli/src/install/json-merge.ts",
+        "packages/cli/src/install/jsonc-merge.ts",
+        "package.json",
+        ".contracts/anchors/declared-dependency.contract.ts",
+        "__tests__/deps-lockfile.test.ts"
+      ]
+    },
+    {
+      "commit": "e4709c4",
+      "query": "D4 — rig_relevant_skills (agent discovers own tools via the same retrieval)",
+      "files": [
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/tool-impls/rig_relevant_skills.ts"
+      ],
+      "keyword": [
+        "packages/core/src/rig.ts",
+        ".contracts/tools/rig_relevant_skills.contract.ts",
+        "packages/mcp/src/tool-impls/rig_relevant_skills.ts",
+        "generated/mcp/handlers/rig_relevant_skills.handler.ts",
+        "packages/core/src/rig.ts",
+        "__tests__/relevant-skills.test.ts",
+        "packages/core/src/rig.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/rig.ts",
+        ".contracts/tools/rig_relevant_skills.contract.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/tool-impls/rig_relevant_skills.ts",
+        "generated/mcp/handlers/rig_relevant_skills.handler.ts",
+        "__tests__/relevant-skills.test.ts"
+      ],
+      "ppr": [
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        ".contracts/tools/rig_relevant_skills.contract.ts",
+        "packages/mcp/src/tool-impls/rig_relevant_skills.ts",
+        "generated/mcp/handlers/rig_relevant_skills.handler.ts",
+        "__tests__/relevant-skills.test.ts"
+      ]
+    },
+    {
+      "commit": "2fbd0d2",
+      "query": "C4 — skill anchors seeded from tools-manifest (the AI's toolset becomes graph)",
+      "files": [
+        "packages/cli/src/index-cmd.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/index.ts"
+      ],
+      "keyword": [
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        ".contracts/anchors/skill.contract.ts",
+        ".contracts/tools/rig_relevant_skills.contract.ts",
+        "packages/mcp/src/tool-impls/rig_relevant_skills.ts",
+        "scripts/bench/providers.ts",
+        "scripts/bench/tools-rig-search.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig-writes.ts",
+        ".contracts/anchors/skill.contract.ts",
+        "packages/core/src/rig.ts",
+        ".contracts/tools/rig_relevant_skills.contract.ts",
+        "scripts/bench/providers.ts",
+        "packages/core/src/rig.ts"
+      ],
+      "ppr": [
+        "packages/core/src/rig-writes.ts",
+        ".contracts/anchors/skill.contract.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "scripts/bench/providers.ts",
+        ".contracts/tools/rig_relevant_skills.contract.ts"
+      ]
+    },
+    {
+      "commit": "2d514dc",
+      "query": "A2 — pyproject.toml extractor (PEP 621 + Poetry, no new runtime dep)",
+      "files": [
+        "packages/core/src/extract/extractor.ts",
+        "packages/core/src/extract/grammars.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts"
+      ],
+      "keyword": [
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "__tests__/deps-pyproject.test.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/extract/manifests/requirements-txt.ts",
+        "packages/core/src/orientation.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "__tests__/deps-pyproject.test.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/orientation.ts",
+        "packages/contracts/src/kinds/anchor.ts",
+        "packages/core/src/extract/tree-sitter-types.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/extract/tree-sitter-types.ts"
+      ],
+      "ppr": [
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/contracts/src/kinds/anchor.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "__tests__/deps-pyproject.test.ts",
+        "packages/core/src/extract/tree-sitter-types.ts"
+      ]
+    },
+    {
+      "commit": "f9a0deb",
+      "query": "A2 follow-up — rig_phantom_imports (v10 adds kind column to unresolved_refs)",
+      "files": [
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/resolve/resolver.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/tool-impls/rig_phantom_imports.ts"
+      ],
+      "keyword": [
+        ".contracts/tools/rig_phantom_imports.contract.ts",
+        "generated/mcp/handlers/rig_phantom_imports.handler.ts",
+        "packages/mcp/src/tool-impls/rig_phantom_imports.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/resolve/resolver.ts",
+        "__tests__/phantom-imports.test.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/db/file-artifacts.ts",
+        "packages/core/src/db/dep-queries.ts"
+      ],
+      "hybrid": [
+        "generated/mcp/handlers/rig_phantom_imports.handler.ts",
+        ".contracts/tools/rig_phantom_imports.contract.ts",
+        "packages/mcp/src/tool-impls/rig_phantom_imports.ts",
+        "packages/core/src/resolve/resolver.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "__tests__/phantom-imports.test.ts",
+        "packages/core/src/db/file-artifacts.ts"
+      ],
+      "ppr": [
+        "generated/mcp/handlers/rig_phantom_imports.handler.ts",
+        "packages/mcp/src/tool-impls/rig_phantom_imports.ts",
+        "packages/core/src/db/dep-queries.ts",
+        ".contracts/tools/rig_phantom_imports.contract.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "__tests__/phantom-imports.test.ts",
+        "packages/core/src/resolve/resolver.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/mcp/src/tool-impls/_refs.ts"
+      ]
+    },
+    {
+      "commit": "5f2c714",
+      "query": "A2 follow-up — rig_unused_deps via unresolved_refs heuristic",
+      "files": [
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/tool-impls/rig_unused_deps.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        ".contracts/tools/rig_unused_deps.contract.ts",
+        "generated/mcp/handlers/rig_unused_deps.handler.ts",
+        "packages/mcp/src/tool-impls/rig_unused_deps.ts",
+        "packages/core/src/rig.ts",
+        "__tests__/unused-deps.test.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/resolve/resolver.ts",
+        "packages/core/src/resolve/python-modules.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/resolve/resolver.ts",
+        "__tests__/unused-deps.test.ts",
+        "generated/mcp/handlers/rig_unused_deps.handler.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        ".contracts/tools/rig_unused_deps.contract.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/mcp/src/tool-impls/rig_unused_deps.ts"
+      ],
+      "ppr": [
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "generated/mcp/handlers/rig_unused_deps.handler.ts",
+        ".contracts/tools/rig_unused_deps.contract.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/tool-impls/rig_unused_deps.ts",
+        "__tests__/unused-deps.test.ts",
+        "packages/core/src/resolve/resolver.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/extract/upstream-types.ts"
+      ]
+    },
+    {
+      "commit": "5ef8f06",
+      "query": "C1→A1 — feed decayed-activation heat into the hubness formula (w_heat=0.15)",
+      "files": [
+        "packages/core/src/graph/hubness.ts"
+      ],
+      "keyword": [
+        "__tests__/heat-hubness.test.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/graph/critical-path.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/graph/hubness.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/mcp/src/dispatch.ts",
+        "packages/core/src/db/activation-queries.ts"
+      ],
+      "hybrid": [
+        "__tests__/heat-hubness.test.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/graph/hubness.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/graph/critical-path.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/graph/hubness.ts",
+        "packages/core/src/db/activation-queries.ts"
+      ],
+      "ppr": [
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "__tests__/heat-hubness.test.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/graph/critical-path.ts",
+        "packages/core/src/graph/hubness.ts",
+        "packages/core/src/graph/hubness.ts"
+      ]
+    },
+    {
+      "commit": "8e93181",
+      "query": "B3 — rig export-docs renders waypoints as markdown doc tree",
+      "files": [
+        "packages/cli/src/export-docs-cmd.ts",
+        "packages/cli/src/index.ts"
+      ],
+      "keyword": [
+        "scripts/bench/report.ts",
+        "scripts/bench/report-sessions.ts",
+        "scripts/bench/report-models.ts",
+        "__tests__/export-docs.test.ts",
+        "packages/cli/src/export-docs-cmd.ts",
+        "packages/cli/src/export-docs-cmd.ts",
+        "packages/cli/src/export-docs-cmd.ts",
+        "packages/cli/src/export-docs-cmd.ts",
+        "packages/cli/src/export-docs-cmd.ts",
+        "packages/core/src/extract/node-builders.ts"
+      ],
+      "hybrid": [
+        "packages/cli/src/export-docs-cmd.ts",
+        "packages/core/src/extract/markdown.ts",
+        "packages/web/src/app/Overview.tsx",
+        "scripts/bench/report.ts",
+        "scripts/bench/report-models.ts",
+        "generated/mcp/handlers/rig_waypoints.handler.ts",
+        "packages/mcp/src/tool-impls/rig_waypoints.ts",
+        "generated/mcp/handlers/rig_drop_waypoint.handler.ts",
+        ".contracts/tools/rig_waypoints.contract.ts",
+        "packages/mcp/src/tool-impls/rig_drop_waypoint.ts"
+      ],
+      "ppr": [
+        "packages/cli/src/export-docs-cmd.ts",
+        "packages/web/src/app/Overview.tsx",
+        "packages/core/src/extract/markdown.ts",
+        "scripts/bench/report.ts",
+        "scripts/bench/report-models.ts",
+        "packages/mcp/src/tool-impls/rig_waypoints.ts",
+        "generated/mcp/handlers/rig_waypoints.handler.ts",
+        ".contracts/tools/rig_waypoints.contract.ts",
+        "generated/mcp/handlers/rig_drop_waypoint.handler.ts",
+        "packages/mcp/src/tool-impls/rig_drop_waypoint.ts"
+      ]
+    },
+    {
+      "commit": "30404af",
+      "query": "B2 — polymorphic waypoint payloads (text/mermaid/code/doc/image/dataset)",
+      "files": [
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/tool-impls/rig_drop_waypoint.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/orientation.ts",
+        "packages/cli/src/export-docs-cmd.ts",
+        "packages/web/src/app/Overview.tsx",
+        "packages/core/src/db/orphaned-memory.ts",
+        "packages/web/src/ws-derive.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/core/src/db/orphaned-memory.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/cli/src/export-docs-cmd.ts",
+        "packages/core/src/db/orphaned-memory.ts",
+        "packages/web/src/app/Overview.tsx",
+        "packages/core/src/orientation.ts",
+        "packages/web/src/app/flow/parts.tsx",
+        "packages/web/src/app/flow/parts.tsx",
+        "packages/web/src/app/api.ts"
+      ],
+      "ppr": [
+        "packages/cli/src/export-docs-cmd.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/web/src/app/api.ts",
+        "packages/core/src/db/orphaned-memory.ts",
+        "packages/web/src/app/flow/parts.tsx",
+        "packages/web/src/app/Overview.tsx",
+        "packages/web/src/app/flow/parts.tsx",
+        "packages/core/src/orientation.ts"
+      ]
+    },
+    {
+      "commit": "c72795b",
+      "query": "static imports for manifest+handlers so dist/rig works standalone",
+      "files": [
+        "packages/mcp/src/index.ts"
+      ],
+      "keyword": [
+        "generated/mcp/handlers/rig_phantom_imports.handler.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "packages/mcp/src/uninitialized.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "packages/mcp/src/server-handlers.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "packages/core/src/asset-root.ts",
+        "packages/core/src/orientation.ts",
+        "generated/mcp/handlers/rig_impact.handler.ts",
+        "generated/mcp/handlers/rig_status.handler.ts"
+      ],
+      "hybrid": [
+        "generated/mcp/handlers/rig_phantom_imports.handler.ts",
+        "packages/mcp/src/uninitialized.ts",
+        "packages/mcp/src/server-handlers.ts",
+        "generated/mcp/handlers/rig_aliases.handler.ts",
+        "packages/core/src/asset-root.ts",
+        "packages/core/src/orientation.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "generated/mcp/handlers/rig_add_alias.handler.ts",
+        "generated/mcp/handlers/rig_files.handler.ts",
+        "generated/mcp/handlers/rig_annotate.handler.ts"
+      ],
+      "ppr": [
+        "generated/mcp/handlers/rig_phantom_imports.handler.ts",
+        "packages/mcp/src/uninitialized.ts",
+        "packages/core/src/orientation.ts",
+        "generated/mcp/handlers/rig_aliases.handler.ts",
+        "packages/core/src/asset-root.ts",
+        "generated/mcp/handlers/rig_add_alias.handler.ts",
+        "packages/core/src/db/pypi-names.ts",
+        "packages/mcp/src/server-handlers.ts",
+        "generated/mcp/handlers/rig_files.handler.ts",
+        ".contracts/tools/rig_phantom_imports.contract.ts"
+      ]
+    },
+    {
+      "commit": "54306f7",
+      "query": "A2 follow-up — requirements.txt extractor + rig_dep_conflicts tool",
+      "files": [
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/extract/extractor.ts",
+        "packages/core/src/extract/grammars.ts",
+        "packages/core/src/extract/manifests/requirements-txt.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/tool-impls/rig_dep_conflicts.ts"
+      ],
+      "keyword": [
+        "packages/core/src/extract/manifests/requirements-txt.ts",
+        ".contracts/tools/rig_dep_conflicts.contract.ts",
+        "packages/mcp/src/tool-impls/rig_dep_conflicts.ts",
+        "packages/core/src/extract/manifests/requirements-txt.ts",
+        "packages/core/src/extract/manifests/requirements-txt.ts",
+        "generated/mcp/handlers/rig_dep_conflicts.handler.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/db/dep-queries.ts"
+      ],
+      "hybrid": [
+        ".contracts/tools/rig_dep_conflicts.contract.ts",
+        "packages/core/src/extract/manifests/requirements-txt.ts",
+        "packages/mcp/src/tool-impls/rig_dep_conflicts.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "generated/mcp/handlers/rig_dep_conflicts.handler.ts",
+        ".contracts/tools/rig_deps.contract.ts",
+        "packages/core/src/extract/manifests/requirements-txt.ts"
+      ],
+      "ppr": [
+        ".contracts/tools/rig_dep_conflicts.contract.ts",
+        "packages/mcp/src/tool-impls/rig_dep_conflicts.ts",
+        "generated/mcp/handlers/rig_dep_conflicts.handler.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/extract/manifests/requirements-txt.ts",
+        ".contracts/tools/rig_deps.contract.ts",
+        "packages/core/src/extract/manifests/requirements-txt.ts"
+      ]
+    },
+    {
+      "commit": "e8a5588",
+      "query": "B4 — session:last resolution + session-bootstrap installer instructions",
+      "files": [
+        "packages/core/src/db/waypoint-queries.ts"
+      ],
+      "keyword": [
+        "scripts/bench/sessions.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "__tests__/port-resolution.test.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "scripts/bench/report-sessions.ts",
+        "packages/core/src/db/mutation-log.ts",
+        "scripts/bench/sessions.ts"
+      ],
+      "hybrid": [
+        "scripts/bench/sessions.ts",
+        "scripts/bench/sessions.ts",
+        "scripts/bench/report-sessions.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "scripts/bench/report-sessions.ts",
+        "packages/core/src/capture/extractor.ts"
+      ],
+      "ppr": [
+        "scripts/bench/sessions.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "scripts/bench/sessions.ts",
+        "scripts/bench/report-sessions.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/capture/extractor.ts",
+        "scripts/bench/report-sessions.ts"
+      ]
+    },
+    {
+      "commit": "24ff9d0",
+      "query": "B1 — conversation waypoints (drop/list/chain), sessions table (v9), undoable drop_waypoint mutation",
+      "files": [
+        "packages/core/src/db/mutation-log.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/tool-impls/rig_chain.ts",
+        "packages/mcp/src/tool-impls/rig_drop_waypoint.ts",
+        "packages/mcp/src/tool-impls/rig_waypoints.ts"
+      ],
+      "keyword": [
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/db/mutation-log.ts",
+        "packages/core/src/db/mutation-log.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "scripts/bench/sessions.ts",
+        "packages/web/src/ws-derive.ts",
+        "packages/core/src/rig.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/rig-writes.ts",
+        "scripts/bench/sessions.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/db/mutation-log.ts",
+        "scripts/bench/types.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/orientation.ts",
+        ".contracts/tools/rig_drop_waypoint.contract.ts",
+        ".contracts/events/waypoint-dropped.contract.ts"
+      ],
+      "ppr": [
+        "scripts/bench/sessions.ts",
+        "scripts/bench/types.ts",
+        "packages/core/src/rig-writes.ts",
+        "scripts/bench/sessions.ts",
+        "packages/core/src/rig-writes.ts",
+        ".contracts/events/waypoint-dropped.contract.ts",
+        "packages/core/src/db/waypoint-queries.ts",
+        "packages/core/src/db/mutation-log.ts",
+        ".contracts/tools/rig_drop_waypoint.contract.ts",
+        "packages/core/src/orientation.ts"
+      ]
+    },
+    {
+      "commit": "4fd35f0",
+      "query": "D2 — hub-aware rig_pull reranking (default hub_bias=0.3, hub component in PullResult)",
+      "files": [
+        "packages/core/src/db/node-queries.ts",
+        "packages/core/src/pull.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/tool-impls/rig_pull.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/node-queries.ts",
+        "packages/core/src/pull.ts",
+        "__tests__/hub-bias.test.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/pull.ts",
+        "packages/core/src/graph/hub-drill.ts"
+      ],
+      "hybrid": [
+        "__tests__/hub-bias.test.ts",
+        "packages/core/src/db/node-queries.ts"
+      ],
+      "ppr": [
+        "packages/core/src/db/node-queries.ts",
+        "__tests__/hub-bias.test.ts"
+      ]
+    },
+    {
+      "commit": "e07affd",
+      "query": "C1 — session_id + query_hash columns, rig_hotspots + rig_cold tools (v8)",
+      "files": [
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/dispatch.ts",
+        "packages/mcp/src/index.ts",
+        "packages/mcp/src/tool-impls/rig_cold.ts",
+        "packages/mcp/src/tool-impls/rig_hotspots.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/search/query.ts",
+        ".contracts/tools/rig_hotspots.contract.ts",
+        ".contracts/tools/rig_cold.contract.ts",
+        "packages/mcp/src/tool-impls/rig_cold.ts",
+        "packages/mcp/src/tool-impls/rig_hotspots.ts",
+        ".contracts/migrations/v8.contract.ts",
+        "packages/web/src/app/App.tsx",
+        "packages/core/src/db/search-queries.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/activation-queries.ts",
+        ".contracts/tools/rig_hotspots.contract.ts",
+        ".contracts/tools/rig_cold.contract.ts",
+        "packages/mcp/src/tool-impls/rig_hotspots.ts",
+        "packages/mcp/src/tool-impls/rig_cold.ts",
+        "generated/mcp/handlers/rig_hotspots.handler.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/tool-impls/rig_session_token.ts",
+        "packages/core/src/rig.ts",
+        "scripts/bench/tools-rig-search.ts"
+      ],
+      "ppr": [
+        ".contracts/tools/rig_hotspots.contract.ts",
+        "packages/mcp/src/tool-impls/rig_hotspots.ts",
+        ".contracts/tools/rig_cold.contract.ts",
+        "generated/mcp/handlers/rig_hotspots.handler.ts",
+        "packages/mcp/src/tool-impls/rig_cold.ts",
+        "scripts/bench/tools-rig-search.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "generated/mcp/handlers/rig_cold.handler.ts"
+      ]
+    },
+    {
+      "commit": "e9c43ac",
+      "query": "A2 — package.json as first-class hub via declared-dependency anchors + rig_deps tool",
+      "files": [
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/db/node-queries.ts",
+        "packages/core/src/extract/extractor.ts",
+        "packages/core/src/extract/grammars.ts",
+        "packages/core/src/extract/manifests/package-json.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/tool-impls/rig_deps.ts"
+      ],
+      "keyword": [
+        ".contracts/anchors/declared-dependency.contract.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/core/src/db/dep-queries.ts",
+        "packages/core/src/graph/hubness.ts"
+      ],
+      "hybrid": [
+        ".contracts/anchors/declared-dependency.contract.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/mcp/src/tool-impls/rig_hub_of.ts",
+        "packages/mcp/src/tool-impls/rig_hubs.ts",
+        "packages/mcp/src/tool-impls/rig_deps.ts",
+        "packages/mcp/src/tool-impls/rig_unused_deps.ts",
+        "packages/mcp/src/tool-impls/rig_dep_conflicts.ts"
+      ],
+      "ppr": [
+        ".contracts/anchors/declared-dependency.contract.ts",
+        "packages/core/src/db/dep-resolution.ts",
+        "packages/mcp/src/tool-impls/rig_hub_of.ts",
+        "packages/mcp/src/tool-impls/rig_hubs.ts",
+        "packages/mcp/src/tool-impls/rig_deps.ts",
+        "packages/mcp/src/tool-impls/rig_unused_deps.ts",
+        "packages/mcp/src/tool-impls/rig_dep_conflicts.ts"
+      ]
+    },
+    {
+      "commit": "cefc1ea",
+      "query": "batch embedding + activation fetches in getMagneticPull — 235ms → 46ms at 4.5k",
+      "files": [
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/embed-queries.ts",
+        "packages/core/src/pull.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/embed-queries.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/node-queries.ts",
+        "packages/core/src/pull.ts",
+        "packages/core/src/embed/local-embedder.ts",
+        "packages/core/src/db/embed-queries.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/embed-queries.ts",
+        "packages/core/src/db/activation-queries.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/embed-queries.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/pull.ts",
+        "packages/core/src/embed/local-embedder.ts",
+        "packages/core/src/embed/index-embeddings.ts",
+        "packages/core/src/db/embed-queries.ts",
+        "packages/core/src/db/embed-queries.ts",
+        "__tests__/bench-providers.test.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/activation-queries.ts"
+      ],
+      "ppr": [
+        "__tests__/bench-providers.test.ts",
+        "packages/core/src/db/embed-queries.ts",
+        "packages/core/src/embed/local-embedder.ts",
+        "packages/core/src/pull.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/embed-queries.ts",
+        "packages/core/src/embed/index-embeddings.ts",
+        "packages/core/src/db/embed-queries.ts",
+        "packages/core/src/rig.ts"
+      ]
+    },
+    {
+      "commit": "c6be22d",
+      "query": "PRAGMA optimize on close; promote F1 (HNSW) to Phase 3.5 after empirical 4.5k bench",
+      "files": [
+        "packages/core/src/db/database.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/db/database.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "packages/core/src/rig.ts",
+        "__tests__/web-ws.test.ts",
+        "scripts/bench/sessions.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/bun-adapter.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/cli/src/index-cmd.ts",
+        "packages/core/src/db/database.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/bun-adapter.ts"
+      ],
+      "ppr": [
+        "__tests__/db-concurrency.test.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "__tests__/db-concurrency.test.ts",
+        "packages/cli/src/index-cmd.ts",
+        "packages/core/src/db/better-sqlite-adapter.ts",
+        "packages/core/src/db/bun-adapter.ts",
+        "packages/core/src/db/database.ts"
+      ]
+    },
+    {
+      "commit": "b657783",
+      "query": "embed tree-sitter wasm so compiled rig binary works standalone",
+      "files": [
+        "packages/core/src/extract/grammars.ts"
+      ],
+      "keyword": [
+        "packages/core/src/extract/tree-sitter-types.ts",
+        "packages/core/src/extract/tree-sitter-helpers.ts",
+        "scripts/gen-wasm.ts",
+        "packages/core/src/resolve/path-aliases.ts",
+        "scripts/bench/sessions.ts",
+        "packages/web/src/views.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/extract/tree-sitter-types.ts",
+        "packages/core/src/embed/index-embeddings.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/embed/deterministic-embedder.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts"
+      ],
+      "ppr": [
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/embed/deterministic-embedder.ts",
+        "packages/core/src/rig-writes.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/embed/index-embeddings.ts",
+        "packages/core/src/extract/tree-sitter-types.ts"
+      ]
+    },
+    {
+      "commit": "74b128c",
+      "query": "rig index --include / --exclude globs (repeatable, scope-narrowing)",
+      "files": [
+        "packages/cli/src/index-cmd.ts",
+        "packages/core/src/extract/walker.ts",
+        "packages/core/src/index-all.ts",
+        "packages/core/src/rig.ts"
+      ],
+      "keyword": [
+        "packages/core/src/extract/walker.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/index-all.ts",
+        "packages/core/src/extract/walker.ts",
+        "packages/cli/src/install/paths.ts",
+        "packages/cli/src/install-cmd.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/extract/ast-visitor.ts",
+        "packages/cli/src/install-cmd.ts",
+        "packages/web/src/app/NodeDetail.tsx"
+      ],
+      "hybrid": [
+        "packages/core/src/index-all.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/extract/walker.ts",
+        "__tests__/orientation.test.ts",
+        "packages/cli/src/install-cmd.ts",
+        "scripts/bench/target.ts",
+        "packages/core/src/extract/walker.ts",
+        "packages/cli/src/install/paths.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "packages/core/src/extract/ast-visitor.ts"
+      ],
+      "ppr": [
+        "packages/core/src/extract/walker.ts",
+        "packages/cli/src/install/paths.ts",
+        "packages/core/src/index-all.ts",
+        "packages/core/src/extract/walker.ts",
+        "packages/core/src/extract/manifests/pyproject-toml.ts",
+        "__tests__/orientation.test.ts",
+        "packages/core/src/rig.ts",
+        "packages/cli/src/install-cmd.ts",
+        "scripts/bench/target.ts",
+        "packages/core/src/extract/ast-visitor.ts"
+      ]
+    },
+    {
+      "commit": "a4d6b5c",
+      "query": "rig bench — benchmark suite + --fixture <N> synthetic stress mode",
+      "files": [
+        "packages/cli/src/bench-cmd.ts",
+        "packages/cli/src/index.ts"
+      ],
+      "keyword": [
+        "packages/cli/src/bench-cmd.ts",
+        "__tests__/support/capture-fixtures.ts"
+      ],
+      "hybrid": [
+        "packages/cli/src/bench-cmd.ts",
+        "scripts/bench/tools-rig.ts",
+        "scripts/bench/tools-rig-search.ts",
+        "scripts/bench/types.ts",
+        "packages/cli/src/bench-cmd.ts",
+        "packages/core/src/rig.ts"
+      ],
+      "ppr": [
+        "scripts/bench/tools-rig.ts",
+        "packages/cli/src/bench-cmd.ts",
+        "packages/cli/src/bench-cmd.ts",
+        "scripts/bench/tools-rig-search.ts",
+        "scripts/bench/types.ts",
+        "packages/core/src/rig.ts"
+      ]
+    },
+    {
+      "commit": "1b73912",
+      "query": "rename Map import to RigMap (global Map collision); add recordSelection + auth-off session route",
+      "files": [
+        "packages/core/src/rig-writes.ts",
+        "packages/web/src/app/App.tsx",
+        "packages/web/src/server.ts"
+      ],
+      "keyword": [
+        "packages/core/src/rig-writes.ts",
+        "packages/web/src/auth.ts",
+        "packages/web/src/auth.ts",
+        "packages/core/src/rig.ts",
+        "packages/web/src/app/TokenGate.tsx",
+        "packages/cli/src/uninstall-cmd.ts",
+        "packages/core/src/memory-file.ts",
+        "packages/mcp/src/dispatch.ts",
+        "packages/core/src/web-address.ts",
+        "__tests__/memory-file.test.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/rig-writes.ts",
+        "packages/mcp/src/dispatch.ts",
+        "packages/mcp/src/server-handlers.ts",
+        ".contracts/tools/rig_phantom_imports.contract.ts",
+        "generated/mcp/handlers/rig_phantom_imports.handler.ts",
+        "packages/web/src/auth.ts",
+        "packages/web/src/auth.ts"
+      ],
+      "ppr": [
+        "packages/core/src/rig-writes.ts",
+        "packages/mcp/src/dispatch.ts",
+        "packages/mcp/src/server-handlers.ts",
+        "packages/web/src/auth.ts",
+        ".contracts/tools/rig_phantom_imports.contract.ts",
+        "generated/mcp/handlers/rig_phantom_imports.handler.ts",
+        "packages/web/src/auth.ts"
+      ]
+    },
+    {
+      "commit": "97db40f",
+      "query": "A4-lite label-propagation communities (v6 migration + color mode)",
+      "files": [
+        "packages/core/src/db/graph-snapshot.ts",
+        "packages/core/src/graph/communities.ts",
+        "packages/core/src/index-all.ts"
+      ],
+      "keyword": [
+        ".contracts/migrations/v6.contract.ts",
+        "generated/core/migrations.ts",
+        "packages/core/src/graph/communities.ts",
+        "scripts/bench/run.ts",
+        "packages/core/src/graph/communities.ts",
+        "scripts/bench/matrix.ts",
+        "packages/cli/src/uninstall-cmd.ts",
+        "packages/web/src/app/Map.tsx",
+        "__tests__/bench-charts.test.ts",
+        "packages/contracts/src/kinds/migration.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/graph/communities.ts",
+        ".contracts/migrations/v6.contract.ts",
+        ".contracts/migrations/v4.contract.ts",
+        "packages/core/src/graph/communities.ts",
+        "scripts/gen/emitters/migration.ts",
+        "generated/core/migrations.ts",
+        ".contracts/migrations/v14.contract.ts",
+        "generated/core/migrations.ts",
+        "scripts/bench/run.ts",
+        "packages/core/src/db/graph-snapshot.ts"
+      ],
+      "ppr": [
+        ".contracts/migrations/v6.contract.ts",
+        ".contracts/migrations/v4.contract.ts",
+        "packages/core/src/graph/communities.ts",
+        "packages/core/src/graph/communities.ts",
+        "generated/core/migrations.ts",
+        "generated/core/migrations.ts",
+        "scripts/gen/emitters/migration.ts",
+        ".contracts/migrations/v14.contract.ts",
+        "packages/core/src/db/graph-snapshot.ts",
+        "packages/web/src/app/Map.tsx"
+      ]
+    },
+    {
+      "commit": "466caad",
+      "query": "pulse animation on activation:fired WS events (C3-lite)",
+      "files": [
+        "packages/core/src/db/activation-queries.ts",
+        "packages/web/src/app/App.tsx",
+        "packages/web/src/app/Map.tsx",
+        "packages/web/src/ws.ts"
+      ],
+      "keyword": [
+        "packages/core/src/db/activation-queries.ts",
+        "packages/web/src/ws.ts",
+        "generated/web/ws-events.ts",
+        "e2e/propose-accept-undo.spec.ts",
+        "packages/core/src/watch-policy.ts",
+        "packages/web/src/app/live.ts",
+        "packages/web/src/ws-derive.ts",
+        "generated/web/ws-events.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/activation-queries.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/db/activation-queries.ts",
+        "packages/web/src/ws.ts",
+        "generated/web/ws-events.ts",
+        "packages/web/src/ws-derive.ts",
+        "e2e/propose-accept-undo.spec.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "generated/web/ws-events.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/mcp/src/dispatch.ts",
+        "packages/core/src/db/activation-queries.ts"
+      ],
+      "ppr": [
+        "generated/web/ws-events.ts",
+        "generated/web/ws-events.ts",
+        "packages/web/src/ws.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "packages/core/src/db/activation-queries.ts",
+        "e2e/propose-accept-undo.spec.ts",
+        "packages/web/src/ws-derive.ts",
+        "packages/mcp/src/dispatch.ts"
+      ]
+    },
+    {
+      "commit": "783472f",
+      "query": "rig_critical_path — greedy walk by hubness × activations × edge kind (D5)",
+      "files": [
+        "packages/core/src/graph/critical-path.ts",
+        "packages/core/src/rig.ts",
+        "packages/mcp/src/tool-impls/rig_critical_path.ts"
+      ],
+      "keyword": [
+        "packages/core/src/graph/critical-path.ts",
+        ".contracts/tools/rig_critical_path.contract.ts",
+        "generated/mcp/handlers/rig_critical_path.handler.ts",
+        "packages/mcp/src/tool-impls/rig_critical_path.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/graph/critical-path.ts",
+        "packages/core/src/types.ts",
+        "packages/core/src/extract/upstream-types.ts",
+        "packages/web/src/app/api.ts",
+        "packages/core/src/graph/critical-path.ts"
+      ],
+      "hybrid": [
+        "packages/core/src/graph/critical-path.ts",
+        "packages/mcp/src/tool-impls/rig_critical_path.ts",
+        "packages/core/src/rig.ts",
+        "packages/core/src/graph/critical-path.ts",
+        "packages/web/src/app/api.ts",
+        ".contracts/tools/rig_critical_path.contract.ts",
+        "packages/core/src/graph/critical-path.ts",
+        "generated/mcp/handlers/rig_critical_path.handler.ts",
+        "packages/core/src/graph/hubness.ts",
+        "packages/core/src/types.ts"
+      ],
+      "ppr": [
+        "packages/core/src/graph/critical-path.ts",
+        "packages/web/src/app/api.ts",
+        "packages/core/src/graph/critical-path.ts",
+        "packages/mcp/src/tool-impls/rig_critical_path.ts",
+        "packages/core/src/graph/critical-path.ts",
+        "packages/core/src/rig.ts",
+        ".contracts/tools/rig_critical_path.contract.ts",
+        "generated/mcp/handlers/rig_critical_path.handler.ts",
+        "packages/core/src/types.ts",
+        "packages/core/src/graph/hubness.ts"
+      ]
+    }
+  ]
+}
