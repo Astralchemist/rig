@@ -203,11 +203,16 @@ export const registerRoutes = (app: FastifyInstance, rig: Rig): void => {
 
   // The architecture blueprint (E4): JSON for the map's Blueprint lens, or
   // the same plan as Mermaid for copying.
-  app.get<{ Querystring: { level?: string; format?: string } }>(
+  app.get<{ Querystring: { level?: string; format?: string; scope?: string } }>(
     '/api/blueprint',
     async (req, reply) => {
       const { buildBlueprint, blueprintToMermaid } = await import('@rig/core/blueprint.ts');
-      const level = req.query.level === 'site' ? 'site' : 'floor';
+      const level =
+        req.query.level === 'site'
+          ? 'site'
+          : req.query.level === 'room' && req.query.scope
+            ? 'room'
+            : 'floor';
       let commit: string | null = null;
       try {
         const { execFileSync } = await import('node:child_process');
@@ -219,7 +224,11 @@ export const registerRoutes = (app: FastifyInstance, rig: Rig): void => {
       } catch {
         commit = null;
       }
-      const b = buildBlueprint(rig.database.adapter, rig.projectRoot, { level, commit });
+      const b = buildBlueprint(rig.database.adapter, rig.projectRoot, {
+        level,
+        commit,
+        ...(level === 'room' ? { scope: req.query.scope! } : {}),
+      });
       if (req.query.format === 'mermaid') {
         reply.type('text/plain; charset=utf-8');
         return blueprintToMermaid(b);

@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import type { SqliteAdapter } from './db/adapter.ts';
 import { isTestPath, readDeclaredDeps, readManifests, type Manifest } from './orientation.ts';
 
-export type BlueprintLevel = 'site' | 'floor';
+export type BlueprintLevel = 'site' | 'floor' | 'room';
 
 /** Runtime dependencies that mean "this package talks to a data store". */
 const DATA_STORES: Record<string, string> = {
@@ -80,6 +80,8 @@ export interface BlueprintBox {
   detail?: string;
   /** What an inferred box was inferred from (dependency name, manifest field). */
   evidence?: string;
+  /** Floor plan: the package directory, for opening its room plan. */
+  dir?: string;
   inferred: boolean;
 }
 
@@ -93,11 +95,15 @@ export interface BlueprintEdge {
 
 export interface Blueprint {
   level: BlueprintLevel;
+  /** Room level: the package drawn. */
+  scope?: string;
   commit: string | null;
   boxes: BlueprintBox[];
   edges: BlueprintEdge[];
   /** Packages folded into one "+N more" box to stay under the cap. */
   folded: string[];
+  /** Room plan: weaker links left out to keep it legible. */
+  hiddenEdges?: number;
 }
 
 export const FLOOR_MAX_BOXES = 30;
@@ -107,6 +113,8 @@ const slug = (s: string): string =>
 
 export interface BlueprintOptions {
   level?: BlueprintLevel;
+  /** Room level: the package directory to draw (e.g. packages/core). */
+  scope?: string;
   commit?: string | null;
   maxBoxes?: number;
 }
@@ -117,6 +125,7 @@ export const buildBlueprint = (
   opts: BlueprintOptions = {},
 ): Blueprint => {
   const level = opts.level ?? 'floor';
+  if (level === 'room') return buildRoomPlan(db, projectRoot, opts);
   const maxBoxes = opts.maxBoxes ?? FLOOR_MAX_BOXES;
   const files = (
     db.prepare(`SELECT path FROM files ORDER BY path`).all() as { path: string }[]
@@ -187,6 +196,7 @@ export const buildBlueprint = (
         id: boxOf(m.dir),
         label: m.name ?? (m.dir || 'project'),
         kind: 'package',
+        dir: m.dir,
         detail: `${m.dir || '.'} · ${filesPer.get(m.dir) ?? 0} files`,
         inferred: false,
       });
@@ -295,7 +305,7 @@ const esc = (s: string): string =>
 /** Mermaid flowchart in the classic shape syntax, with a legend and the commit in the title. */
 export const blueprintToMermaid = (b: Blueprint): string => {
   const L: string[] = [];
-  const title = `${b.level === 'site' ? 'Site plan' : 'Floor plan'}${b.commit ? ` at ${b.commit.slice(0, 7)}` : ''}`;
+  const title = `${b.level === 'site' ? 'Site plan' : b.level === 'room' ? `Room plan: ${b.scope || 'project'}` : 'Floor plan'}${b.commit ? ` at ${b.commit.slice(0, 7)}` : ''}`;
   L.push('---', `title: ${title}`, '---', 'flowchart LR');
   for (const x of b.boxes) {
     const text =
@@ -329,4 +339,181 @@ export const blueprintToMermaid = (b: Blueprint): string => {
     '  class lg_b inferred',
   );
   return L.join('\n');
+};
+
+export const ROOM_MAX_BOXES = 12;
+/** Room plans keep the strongest links only (each box keeps at least its own strongest). */
+export const ROOM_MAX_EDGES = 24;
+
+/**
+ * Room plan: inside one package. Boxes are its top-level folders and files
+ * (under src/ when it has one), edges the resolved imports between them;
+ * other packages it imports, or that import it, are grey boxes at the edge.
+ */
+export const buildRoomPlan = (
+  db: SqliteAdapter,
+  projectRoot: string,
+  opts: BlueprintOptions = {},
+): Blueprint => {
+  const scope = (opts.scope ?? '').replace(/\/+$/, '');
+  const maxBoxes = opts.maxBoxes ?? ROOM_MAX_BOXES;
+  const files = (db.prepare(`SELECT path FROM files ORDER BY path`).all() as { path: string }[])
+    .map((r) => r.path)
+    .filter((f) => !isTestPath(f));
+  const inScope = (f: string): boolean => scope === '' || f.startsWith(`${scope}/`);
+  const own = files.filter(inScope);
+  const base = own.some((f) => f.startsWith(scope ? `${scope}/src/` : 'src/'))
+    ? scope
+      ? `${scope}/src`
+      : 'src'
+    : scope;
+  const roomOf = (f: string): string => {
+    const rest = base ? f.slice(base.length + 1) : f;
+    const i = rest.indexOf('/');
+    return i < 0 ? rest : `${rest.slice(0, i)}/`;
+  };
+  const filesPer = new Map<string, number>();
+  for (const f of own) {
+    if (base && !f.startsWith(`${base}/`)) continue;
+    filesPer.set(roomOf(f), (filesPer.get(roomOf(f)) ?? 0) + 1);
+  }
+  // Rank rooms by how connected they are (resolved imports in and out),
+  // then by size, so a central one-file module isn't folded away.
+  const fileNodePath = new Map(
+    (
+      db
+        .prepare(`SELECT id, json_extract(data, '$.filePath') AS p FROM nodes WHERE type = 'file'`)
+        .all() as { id: string; p: string }[]
+    ).map((r) => [r.id, r.p]),
+  );
+  const degree = new Map<string, number>();
+  for (const e of db
+    .prepare(`SELECT src, dst FROM edges WHERE provenance = 'ast:import'`)
+    .all() as {
+    src: string;
+    dst: string;
+  }[]) {
+    for (const end of [e.src, e.dst]) {
+      const f = fileNodePath.get(end);
+      if (!f || isTestPath(f) || !inScope(f) || (base && !f.startsWith(`${base}/`))) continue;
+      degree.set(roomOf(f), (degree.get(roomOf(f)) ?? 0) + 1);
+    }
+  }
+  const ranked = [...filesPer.keys()].sort(
+    (a, b) =>
+      (degree.get(b) ?? 0) - (degree.get(a) ?? 0) ||
+      (filesPer.get(b) ?? 0) - (filesPer.get(a) ?? 0) ||
+      a.localeCompare(b),
+  );
+  const keep = new Set(ranked.slice(0, Math.max(1, maxBoxes - 1)));
+  const folded = ranked.filter((r) => !keep.has(r));
+  const roomId = (r: string): string => (keep.has(r) ? `room_${slug(r)}` : 'room_more');
+
+  // Other packages: the nearest manifest directory above a file outside scope.
+  const manifestDirs = readManifests(
+    (db.prepare(`SELECT path FROM files ORDER BY path`).all() as { path: string }[]).map(
+      (r) => r.path,
+    ),
+    (p) => {
+      try {
+        return readFileSync(join(projectRoot, p), 'utf-8');
+      } catch {
+        return null;
+      }
+    },
+  )
+    .map((m) => m.dir)
+    .filter((d) => d !== '')
+    .sort((a, b) => b.length - a.length);
+  const pkgOf = (f: string): string => manifestDirs.find((d) => f.startsWith(`${d}/`)) ?? '';
+
+  const fileOfNode = new Map(
+    (
+      db
+        .prepare(`SELECT id, json_extract(data, '$.filePath') AS p FROM nodes WHERE type = 'file'`)
+        .all() as {
+        id: string;
+        p: string;
+      }[]
+    ).map((r) => [r.id, r.p]),
+  );
+  const boxes: BlueprintBox[] = [];
+  for (const r of ranked.filter((x) => keep.has(x)))
+    boxes.push({
+      id: roomId(r),
+      label: r,
+      kind: 'package',
+      detail: `${filesPer.get(r)} file${filesPer.get(r) === 1 ? '' : 's'}`,
+      inferred: false,
+    });
+  if (folded.length)
+    boxes.push({
+      id: 'room_more',
+      label: `+${folded.length} more`,
+      kind: 'package',
+      inferred: false,
+    });
+  const weights = new Map<string, number>();
+  const outside = new Map<string, BlueprintBox>();
+  for (const e of db
+    .prepare(`SELECT src, dst FROM edges WHERE provenance = 'ast:import'`)
+    .all() as {
+    src: string;
+    dst: string;
+  }[]) {
+    const a = fileOfNode.get(e.src);
+    const b = fileOfNode.get(e.dst);
+    if (!a || !b || isTestPath(a) || isTestPath(b)) continue;
+    const ia = inScope(a) && (!base || a.startsWith(`${base}/`));
+    const ib = inScope(b) && (!base || b.startsWith(`${base}/`));
+    if (!ia && !ib) continue;
+    const end = (f: string, inside: boolean): string => {
+      if (inside) return roomId(roomOf(f));
+      const p = pkgOf(f) || 'outside packages';
+      const id = `ext_${slug(p)}`;
+      if (!outside.has(id))
+        outside.set(id, {
+          id,
+          label: p,
+          kind: 'external',
+          detail: 'another package',
+          inferred: false,
+        });
+      return id;
+    };
+    const from = end(a, ia);
+    const to = end(b, ib);
+    if (from === to) continue;
+    const k = `${from}\0${to}`;
+    weights.set(k, (weights.get(k) ?? 0) + 1);
+  }
+  boxes.push(...[...outside.values()].sort((x, y) => x.id.localeCompare(y.id)));
+  const all: BlueprintEdge[] = [...weights].map(([k, w]) => {
+    const [from, to] = k.split('\0') as [string, string];
+    return { from, to, weight: w, inferred: false };
+  });
+  // Strongest first; every box keeps its strongest link, then the rest fill
+  // up to the cap.
+  all.sort((a, b) => b.weight - a.weight || `${a.from}${a.to}`.localeCompare(`${b.from}${b.to}`));
+  const kept = new Set<BlueprintEdge>();
+  const covered = new Set<string>();
+  for (const e of all)
+    if (!covered.has(e.from) || !covered.has(e.to)) {
+      kept.add(e);
+      covered.add(e.from);
+      covered.add(e.to);
+    }
+  for (const e of all) if (kept.size < Math.max(ROOM_MAX_EDGES, kept.size)) kept.add(e);
+  const edges = all
+    .filter((e) => kept.has(e))
+    .sort((a, b) => `${a.from}${a.to}`.localeCompare(`${b.from}${b.to}`));
+  return {
+    level: 'room',
+    scope,
+    commit: opts.commit ?? null,
+    boxes,
+    edges,
+    folded,
+    hiddenEdges: all.length - edges.length,
+  };
 };
