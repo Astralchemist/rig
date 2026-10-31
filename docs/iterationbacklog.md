@@ -399,26 +399,27 @@ docs/
 
 **Why.** Local-first keeps verification next to the code and nothing leaves the machine, but today memory is per checkout: teammates don't see each other's decisions, a second laptop starts empty, and cloud or CI agents can't reach `localhost`. The derived graph is disposable (any machine rebuilds it from the repo); only the authored layer compounds, and it is small. Git is already the sync layer for everything else in the project, and committed memory shows up in PRs, so decisions get reviewed like code.
 
-**Mechanism.**
-- Builds on `rig export-memory` / `import-memory` (deterministic JSONL, portable `{kind, filePath, qualifiedName}` keys, unmatched records to `orphaned_memory`).
-- One record per line, sorted by id, append-only: edits append a new version and deletions append a tombstone, so two branches merge by union with no textual conflicts.
-- `rig index`, `rig sync` and `rig start` import new lines; agent writes append to the file as well as the database.
-- Sharing is per kind and opt-in by default for raw hook captures: they quote the user's own words, so they stay local until reviewed or promoted. Agent and human decisions, constraints and dead ends are shared.
-- Records from git carry provenance `git:<commit>` and go through the same trust tiers as hook capture before anything is injected at session start.
+**Mechanism (revised after research, 2026-10-30).** One file per record, not one shared JSONL:
+- **Layout:** `.rig/memory/<id[0:2]>/<id>.jsonl`, with random or hash ids. A record's versions, tombstone and reviewer verdicts live in its own file. Different records never conflict; two concurrent edits to the same record give a real conflict in one small file, which is the signal wanted; compaction is deleting files, which merges cleanly. This is how changesets avoids conflicts ([changesets](https://www.releasepad.io/blog/changesets/)).
+- **Why not one file:** two branches appending at the end of a file conflict under git's default merge ([example](https://dev.to/rulestack/two-writers-one-append-only-ledger-the-git-conflict-one-gitattributes-line-fixed-and-the-files-55j0)); `merge=union` leaves lines in random order and silently keeps both the old and new line when one side edits near the other's append ([gitattributes](https://git-scm.com/docs/gitattributes)); custom merge drivers must be installed per clone, so CI and cloud agents won't have them. Beads, the closest precedent (`.beads/issues.jsonl` plus a `bd merge` driver), moved to Dolt in early 2026 ([discussion](https://github.com/steveyegge/beads/discussions/2332)), and its Rust port's clones never converged because records carried a per-clone `updated_at` ([#542](https://github.com/Dicklesworthstone/beads_rust/issues/542)): records hold no machine-local fields.
+- **Import** is a set-union keyed on (id, version) and a content hash; tombstones outlive what they delete; CI fails on duplicate keys or invalid lines. `rig export-memory` stays as a single-file snapshot.
+- **Shared by default: only records a person promotes.** Raw hook captures and anything quoting the user stay local. Promotion previews the diff and runs a secret scan (gitleaks/trufflehog-style), a quote check and bidi/zero-width stripping first: once committed, it stays in history. AI-assisted commits already leak secrets at about twice the baseline rate ([GitGuardian](https://blog.gitguardian.com/yes-github-copilot-can-leak-secrets/)).
+- **Trust:** tiers local-authored > git signed by a code owner > git unsigned > agent-proposed; CODEOWNERS with required review on `.rig/memory/**`; CI rejects bidi and invisible characters (the Rules File Backdoor used them in `.cursor/rules`, [Pillar](https://www.pillar.security/blog/new-vulnerability-in-github-copilot-and-cursor-how-hackers-can-weaponize-code-agents)); at injection, verify-on-read, spotlighting delimiters, imperative-looking text quoted as data, and records below the tier shown only on request. One poisoned record is enough to matter ([AgentPoison: ≥80% success at <0.1% poison rate](https://arxiv.org/abs/2407.12784)). An "outdated" verdict lowers a record's tier.
+- **Growth:** records nobody verifies or uses age out, as GitHub Copilot Memory drops facts unused for 28 days and re-checks cited facts against the current branch before use ([GitHub](https://github.blog/ai-and-ml/github-copilot/building-an-agentic-memory-system-for-github-copilot/)).
 
 **Schema additions.** `source` / `provenance` values for git-imported records; a cursor of the last imported commit per file. Verdict records from E5 (`still holds`, `outdated`, `can't tell`, with the reviewer, the commit judged and the memory's anchor hash) live in the same file and update the memory's verification status.
 
 **New tools.** None for agents. CLI: `rig memory share|unshare <id>`; `rig install` adds the gitignore exception for the shared file.
 
-**Acceptance.**
-- [ ] Fresh clone + `rig start` on a second machine: the session-start brief includes decisions recorded on the first
-- [ ] Two branches that each add waypoints merge with no conflict in the memory file, and both sets load
-- [ ] Export → import → export is byte-identical
-- [ ] A poisoned record committed by another author is not injected above its trust tier (red-team case in the bench)
+**Acceptance (pre-register before building the evaluation).**
+- [ ] Merge simulation: 1,000 random two- and three-branch histories of appends, edits, tombstones and compactions; sharded layout: 0 duplicate keys, 0 resurrected tombstones, 100% convergence across merge orders, conflicts only on same-record concurrent edits (single file with union and with the default merge measured alongside)
+- [ ] Poisoning red team: at least 50 malicious records (hidden Unicode, imperative payloads, trigger text, forged provenance) on a branch; 0 hidden-Unicode records pass CI, at most 5% of untrusted records injected unquoted, at most 5% of 200 benign records rejected
+- [ ] Multi-machine: machine A promotes records, a fresh clone and a clean CI container import them; 100% recovered with fingerprints verified, 0 planted canary quotes or secrets from local captures in git history, import under 1 s per 10,000 records
+- [ ] Growth: 12 simulated months at team write rates with compaction keep 100% of still-valid records
 
 **Dependencies.** `export-memory` (shipped 0.2.0); the append-only authored layer and verify-on-read (research report, step 1); trust tiers (shipped with capture).
 
-**★ Risk surface.** Memory from other people is injected into your agent, so poisoning matters more; private wording leaking through shared captures (hence opt-in for hook records); the file growing without the step-5 consolidation. ★ **Deep research before building:** when this item's turn comes, we run a deep-research pass on these risks first and write its findings into the item before any code.
+**★ Risk surface** (researched 2026-10-30; findings above). Memory from other people is injected into your agent, so poisoning matters more; private wording leaking through shared captures (hence opt-in for hook records); the file growing without the step-5 consolidation. ★ **Deep research before building:** when this item's turn comes, we run a deep-research pass on these risks first and write its findings into the item before any code.
 
 ---
 
