@@ -34,6 +34,19 @@ const REPOS = [
     commit: 'b5addb64f0161ff6bfe94c124ef76f6a1fba5254',
   },
 ];
+// v2 (README): a held-out corpus, pinned before the repair was written.
+const HELDOUT = [
+  { name: 'zustand', git: join(CORPUS_DIR, 'zustand'), commit: '382d29c485e67018c06e75ec7235130d0968522c' },
+  { name: 'trpc', git: join(CORPUS_DIR, 'trpc'), commit: '708753ff1383c47c5f765694978db1000a86ee36' },
+  { name: 'flask', git: join(CORPUS_DIR, 'flask'), commit: '49943b5a94413a530761350f04e896f76e8d620e' },
+  { name: 'starlette', git: join(CORPUS_DIR, 'starlette'), commit: '2745bbc5afa2f8ce900d290bedca2bc5d3f3cfe8' },
+];
+const arg = (k: string, d: string): string => {
+  const i = process.argv.indexOf(k);
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1]! : d;
+};
+const SET = arg('--set', 'v1') === 'heldout' ? HELDOUT : REPOS;
+const OUT = arg('--out', 'flags.json');
 const SAMPLE_MAX = 40;
 const EVIDENCE_MAX = 25;
 
@@ -122,7 +135,7 @@ const evidenceFor = (root: string, files: string[], terms: string[], name: strin
 const main = async (): Promise<void> => {
   const all: unknown[] = [];
   const counts: Record<string, { flagged: number; labelled: number; declared: number }> = {};
-  for (const repo of REPOS) {
+  for (const repo of SET) {
     const dir = mkdtempSync(join(tmpdir(), `deps-eval-${repo.name}-`));
     execSync(`git -C "${repo.git}" archive ${repo.commit} | tar -x -C "${dir}"`, { stdio: 'pipe' });
     const files = execSync(`git -C "${repo.git}" ls-tree -r --name-only ${repo.commit}`, {
@@ -162,7 +175,7 @@ const main = async (): Promise<void> => {
   }
   const out = resolve(import.meta.dir, 'results');
   mkdirSync(out, { recursive: true });
-  writeFileSync(join(out, 'flags.json'), JSON.stringify({ counts, flags: all }, null, 2) + '\n');
+  writeFileSync(join(out, OUT), JSON.stringify({ counts, flags: all }, null, 2) + '\n');
 };
 
 await main();

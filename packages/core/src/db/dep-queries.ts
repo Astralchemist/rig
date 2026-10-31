@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { SqliteAdapter } from './adapter.ts';
-import { distributionKeysOf, importKeysOf } from './pypi-names.ts';
+import { nonImportUse, usageContext } from './dep-usage.ts';
+import { distributionKeysOf, importKeysOf, normalizePypiName } from './pypi-names.ts';
 import { PYTHON_STDLIB } from './python-stdlib.ts';
 
 export interface DepRow {
@@ -112,10 +113,13 @@ const pythonPackageOf = (target: string): string | null =>
 // imports land after the resolver fails to map them to a file. Handles scoped
 // packages (@types/node), subpath imports (lodash/get), dotted Python modules
 // (pandas.io) and PyPI names that differ from the module (PyYAML → yaml).
-// False positives possible for indirect runtime usage (JSX runtimes, bundler
-// magic) — flag as "likely unused, verify before removing", not as
-// authoritative.
-export const listUnusedDependencies = (db: SqliteAdapter): UnusedDepRow[] => {
+// Given the project root, uses that aren't imports also count (dep-usage.ts):
+// commands in scripts and CI, config files, @types pairs, workspace packages
+// and peers. Still "likely unused, verify before removing", not authoritative.
+export const listUnusedDependencies = (
+  db: SqliteAdapter,
+  projectRoot?: string,
+): UnusedDepRow[] => {
   const targetRows = db
     .prepare(`SELECT DISTINCT target_name FROM unresolved_refs`)
     .all() as { target_name: string }[];
@@ -150,6 +154,20 @@ export const listUnusedDependencies = (db: SqliteAdapter): UnusedDepRow[] => {
     )
     .all() as { id: string; name: string; data: string }[];
 
+  const ctx = projectRoot ? usageContext(db, projectRoot) : null;
+  const isImported = (pkg: string): boolean =>
+    used.has(pkg) || pythonKeys.has(normalizePypiName(pkg));
+
+  // What each manifest declares, for framework peers and @types pairs.
+  const siblings = new Map<string, Set<string>>();
+  for (const d of declared) {
+    const m = (JSON.parse(d.data) as { filePath?: string }).filePath ?? '';
+    const set = siblings.get(m) ?? new Set<string>();
+    set.add(d.name);
+    siblings.set(m, set);
+  }
+
+  const flagged: { d: (typeof declared)[number]; manifest: string }[] = [];
   const out: UnusedDepRow[] = [];
   for (const d of declared) {
     if (used.has(d.name)) continue;
@@ -158,10 +176,31 @@ export const listUnusedDependencies = (db: SqliteAdapter): UnusedDepRow[] => {
       depSource?: string;
       filePath?: string;
       isDevDep?: boolean;
+      isPeerDep?: boolean;
     };
     if (parsed.depSource === 'pypi' && distributionKeysOf(d.name).some((k) => pythonKeys.has(k))) {
       continue;
     }
+    if (
+      ctx &&
+      projectRoot &&
+      nonImportUse(
+        ctx,
+        projectRoot,
+        {
+          name: d.name,
+          source: parsed.depSource ?? '',
+          manifest: parsed.filePath ?? '',
+          spec: parsed.depSpec ?? '',
+          isPeer: parsed.isPeerDep === true,
+        },
+        isImported,
+        siblings,
+      )
+    ) {
+      continue;
+    }
+    flagged.push({ d, manifest: parsed.filePath ?? '' });
     out.push({
       id: d.id,
       name: d.name,
@@ -170,6 +209,22 @@ export const listUnusedDependencies = (db: SqliteAdapter): UnusedDepRow[] => {
       manifest_path: parsed.filePath ?? '',
       is_dev: parsed.isDevDep === true,
     });
+  }
+  // @types/X is used when X is: drop it when its own manifest declares X and
+  // X wasn't flagged (its use was found some other way than an import).
+  if (ctx) {
+    const flaggedKeys = new Set(flagged.map((f) => `${f.manifest}::${f.d.name}`));
+    const keep = new Set(
+      flagged
+        .filter(({ d, manifest }) => {
+          if (!d.name.startsWith('@types/')) return true;
+          const x = d.name.slice(7);
+          const target = x.includes('__') ? `@${x.replace('__', '/')}` : x;
+          return !(siblings.get(manifest)?.has(target) && !flaggedKeys.has(`${manifest}::${target}`));
+        })
+        .map((f) => f.d.id),
+    );
+    return out.filter((r) => keep.has(r.id));
   }
   return out;
 };

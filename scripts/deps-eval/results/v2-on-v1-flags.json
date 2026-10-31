@@ -1,0 +1,1054 @@
+{
+  "counts": {
+    "rig": {
+      "flagged": 0,
+      "labelled": 0,
+      "declared": 48
+    },
+    "next-auth": {
+      "flagged": 16,
+      "labelled": 16,
+      "declared": 351
+    },
+    "hono": {
+      "flagged": 0,
+      "labelled": 0,
+      "declared": 66
+    },
+    "fastapi": {
+      "flagged": 0,
+      "labelled": 0,
+      "declared": 14
+    },
+    "httpx": {
+      "flagged": 0,
+      "labelled": 0,
+      "declared": 27
+    }
+  },
+  "flags": [
+    {
+      "key": "next-auth:package.json:@balazsorban/monorepo-release",
+      "repo": "next-auth",
+      "name": "@balazsorban/monorepo-release",
+      "source": "npm",
+      "manifest": "package.json",
+      "spec": "0.5.1",
+      "is_dev": true,
+      "bins": [
+        "release"
+      ],
+      "evidence": [
+        {
+          "file": ".github/workflows/release.yml",
+          "line": 135,
+          "text": "release-branch:"
+        },
+        {
+          "file": ".github/workflows/release.yml",
+          "line": 159,
+          "text": "run: pnpm release"
+        },
+        {
+          "file": ".github/workflows/release.yml",
+          "line": 164,
+          "text": "release-pr:"
+        },
+        {
+          "file": ".github/workflows/release.yml",
+          "line": 199,
+          "text": "\"🎉 Experimental release [published 📦️ on npm](https://npmjs.com/package/@auth/core/v/${{ env.VERSION }})!\\n \\"
+        },
+        {
+          "file": ".github/workflows/release.yml",
+          "line": 206,
+          "text": "release-manual:"
+        },
+        {
+          "file": ".github/workflows/release.yml",
+          "line": 251,
+          "text": "echo \"🎉 Experimental release published 📦️ on npm: https://npmjs.com/package/${{ github.event.inputs.name }}/v/${{ env.VERSION }}\""
+        },
+        {
+          "file": "README.md",
+          "line": 9,
+          "text": "<a href=\"https://github.com/nextauthjs/next-auth/releases\"><img src=\"https://img.shields.io/npm/v/next-auth/latest?style=flat-square&label=latest%20stable\" alt=\"NPM next-auth@latest release\" /></a>"
+        },
+        {
+          "file": "docs/pages/concepts/index.mdx",
+          "line": 106,
+          "text": "Providing support for secure account linking and unlinking of additional providers - which can only be done if a user is already signed in - was originally a feature in v1.x but has not been present s"
+        },
+        {
+          "file": "docs/pages/contributors.mdx",
+          "line": 44,
+          "text": "### 2016 – Initial release"
+        },
+        {
+          "file": "docs/pages/contributors.mdx",
+          "line": 89,
+          "text": "With the release of [NextAuth.js v5](/getting-started/migrating-to-v5), now all Auth.js libraries are based on the same core library."
+        },
+        {
+          "file": "docs/pages/guides/configuring-github.mdx",
+          "line": 202,
+          "text": "Before you can release your app to production, you'll need to change a few things."
+        },
+        {
+          "file": "docs/pages/guides/creating-a-database-adapter.mdx",
+          "line": 165,
+          "text": "- Add the Adapter to our GitHub workflow files [here](https://github.com/nextauthjs/next-auth/tree/main/.github/workflows/release.yml#L12) and [here](https://github.com/nextauthjs/next-auth/tree/main/"
+        },
+        {
+          "file": "package.json",
+          "line": 26,
+          "text": "\"release\": \"release\","
+        },
+        {
+          "file": "package.json",
+          "line": 27,
+          "text": "\"peek\": \"pnpm release --peek\","
+        },
+        {
+          "file": "package.json",
+          "line": 190,
+          "text": "\"@balazsorban/monorepo-release@0.5.1\": \"patches/@balazsorban__monorepo-release@0.5.1.patch\""
+        },
+        {
+          "file": "packages/adapter-mongodb/src/index.ts",
+          "line": 29,
+          "text": "* This adapter uses https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-2.html#using-declarations-and-explicit-resource-management."
+        },
+        {
+          "file": "packages/adapter-surrealdb/test/test.sh",
+          "line": 6,
+          "text": "# The surrealdb JS client 1.3.x pairs with a v2.x server; the v2 tag tracks the latest v2 release."
+        },
+        {
+          "file": "packages/frameworks-express/README.md",
+          "line": 10,
+          "text": "<a href=\"https://www.npmjs.com/package/@auth/express\"><img src=\"https://img.shields.io/npm/v/@auth/express?style=flat-square&label=latest&color=purple\" alt=\"npm latest release\" /></a>"
+        },
+        {
+          "file": "packages/frameworks-qwik/README.md",
+          "line": 10,
+          "text": "<a href=\"https://www.npmjs.com/package/@auth/qwik\"><img src=\"https://img.shields.io/npm/v/@auth/qwik?style=flat-square&label=latest&color=purple\" alt=\"npm latest release\" /></a>"
+        },
+        {
+          "file": "packages/frameworks-solid-start/README.MD",
+          "line": 10,
+          "text": "<a href=\"https://www.npmjs.com/package/@auth/solid-start\"><img src=\"https://img.shields.io/npm/v/@auth/solid-start?style=flat-square&label=latest&color=purple\" alt=\"npm latest release\" /></a>"
+        },
+        {
+          "file": "packages/frameworks-sveltekit/README.md",
+          "line": 10,
+          "text": "<a href=\"https://www.npmjs.com/package/@auth/sveltekit\"><img src=\"https://img.shields.io/npm/v/@auth/sveltekit?style=flat-square&label=latest&color=purple\" alt=\"npm latest release\" /></a>"
+        },
+        {
+          "file": "packages/next-auth/README.md",
+          "line": 10,
+          "text": "<a href=\"https://www.npmjs.com/package/next-auth\"><img src=\"https://img.shields.io/npm/v/next-auth/beta?style=flat-square&label=latest&color=purple\" alt=\"npm beta release\" /></a>"
+        }
+      ]
+    },
+    {
+      "key": "next-auth:packages/adapter-hasura/package.json:@graphql-codegen/client-preset",
+      "repo": "next-auth",
+      "name": "@graphql-codegen/client-preset",
+      "source": "npm",
+      "manifest": "packages/adapter-hasura/package.json",
+      "spec": "^4.1.0",
+      "is_dev": true,
+      "bins": [],
+      "evidence": []
+    },
+    {
+      "key": "next-auth:packages/adapter-hasura/package.json:@graphql-typed-document-node/core",
+      "repo": "next-auth",
+      "name": "@graphql-typed-document-node/core",
+      "source": "npm",
+      "manifest": "packages/adapter-hasura/package.json",
+      "spec": "^3.2.0",
+      "is_dev": true,
+      "bins": [],
+      "evidence": []
+    },
+    {
+      "key": "next-auth:apps/examples/nextjs-pages/package.json:@radix-ui/react-collapsible",
+      "repo": "next-auth",
+      "name": "@radix-ui/react-collapsible",
+      "source": "npm",
+      "manifest": "apps/examples/nextjs-pages/package.json",
+      "spec": "^1.0.3",
+      "is_dev": false,
+      "bins": [],
+      "evidence": []
+    },
+    {
+      "key": "next-auth:apps/examples/nextjs/package.json:@radix-ui/react-collapsible",
+      "repo": "next-auth",
+      "name": "@radix-ui/react-collapsible",
+      "source": "npm",
+      "manifest": "apps/examples/nextjs/package.json",
+      "spec": "^1.0.3",
+      "is_dev": false,
+      "bins": [],
+      "evidence": []
+    },
+    {
+      "key": "next-auth:packages/adapter-neo4j/package.json:@types/uuid",
+      "repo": "next-auth",
+      "name": "@types/uuid",
+      "source": "npm",
+      "manifest": "packages/adapter-neo4j/package.json",
+      "spec": "^8.3.3",
+      "is_dev": true,
+      "bins": [],
+      "evidence": [
+        {
+          "file": ".github/broken-link-checker/package.json",
+          "line": 51,
+          "text": "\"uuid@11\": \"11.1.1\""
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/hasura.mdx",
+          "line": 108,
+          "text": "id uuid DEFAULT gen_random_uuid() NOT NULL,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/hasura.mdx",
+          "line": 119,
+          "text": "\"userId\" uuid NOT NULL"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/hasura.mdx",
+          "line": 123,
+          "text": "id uuid DEFAULT gen_random_uuid() NOT NULL,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/hasura.mdx",
+          "line": 125,
+          "text": "\"userId\" uuid NOT NULL,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/hasura.mdx",
+          "line": 130,
+          "text": "id uuid DEFAULT gen_random_uuid() NOT NULL,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/kysely.mdx",
+          "line": 184,
+          "text": ".addColumn(\"id\", \"uuid\", (col) =>"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/kysely.mdx",
+          "line": 195,
+          "text": ".addColumn(\"id\", \"uuid\", (col) =>"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/kysely.mdx",
+          "line": 198,
+          "text": ".addColumn(\"userId\", \"uuid\", (col) =>"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/kysely.mdx",
+          "line": 215,
+          "text": ".addColumn(\"id\", \"uuid\", (col) =>"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/kysely.mdx",
+          "line": 218,
+          "text": ".addColumn(\"userId\", \"uuid\", (col) =>"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 131,
+          "text": "id uuid NOT NULL DEFAULT uuid_generate_v4(),"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 144,
+          "text": "CREATE FUNCTION next_auth.uid() RETURNS uuid"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 151,
+          "text": ")::uuid"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 159,
+          "text": "id uuid NOT NULL DEFAULT uuid_generate_v4(),"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 162,
+          "text": "\"userId\" uuid,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 179,
+          "text": "id uuid NOT NULL DEFAULT uuid_generate_v4(),"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 192,
+          "text": "\"userId\" uuid,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 288,
+          "text": "id uuid not null primary key,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 124,
+          "text": "@PrimaryGeneratedColumn(\"uuid\")"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 151,
+          "text": "@PrimaryGeneratedColumn(\"uuid\")"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 154,
+          "text": "@Column({ type: \"uuid\" })"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 205,
+          "text": "@PrimaryGeneratedColumn(\"uuid\")"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 211,
+          "text": "@Column({ type: \"uuid\" })"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 223,
+          "text": "@PrimaryGeneratedColumn(\"uuid\")"
+        }
+      ]
+    },
+    {
+      "key": "next-auth:packages/adapter-drizzle/package.json:@types/uuid",
+      "repo": "next-auth",
+      "name": "@types/uuid",
+      "source": "npm",
+      "manifest": "packages/adapter-drizzle/package.json",
+      "spec": "^8.3.3",
+      "is_dev": true,
+      "bins": [],
+      "evidence": [
+        {
+          "file": ".github/broken-link-checker/package.json",
+          "line": 51,
+          "text": "\"uuid@11\": \"11.1.1\""
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/hasura.mdx",
+          "line": 108,
+          "text": "id uuid DEFAULT gen_random_uuid() NOT NULL,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/hasura.mdx",
+          "line": 119,
+          "text": "\"userId\" uuid NOT NULL"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/hasura.mdx",
+          "line": 123,
+          "text": "id uuid DEFAULT gen_random_uuid() NOT NULL,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/hasura.mdx",
+          "line": 125,
+          "text": "\"userId\" uuid NOT NULL,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/hasura.mdx",
+          "line": 130,
+          "text": "id uuid DEFAULT gen_random_uuid() NOT NULL,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/kysely.mdx",
+          "line": 184,
+          "text": ".addColumn(\"id\", \"uuid\", (col) =>"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/kysely.mdx",
+          "line": 195,
+          "text": ".addColumn(\"id\", \"uuid\", (col) =>"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/kysely.mdx",
+          "line": 198,
+          "text": ".addColumn(\"userId\", \"uuid\", (col) =>"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/kysely.mdx",
+          "line": 215,
+          "text": ".addColumn(\"id\", \"uuid\", (col) =>"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/kysely.mdx",
+          "line": 218,
+          "text": ".addColumn(\"userId\", \"uuid\", (col) =>"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 131,
+          "text": "id uuid NOT NULL DEFAULT uuid_generate_v4(),"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 144,
+          "text": "CREATE FUNCTION next_auth.uid() RETURNS uuid"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 151,
+          "text": ")::uuid"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 159,
+          "text": "id uuid NOT NULL DEFAULT uuid_generate_v4(),"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 162,
+          "text": "\"userId\" uuid,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 179,
+          "text": "id uuid NOT NULL DEFAULT uuid_generate_v4(),"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 192,
+          "text": "\"userId\" uuid,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 288,
+          "text": "id uuid not null primary key,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 124,
+          "text": "@PrimaryGeneratedColumn(\"uuid\")"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 151,
+          "text": "@PrimaryGeneratedColumn(\"uuid\")"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 154,
+          "text": "@Column({ type: \"uuid\" })"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 205,
+          "text": "@PrimaryGeneratedColumn(\"uuid\")"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 211,
+          "text": "@Column({ type: \"uuid\" })"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 223,
+          "text": "@PrimaryGeneratedColumn(\"uuid\")"
+        }
+      ]
+    },
+    {
+      "key": "next-auth:packages/adapter-upstash-redis/package.json:@types/uuid",
+      "repo": "next-auth",
+      "name": "@types/uuid",
+      "source": "npm",
+      "manifest": "packages/adapter-upstash-redis/package.json",
+      "spec": "^8.3.3",
+      "is_dev": true,
+      "bins": [],
+      "evidence": [
+        {
+          "file": ".github/broken-link-checker/package.json",
+          "line": 51,
+          "text": "\"uuid@11\": \"11.1.1\""
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/hasura.mdx",
+          "line": 108,
+          "text": "id uuid DEFAULT gen_random_uuid() NOT NULL,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/hasura.mdx",
+          "line": 119,
+          "text": "\"userId\" uuid NOT NULL"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/hasura.mdx",
+          "line": 123,
+          "text": "id uuid DEFAULT gen_random_uuid() NOT NULL,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/hasura.mdx",
+          "line": 125,
+          "text": "\"userId\" uuid NOT NULL,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/hasura.mdx",
+          "line": 130,
+          "text": "id uuid DEFAULT gen_random_uuid() NOT NULL,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/kysely.mdx",
+          "line": 184,
+          "text": ".addColumn(\"id\", \"uuid\", (col) =>"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/kysely.mdx",
+          "line": 195,
+          "text": ".addColumn(\"id\", \"uuid\", (col) =>"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/kysely.mdx",
+          "line": 198,
+          "text": ".addColumn(\"userId\", \"uuid\", (col) =>"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/kysely.mdx",
+          "line": 215,
+          "text": ".addColumn(\"id\", \"uuid\", (col) =>"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/kysely.mdx",
+          "line": 218,
+          "text": ".addColumn(\"userId\", \"uuid\", (col) =>"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 131,
+          "text": "id uuid NOT NULL DEFAULT uuid_generate_v4(),"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 144,
+          "text": "CREATE FUNCTION next_auth.uid() RETURNS uuid"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 151,
+          "text": ")::uuid"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 159,
+          "text": "id uuid NOT NULL DEFAULT uuid_generate_v4(),"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 162,
+          "text": "\"userId\" uuid,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 179,
+          "text": "id uuid NOT NULL DEFAULT uuid_generate_v4(),"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 192,
+          "text": "\"userId\" uuid,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/supabase.mdx",
+          "line": 288,
+          "text": "id uuid not null primary key,"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 124,
+          "text": "@PrimaryGeneratedColumn(\"uuid\")"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 151,
+          "text": "@PrimaryGeneratedColumn(\"uuid\")"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 154,
+          "text": "@Column({ type: \"uuid\" })"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 205,
+          "text": "@PrimaryGeneratedColumn(\"uuid\")"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 211,
+          "text": "@Column({ type: \"uuid\" })"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/typeorm.mdx",
+          "line": 223,
+          "text": "@PrimaryGeneratedColumn(\"uuid\")"
+        }
+      ]
+    },
+    {
+      "key": "next-auth:docs/package.json:algoliasearch",
+      "repo": "next-auth",
+      "name": "algoliasearch",
+      "source": "npm",
+      "manifest": "docs/package.json",
+      "spec": "^4.24.0",
+      "is_dev": false,
+      "bins": [],
+      "evidence": []
+    },
+    {
+      "key": "next-auth:docs/package.json:better-auth",
+      "repo": "next-auth",
+      "name": "better-auth",
+      "source": "npm",
+      "manifest": "docs/package.json",
+      "spec": "^1.3.18",
+      "is_dev": false,
+      "bins": [],
+      "evidence": [
+        {
+          "file": "README.md",
+          "line": 21,
+          "text": "> Auth js is now part of [Better Auth](https://better-auth.com/blog/authjs-joins-better-auth). We recommend new projects to start with Better Auth unless there are some very specific feature gaps (mos"
+        },
+        {
+          "file": "docs/pages/getting-started/migrate-to-better-auth.mdx",
+          "line": 10,
+          "text": "In this guide, we'll walk through the steps to migrate a project from Auth.js to [Better Auth](https://www.better-auth.com). Since these projects have different design philosophies, the migration requ"
+        },
+        {
+          "file": "docs/pages/getting-started/migrate-to-better-auth.mdx",
+          "line": 16,
+          "text": "Before starting the migration process, set up Better Auth in your project. Follow the [installation guide](https://www.better-auth.com/docs/installation) to get started."
+        },
+        {
+          "file": "docs/pages/getting-started/migrate-to-better-auth.mdx",
+          "line": 34,
+          "text": "import { betterAuth } from \"better-auth\";"
+        },
+        {
+          "file": "docs/pages/getting-started/migrate-to-better-auth.mdx",
+          "line": 57,
+          "text": "This client instance includes a set of functions for interacting with the Better Auth server instance. For more information, see [here](https://www.better-auth.com/docs/concepts/client)."
+        },
+        {
+          "file": "docs/pages/getting-started/migrate-to-better-auth.mdx",
+          "line": 60,
+          "text": "import { createAuthClient } from \"better-auth/react\""
+        },
+        {
+          "file": "docs/pages/getting-started/migrate-to-better-auth.mdx",
+          "line": 81,
+          "text": "import { toNextJsHandler } from \"better-auth/next-js\";"
+        },
+        {
+          "file": "docs/pages/getting-started/migrate-to-better-auth.mdx",
+          "line": 90,
+          "text": "In this section, we'll look at how to manage sessions in Better Auth compared to Auth.js. For more information, see [here](https://www.better-auth.com/docs/concepts/session-management)."
+        },
+        {
+          "file": "docs/pages/getting-started/migrate-to-better-auth.mdx",
+          "line": 468,
+          "text": "You may have extended the database models or implemented additional logic in Auth.js. Better Auth allows you to customize the core schema in a type-safe way. You can also define custom logic during th"
+        },
+        {
+          "file": "docs/pages/getting-started/migrate-to-better-auth.mdx",
+          "line": 472,
+          "text": "Now you're ready to migrate from Auth.js to Better Auth. For a complete implementation with multiple authentication methods, check out the [Next.js Demo App](https://github.com/better-auth/better-auth"
+        },
+        {
+          "file": "docs/pages/getting-started/migrate-to-better-auth.mdx",
+          "line": 474,
+          "text": "If you need help with migration, join our [community](https://www.better-auth.com/community) or reach out to [contact@better-auth.com](mailto:contact@better-auth.com)."
+        },
+        {
+          "file": "docs/theme.config.tsx",
+          "line": 163,
+          "text": "href=\"https://better-auth.com/blog/authjs-joins-better-auth\""
+        },
+        {
+          "file": "package.json",
+          "line": 93,
+          "text": "\"better-auth@1\": \"1.6.16\","
+        }
+      ]
+    },
+    {
+      "key": "next-auth:package.json:eslint-plugin-promise",
+      "repo": "next-auth",
+      "name": "eslint-plugin-promise",
+      "source": "npm",
+      "manifest": "package.json",
+      "spec": "^6.0.0",
+      "is_dev": true,
+      "bins": [],
+      "evidence": []
+    },
+    {
+      "key": "next-auth:packages/adapter-fauna/package.json:fauna-shell",
+      "repo": "next-auth",
+      "name": "fauna-shell",
+      "source": "npm",
+      "manifest": "packages/adapter-fauna/package.json",
+      "spec": "1.2.1",
+      "is_dev": true,
+      "bins": [
+        "fauna"
+      ],
+      "evidence": [
+        {
+          "file": ".github/ISSUE_TEMPLATE/3_bug_adapter.yml",
+          "line": 30,
+          "text": "- \"@auth/fauna-adapter\""
+        },
+        {
+          "file": ".github/pr-labeler.yml",
+          "line": 13,
+          "text": "fauna: [\"packages/adapter-fauna/**/*\"]"
+        },
+        {
+          "file": ".github/workflows/release.yml",
+          "line": 32,
+          "text": "- \"@auth/fauna-adapter\""
+        },
+        {
+          "file": "docs/pages/data/manifest.json",
+          "line": 33,
+          "text": "\"fauna\": \"Fauna\","
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/_meta.js",
+          "line": 8,
+          "text": "fauna: \"FaunaDB\","
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/fauna.mdx",
+          "line": 4,
+          "text": "<img align=\"right\" src=\"/img/adapters/fauna.svg\" height=\"64\" width=\"64\" />"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/fauna.mdx",
+          "line": 10,
+          "text": "- [Fauna documentation](https://docs.fauna.com/fauna/current/)"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/fauna.mdx",
+          "line": 17,
+          "text": "npm install @auth/fauna-adapter fauna"
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/fauna.mdx",
+          "line": 34,
+          "text": "import { Client } from \"fauna\""
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/fauna.mdx",
+          "line": 35,
+          "text": "import { FaunaAdapter } from \"@auth/fauna-adapter\""
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/fauna.mdx",
+          "line": 53,
+          "text": "import { Client } from \"fauna\""
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/fauna.mdx",
+          "line": 54,
+          "text": "import { FaunaAdapter } from \"@auth/fauna-adapter\""
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/fauna.mdx",
+          "line": 74,
+          "text": "import { Client } from \"fauna\""
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/fauna.mdx",
+          "line": 75,
+          "text": "import { FaunaAdapter } from \"@auth/fauna-adapter\""
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/fauna.mdx",
+          "line": 93,
+          "text": "import { Client } from \"fauna\""
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/fauna.mdx",
+          "line": 94,
+          "text": "import { FaunaAdapter } from \"@auth/fauna-adapter\""
+        },
+        {
+          "file": "docs/pages/getting-started/adapters/fauna.mdx",
+          "line": 118,
+          "text": "In `@auth/adapter-fauna@2.0.0`, we've renamed the collections to use an uppercase naming pattern in accordance with the Fauna best practices. If you're migrating from v1, you'll need to rename your co"
+        },
+        {
+          "file": "docs/pages/reference/_meta.js",
+          "line": 24,
+          "text": "\"fauna-adapter\": \"@auth/fauna-adapter\","
+        },
+        {
+          "file": "packages/adapter-fauna/.fauna-project",
+          "line": 1,
+          "text": "schema_directory=fauna"
+        },
+        {
+          "file": "packages/adapter-fauna/README.md",
+          "line": 6,
+          "text": "<a href=\"https://fauna.com\" target=\"_blank\">"
+        },
+        {
+          "file": "packages/adapter-fauna/README.md",
+          "line": 7,
+          "text": "<img height=\"64px\" src=\"https://authjs.dev/img/adapters/fauna.svg\"/>"
+        },
+        {
+          "file": "packages/adapter-fauna/README.md",
+          "line": 11,
+          "text": "<a href=\"https://npm.im/@auth/fauna-adapter\">"
+        },
+        {
+          "file": "packages/adapter-fauna/README.md",
+          "line": 14,
+          "text": "<a href=\"https://npm.im/@auth/fauna-adapter\">"
+        },
+        {
+          "file": "packages/adapter-fauna/README.md",
+          "line": 15,
+          "text": "<img alt=\"npm\" src=\"https://img.shields.io/npm/v/@auth/fauna-adapter?color=green&label=@auth/fauna-adapter&style=flat-square\">"
+        },
+        {
+          "file": "packages/adapter-fauna/README.md",
+          "line": 17,
+          "text": "<a href=\"https://www.npmtrends.com/@auth/fauna-adapter\">"
+        }
+      ]
+    },
+    {
+      "key": "next-auth:apps/examples/solid-start/package.json:solid-start-node",
+      "repo": "next-auth",
+      "name": "solid-start-node",
+      "source": "npm",
+      "manifest": "apps/examples/solid-start/package.json",
+      "spec": "^0.2.9",
+      "is_dev": true,
+      "bins": [],
+      "evidence": []
+    },
+    {
+      "key": "next-auth:packages/frameworks-sveltekit/package.json:tslib",
+      "repo": "next-auth",
+      "name": "tslib",
+      "source": "npm",
+      "manifest": "packages/frameworks-sveltekit/package.json",
+      "spec": "^2.7.0",
+      "is_dev": true,
+      "bins": [],
+      "evidence": []
+    },
+    {
+      "key": "next-auth:apps/examples/qwik/package.json:undici",
+      "repo": "next-auth",
+      "name": "undici",
+      "source": "npm",
+      "manifest": "apps/examples/qwik/package.json",
+      "spec": "^6.24.0",
+      "is_dev": true,
+      "bins": [],
+      "evidence": [
+        {
+          "file": ".github/broken-link-checker/package.json",
+          "line": 49,
+          "text": "\"undici@5\": \"6.24.0\","
+        },
+        {
+          "file": ".github/broken-link-checker/package.json",
+          "line": 50,
+          "text": "\"undici@6\": \"6.24.0\","
+        },
+        {
+          "file": "apps/examples/qwik/package.json",
+          "line": 81,
+          "text": "\"undici@7\": \"7.24.0\","
+        },
+        {
+          "file": "apps/examples/qwik/package.json",
+          "line": 87,
+          "text": "\"undici@5\": \"6.24.0\","
+        },
+        {
+          "file": "apps/examples/solid-start/package.json",
+          "line": 55,
+          "text": "\"undici@5\": \"6.24.0\","
+        },
+        {
+          "file": "apps/examples/solid-start/package.json",
+          "line": 56,
+          "text": "\"undici@6\": \"6.24.0\","
+        },
+        {
+          "file": "docs/pages/guides/corporate-proxy.mdx",
+          "line": 13,
+          "text": "Here, we use the `undici` library to make requests through a proxy server, by passing a `dispatcher` to the `fetch` implementation by `undici`."
+        },
+        {
+          "file": "docs/pages/guides/corporate-proxy.mdx",
+          "line": 21,
+          "text": "import { ProxyAgent, fetch as undici } from \"undici\""
+        },
+        {
+          "file": "docs/pages/guides/corporate-proxy.mdx",
+          "line": 25,
+          "text": "// @ts-expect-error `undici` has a `duplex` option"
+        },
+        {
+          "file": "docs/pages/guides/corporate-proxy.mdx",
+          "line": 26,
+          "text": "return undici(args[0], { ...args[1], dispatcher })"
+        },
+        {
+          "file": "docs/pages/guides/corporate-proxy.mdx",
+          "line": 39,
+          "text": "On Edge Runtimes or with proxy restrictions, the `undici` library may not work. Using a simpler approach with HttpsProxyAgent by passing a `proxyAgent` to the `fetch` implementation."
+        },
+        {
+          "file": "docs/pages/guides/corporate-proxy.mdx",
+          "line": 68,
+          "text": "- [`undici` - Basic Proxy Request with local agent dispatcher](https://undici.nodejs.org/#/docs/api/ProxyAgent?id=example-basic-proxy-request-with-local-agent-dispatcher)"
+        },
+        {
+          "file": "package.json",
+          "line": 168,
+          "text": "\"undici@5\": \"5.29.0\","
+        },
+        {
+          "file": "package.json",
+          "line": 169,
+          "text": "\"undici@6\": \"6.24.0\","
+        },
+        {
+          "file": "packages/core/src/lib/symbols.ts",
+          "line": 40,
+          "text": "*   return undici(args[0], { ...(args[1] ?? {}), dispatcher })"
+        },
+        {
+          "file": "packages/core/src/lib/symbols.ts",
+          "line": 48,
+          "text": "* @see https://undici.nodejs.org/#/docs/api/ProxyAgent?id=example-basic-proxy-request-with-local-agent-dispatcher"
+        }
+      ]
+    },
+    {
+      "key": "next-auth:apps/dev/qwik/package.json:undici",
+      "repo": "next-auth",
+      "name": "undici",
+      "source": "npm",
+      "manifest": "apps/dev/qwik/package.json",
+      "spec": "^6.24.0",
+      "is_dev": true,
+      "bins": [],
+      "evidence": [
+        {
+          "file": ".github/broken-link-checker/package.json",
+          "line": 49,
+          "text": "\"undici@5\": \"6.24.0\","
+        },
+        {
+          "file": ".github/broken-link-checker/package.json",
+          "line": 50,
+          "text": "\"undici@6\": \"6.24.0\","
+        },
+        {
+          "file": "apps/examples/qwik/package.json",
+          "line": 81,
+          "text": "\"undici@7\": \"7.24.0\","
+        },
+        {
+          "file": "apps/examples/qwik/package.json",
+          "line": 87,
+          "text": "\"undici@5\": \"6.24.0\","
+        },
+        {
+          "file": "apps/examples/solid-start/package.json",
+          "line": 55,
+          "text": "\"undici@5\": \"6.24.0\","
+        },
+        {
+          "file": "apps/examples/solid-start/package.json",
+          "line": 56,
+          "text": "\"undici@6\": \"6.24.0\","
+        },
+        {
+          "file": "docs/pages/guides/corporate-proxy.mdx",
+          "line": 13,
+          "text": "Here, we use the `undici` library to make requests through a proxy server, by passing a `dispatcher` to the `fetch` implementation by `undici`."
+        },
+        {
+          "file": "docs/pages/guides/corporate-proxy.mdx",
+          "line": 21,
+          "text": "import { ProxyAgent, fetch as undici } from \"undici\""
+        },
+        {
+          "file": "docs/pages/guides/corporate-proxy.mdx",
+          "line": 25,
+          "text": "// @ts-expect-error `undici` has a `duplex` option"
+        },
+        {
+          "file": "docs/pages/guides/corporate-proxy.mdx",
+          "line": 26,
+          "text": "return undici(args[0], { ...args[1], dispatcher })"
+        },
+        {
+          "file": "docs/pages/guides/corporate-proxy.mdx",
+          "line": 39,
+          "text": "On Edge Runtimes or with proxy restrictions, the `undici` library may not work. Using a simpler approach with HttpsProxyAgent by passing a `proxyAgent` to the `fetch` implementation."
+        },
+        {
+          "file": "docs/pages/guides/corporate-proxy.mdx",
+          "line": 68,
+          "text": "- [`undici` - Basic Proxy Request with local agent dispatcher](https://undici.nodejs.org/#/docs/api/ProxyAgent?id=example-basic-proxy-request-with-local-agent-dispatcher)"
+        },
+        {
+          "file": "package.json",
+          "line": 168,
+          "text": "\"undici@5\": \"5.29.0\","
+        },
+        {
+          "file": "package.json",
+          "line": 169,
+          "text": "\"undici@6\": \"6.24.0\","
+        },
+        {
+          "file": "packages/core/src/lib/symbols.ts",
+          "line": 40,
+          "text": "*   return undici(args[0], { ...(args[1] ?? {}), dispatcher })"
+        },
+        {
+          "file": "packages/core/src/lib/symbols.ts",
+          "line": 48,
+          "text": "* @see https://undici.nodejs.org/#/docs/api/ProxyAgent?id=example-basic-proxy-request-with-local-agent-dispatcher"
+        }
+      ]
+    }
+  ]
+}

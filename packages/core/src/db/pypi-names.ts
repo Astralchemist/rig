@@ -42,7 +42,16 @@ export const importKeysOf = (target: string): string[] => {
 
 // The keys a declared distribution answers to: its own normalized name, plus
 // its import names from DIST_IMPORT_NAMES.
+// Split distributions install their module under the family name:
+// opentelemetry-api and opentelemetry-sdk both install `opentelemetry`.
+const FAMILY_SUFFIX = /^(.+)-(api|sdk|binary|headless)$/;
+
 export const distributionKeysOf = (name: string): string[] => {
   const key = normalizePypiName(name);
-  return [key, ...(DIST_IMPORT_NAMES[key] ?? []).map(normalizePypiName)];
+  const family = FAMILY_SUFFIX.exec(key)?.[1];
+  return [
+    key,
+    ...(DIST_IMPORT_NAMES[key] ?? []).map(normalizePypiName),
+    ...(family ? [family] : []),
+  ];
 };

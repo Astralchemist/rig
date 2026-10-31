@@ -94,3 +94,73 @@ What follows: the report can't call something unused based only on import
 names. Repairing it means counting commands in scripts and CI, config files,
 `@types` pairing, workspace packages and peers. That is a new
 pre-registration and a new run.
+
+## Pre-registration, v2
+
+> Dependency-report evaluation v2 (written 2026-10-31, after v1 and before any v2 code or run; the fix and harness come in later commits, both before the run): no changes after seeing results.
+
+**What changes.** The report will be repaired, and only the v1 repos may be
+used while developing the repair. Because those labels are known, they work
+as a development set and can't measure the result.
+
+**Held-out corpus.** Four repos, pinned now, before any fix code exists. None
+was looked at while building the fix.
+
+| repo | commit |
+|---|---|
+| pmndrs/zustand | 382d29c485e67018c06e75ec7235130d0968522c |
+| trpc/trpc | 708753ff1383c47c5f765694978db1000a86ee36 |
+| pallets/flask | 49943b5a94413a530761350f04e896f76e8d620e |
+| encode/starlette | 2745bbc5afa2f8ce900d290bedca2bc5d3f3cfe8 |
+
+The sample and the label rules are v1's (at most 40 flags per repo, seed
+20261031; whole-repo evidence).
+
+**Bars.**
+1. Held-out precision, pooled: **≥ 80%**, with unclear flags counted against
+   the report. With 0 flags, precision is undefined and this bar fails.
+2. Known true positives are still caught: the 3 dependencies labelled unused
+   in v1 (next-auth's `@radix-ui/react-collapsible`, `@types/uuid` and
+   `algoliasearch`) are all flagged by the repaired report on the v1 corpus.
+
+**Reported, no bar:** the repaired report's flags on the v1 corpus, and how
+many flags it has before and after, per repo.
+
+**Verdict.** PASS if both bars hold, otherwise FAIL.
+
+### Result, v2 (2026-10-31): FAIL
+
+[results/2026-10-31-deps-v2-heldout.md](results/2026-10-31-deps-v2-heldout.md).
+The fix (531a162) was written against the v1 repos only, then run once on the
+held-out repos.
+
+- **Bar 1, held-out precision: 42.3%** (22 unused of 52 labelled; bar ≥ 80%),
+  so it fails. By repo: zustand 2/4, tRPC 20/35 (one unclear), Flask 0/13,
+  Starlette 0 flags. v1's report scored 3.5%.
+- **Bar 2, known true positives still caught: 3 of 3**, so it holds. On the
+  v1 repos, flags dropped from 155 to 16 (rig 15 → 0, next-auth 109 → 16,
+  hono 21 → 0, httpx 9 → 0, fastapi 1 → 0).
+
+Why it still fails:
+- **Flask (13):** every flag comes from `examples/celery/requirements.txt`,
+  which pip-compile generated. It's a lockfile of Celery's transitive
+  dependencies (`kombu  # via celery`), not a list of direct ones. I
+  labelled them used (rule 5, loaded at runtime by Celery). Read as unused
+  instead, precision would be 35/52 = 67.3%, still under the bar. The fix is
+  to recognise compiled requirements files as lockfiles.
+- **Peers and plugins a used tool loads (7 outside Flask):** `@mdx-js/react`
+  under Docusaurus, `jsdom` as vitest's environment, `typedoc-plugin-markdown`,
+  `@docusaurus/faster`, an eslint import resolver, and `tslib` as the peer of
+  `@rollup/plugin-typescript`. Telling these apart needs each package's
+  published `peerDependencies`, which the index doesn't have offline.
+- **CLIs whose command differs from the package (3):** `@docusaurus/core`
+  (`docusaurus`), `@lerna-lite/cli` (`lerna`) and `@manypkg/cli`
+  (`manypkg`). These bins are only known when node_modules is installed.
+- **Config files the scan doesn't read (4):** `serverless.yml` plugins and
+  `docusaurus.typedoc.js`.
+- **twoslash code samples in docs (2):** shiki-twoslash compiles imports in
+  ```` ```ts twoslash ```` blocks.
+
+Scoring changed only in display (the Markdown header printed a template
+literally); no numbers changed. Another revision has to be tested on a fresh
+held-out corpus: these four repos have now been seen.

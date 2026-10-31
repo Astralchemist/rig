@@ -412,7 +412,7 @@ export class Rig {
   }
 
   getUnusedDependencies(): UnusedDepRow[] {
-    return dqListUnused(this.database.adapter);
+    return dqListUnused(this.database.adapter, this.projectRoot);
   }
 
   getPhantomImports(): PhantomImportRow[] {
