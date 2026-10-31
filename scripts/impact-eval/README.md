@@ -151,3 +151,16 @@ replayed parent (`e307872`), turned out to be a no-op safeguard.
 ## Pre-registration v3 (written 2026-10-31, before any v3 run)
 
 > Impact evaluation v3: the v2 rules unchanged (oracle, metrics, bars, first 80 qualifying commits, blind-spot-flagged misses) for the tool at the commit that adds this text (extractor v4: a function handed a callback may call it, as `ast:callback` edges, and members of dynamic `import()` results are references). One harness change, fixed before running: each commit is replayed in a fresh process, so tree-sitter's WebAssembly abort can't carry over between commits. No changes after seeing results.
+
+## Result v3 (2026-10-31): FAIL, conclusively
+
+`results/2026-10-31-impact-eval-v3.md`. With a fresh process per commit, nothing was skipped: 156 commits examined, 66 scored (above the floor of 50 for the first time), 14 whose changed symbols the suite never runs.
+
+| measure | v3 | bar |
+|---|---:|---:|
+| micro recall | 60.7% | ≥ 80% |
+| micro precision | 21.1% (baseline 2.2%) | ≥ baseline + 10 pp |
+| commits with an unflagged miss | 30.3% | ≤ 20% |
+| median text lines | 13 | ≤ 25 |
+
+v1 and v2 scored 47 commits and v3 scores 66, so the recall figures aren't directly comparable; on the misses, callbacks dropped (`retryWhenBusy`: 7 → 4). What remains is a third kind: **method calls on names defined in several places** (`rig.sync()`, `rig.indexAll()`, the tools' `run`), which rig resolves only when the name is unique in the project and otherwise skips. Fixing that needs type information (the roadmap's SCIP item), not more syntax heuristics.
